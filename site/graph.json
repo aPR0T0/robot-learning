@@ -2089,7 +2089,6 @@
  ],
  "files": [
   ".github/workflows/ci.yml",
-  ".github/workflows/pages.yml",
   ".gitignore",
   "README.md",
   "configs/embodiment/aloha.yaml",
@@ -2118,6 +2117,7 @@
   "pyproject.toml",
   "scripts/build_site.py",
   "scripts/gcp_vm.sh",
+  "scripts/publish_site.sh",
   "setup.sh",
   "site/app.js",
   "site/index.html",

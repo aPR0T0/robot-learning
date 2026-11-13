@@ -6,7 +6,8 @@ RL → evaluation → edge optimisation → deployment**. Each stage is a **node
 **component** you plug into a node, and every part is configurable from **YAML or Python** (managed with **uv**).
 
 **Node map:** <https://apr0t0.github.io/robot-learning/> shows every stage, component and pipeline. Click one
-and the files that implement it light up. It is generated from the code by `scripts/build_site.py`.
+and the files that implement it light up. It is generated from the code by `scripts/build_site.py` and
+published into the apr0t0.github.io site with `scripts/publish_site.sh`.
 
 ```
  01 VLM ──► 02 data ──► 03 VLA ──► 04 post-train

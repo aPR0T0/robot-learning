@@ -229,10 +229,13 @@ def main() -> None:
     out = ROOT / "site/graph.json"
     out.write_text(json.dumps(graph, indent=1, default=str))
     print(f"wrote {out}: {len(comps)} components, {len(cfgs['pipelines'])} pipelines, {len(files)} files")
+    res = ROOT / "site/results.json"
     if a.results:
         r = collect_results(a.results)
-        (ROOT / "site/results.json").write_text(json.dumps(r, indent=1, default=str))
+        res.write_text(json.dumps(r, indent=1, default=str))
         print(f"wrote site/results.json: {list(r)}")
+    elif not res.exists():
+        res.write_text("{}\n")
 
 
 if __name__ == "__main__":
