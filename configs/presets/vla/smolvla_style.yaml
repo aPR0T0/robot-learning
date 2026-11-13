@@ -1,0 +1,15 @@
+# SmolVLA recipe in miniature: SmolVLM2 backbone cut to its first half, frozen, + flow-matching expert.
+impl: vla/train
+paper: SmolVLA (2025)
+params:
+  policy:
+    backbone:
+      type: hf_vlm
+      model_id: HuggingFaceTB/SmolVLM2-256M-Video-Instruct
+      num_layers: 15          # of 30: SmolVLA keeps the first half of the LM
+      freeze: all
+      dtype: bfloat16
+    head: {type: flow_matching, num_steps: 10}
+    d_model: 384
+    expert: {layers: 4, heads: 6}
+  train: {steps: 3000, batch_size: 64, lr: 3.0e-4, num_workers: 4}

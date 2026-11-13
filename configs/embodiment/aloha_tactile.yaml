@@ -1,0 +1,21 @@
+# Example of extending a robot with new feedback: ALOHA + wrist force/torque + fingertip tactile pads.
+# Nothing in the model code changes; each new entry gets its own encoder and becomes extra tokens.
+defaults: [aloha.yaml]
+name: aloha_tactile
+observations:
+  observation.images.wrist_left: {type: image, shape: [3, 240, 320], optional: true}
+  observation.wrench:            # 2 wrists x (Fx Fy Fz Tx Ty Tz)
+    type: vector
+    shape: [12]
+    norm: mean_std
+    encoder: {type: fourier, features: 32, tokens: 2}
+    source: {driver_key: ft_sensors, rate_hz: 500, filter: lowpass_30hz}
+    optional: true
+    dropout: 0.2
+  observation.tactile:           # 2 fingertips x 16 x 16 taxels
+    type: grid
+    shape: [2, 16, 16]
+    norm: mean_std
+    encoder: {type: conv_grid, channels: 32, pool: 2}
+    source: {driver_key: tactile_pads}
+    optional: true

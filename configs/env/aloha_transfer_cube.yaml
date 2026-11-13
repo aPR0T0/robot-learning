@@ -1,0 +1,8 @@
+type: gym
+id: gym_aloha/AlohaTransferCube-v0
+import_module: gym_aloha
+kwargs: {obs_type: pixels_agent_pos, render_mode: rgb_array}
+obs_map: {pixels.top: observation.images.top, agent_pos: observation.state}
+task: Pick up the cube with the right arm and transfer it to the left arm.
+max_steps: 400
+fps: 50

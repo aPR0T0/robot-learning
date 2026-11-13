@@ -1,0 +1,69 @@
+# Paper / method catalogue per stage: what is implemented, what runs through LeRobot, what is a slot to fill.
+# status: native  -> implemented in this repo (component key given)
+#         lerobot -> runs through the LeRobot adapters (vla/lerobot_train, eval with a lerobot policy ref)
+#         planned -> a slot to fill: `vlab new <stage> <name>` scaffolds a plugin
+vlm:
+  - {name: SmolVLM2 (256M / 500M / 2.2B), year: 2025, status: native, key: backbone/hf_vlm, url: "https://arxiv.org/abs/2504.05299"}
+  - {name: Any HF image-text-to-text VLM (Qwen2.5-VL, PaliGemma 2, Idefics3), year: 2025, status: native, key: backbone/hf_vlm}
+  - {name: RT-1 FiLM CNN + tokens (from scratch), year: 2022, status: native, key: backbone/tiny_cnn, url: "https://arxiv.org/abs/2212.06817"}
+  - {name: Embodied-reasoning fine-tune (Gemini Robotics-ER / pi0.5 pointing data), year: 2025, status: native, key: vlm/er_finetune, url: "https://arxiv.org/abs/2503.20020"}
+  - {name: Prismatic fused DINOv2 + SigLIP encoder (OpenVLA), year: 2024, status: planned, url: "https://arxiv.org/abs/2402.07865"}
+  - {name: Eagle-2 backbone (GR00T N1), year: 2025, status: lerobot, key: groot}
+vla:
+  - {name: pi0 flow-matching action expert, year: 2024, status: native, key: action_head/flow_matching, url: "https://arxiv.org/abs/2410.24164"}
+  - {name: Diffusion Policy / Octo diffusion head, year: 2023, status: native, key: action_head/diffusion, url: "https://arxiv.org/abs/2303.04137"}
+  - {name: OpenVLA-OFT parallel decoding + L1, year: 2025, status: native, key: action_head/l1_regression, url: "https://arxiv.org/abs/2502.19645"}
+  - {name: RT-2 / OpenVLA 256-bin action tokens, year: 2023, status: native, key: action_head/discrete_bins, url: "https://arxiv.org/abs/2307.15818"}
+  - {name: SmolVLA (half-depth VLM + flow expert), year: 2025, status: native, key: presets/vla/smolvla_style, url: "https://arxiv.org/abs/2506.01844"}
+  - {name: SmolVLA (official weights), year: 2025, status: lerobot, key: smolvla}
+  - {name: ACT (action chunking transformer), year: 2023, status: lerobot, key: act, url: "https://arxiv.org/abs/2304.13705"}
+  - {name: pi0 / pi0.5 (official weights), year: 2025, status: lerobot, key: pi0 / pi05}
+  - {name: GR00T N1.5, year: 2025, status: lerobot, key: groot, url: "https://arxiv.org/abs/2503.14734"}
+  - {name: X-VLA, year: 2025, status: lerobot, key: xvla}
+  - {name: FAST action tokenizer (DCT + BPE), year: 2025, status: planned, url: "https://arxiv.org/abs/2501.09747"}
+  - {name: Knowledge insulation (stop action-expert gradients into the VLM), year: 2025, status: planned, url: "https://arxiv.org/abs/2505.23705"}
+  - {name: Joint (blockwise-causal) attention prefix instead of cross-attention, year: 2024, status: planned}
+data:
+  - {name: Scripted sim demos with noise / hesitation / recovery knobs, status: native, key: data/scripted_sim}
+  - {name: LeRobotDataset hub sources (ALOHA, PushT, SO-100, DROID, LIBERO), year: 2024, status: native, key: data/lerobot_hub}
+  - {name: Weighted mixtures / co-training (Open X-Embodiment, pi0), year: 2023, status: native, key: data/mixture, url: "https://arxiv.org/abs/2310.08864"}
+  - {name: Spec-shaped synthetic data for hardware bring-up, status: native, key: data/synthetic}
+  - {name: ALOHA / GELLO / SO-100 leader-follower teleop recording, year: 2023, status: lerobot, key: lerobot-record}
+  - {name: UMI handheld-gripper demos, year: 2024, status: planned, url: "https://arxiv.org/abs/2402.10329"}
+  - {name: MimicGen-style demo multiplication in sim, year: 2023, status: planned, url: "https://arxiv.org/abs/2310.17596"}
+post_train:
+  - {name: Full fine-tune, status: native, key: post_train/finetune}
+  - {name: Frozen VLM + trained expert (GR00T N1.5), year: 2025, status: native, key: post_train/finetune}
+  - {name: LoRA on the VLM (OpenVLA), year: 2024, status: native, key: post_train/finetune, url: "https://arxiv.org/abs/2406.09246"}
+  - {name: Quantile action normalisation, status: native, key: policy/normalize}
+  - {name: Data curation / filtering of hesitant demos, status: planned}
+rl:
+  - {name: Filtered self-imitation (ReST / RWR family), year: 2025, status: native, key: rl/filtered_bc}
+  - {name: DSRL - RL in the latent-noise space, year: 2025, status: native, key: rl/dsrl, url: "https://arxiv.org/abs/2506.15799"}
+  - {name: SimpleVLA-RL (GRPO with binary success), year: 2025, status: planned, url: "https://arxiv.org/abs/2509.09674"}
+  - {name: "pi*0.6 Recap (advantage-conditioned policy + value function)", year: 2025, status: planned, url: "https://www.pi.website/blog/pistar06"}
+  - {name: HIL-SERL (human-in-the-loop RL), year: 2024, status: lerobot, key: hilserl, url: "https://arxiv.org/abs/2410.21845"}
+  - {name: Residual RL on top of a frozen VLA, status: planned}
+eval:
+  - {name: Seeded sim rollouts + 95% Wilson interval + failure triage, status: native, key: eval/sim_rollout}
+  - {name: Offline action error on held-out demos, status: native, key: eval/offline}
+  - {name: Regression gate between builds, status: native, key: eval/gate}
+  - {name: PushT / ALOHA / LIBERO / MetaWorld sims via gymnasium, year: 2024, status: native, key: env/gym, url: "https://arxiv.org/abs/2306.03310"}
+  - {name: SimplerEnv (real-to-sim matched evaluation), year: 2024, status: planned, url: "https://arxiv.org/abs/2405.05941"}
+  - {name: RoboArena-style pairwise A/B comparisons, year: 2025, status: planned, url: "https://arxiv.org/abs/2506.18123"}
+edge:
+  - {name: bf16 / fp16 inference, status: native, key: edge/optimize}
+  - {name: Fewer flow / diffusion steps, status: native, key: edge/optimize}
+  - {name: torch.compile of the action expert, status: native, key: edge/optimize}
+  - {name: int8 dynamic (CPU) / int8 weight-only (torchao), status: native, key: edge/optimize}
+  - {name: Prefix KV caching (re-run only the expert while denoising), status: planned}
+  - {name: ONNX / TensorRT export for Jetson, status: planned}
+  - {name: System 2 / System 1 split (GR00T N1, Helix), year: 2025, status: planned}
+deploy:
+  - {name: Receding-horizon chunk execution, year: 2023, status: native, key: chunker/sync}
+  - {name: ACT temporal ensembling, year: 2023, status: native, key: chunker/temporal_ensemble}
+  - {name: Latency-aware chunk blending (RTC, output-space), year: 2025, status: native, key: chunker/rtc_blend}
+  - {name: Real-time chunking by inpainting during denoising, year: 2025, status: planned, url: "https://arxiv.org/abs/2506.07339"}
+  - {name: Async inference control loop + safety filters + episode logging, status: native, key: deploy/loop}
+  - {name: LeRobot robots (SO-100/101, Koch, ALOHA, LeKiwi), status: native, key: driver/lerobot_robot}
+  - {name: ROS 2 bridge driver, status: planned}

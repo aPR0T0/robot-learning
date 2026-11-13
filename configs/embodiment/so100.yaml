@@ -1,0 +1,11 @@
+# SO-100 / SO-101 arm (LeRobot): 6 joints incl. gripper, front + wrist cameras, 30 Hz.
+name: so100
+control_hz: 30
+observations:
+  observation.images.front: {type: image, shape: [3, 256, 256], source: {camera: front}}
+  observation.images.wrist: {type: image, shape: [3, 256, 256], source: {camera: wrist}, optional: true}
+  observation.state: {type: vector, shape: [6], norm: mean_std,
+                      names: [shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll, gripper]}
+action: {shape: [6], norm: quantile, mode: absolute,
+         names: [shoulder_pan, shoulder_lift, elbow_flex, wrist_flex, wrist_roll, gripper]}
+chunk: {horizon: 50, execute: 25}

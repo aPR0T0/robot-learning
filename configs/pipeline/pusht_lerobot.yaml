@@ -1,0 +1,25 @@
+# Standard benchmark through the same nodes: LeRobot's PushT data + sim (requires the lerobot extra).
+#  - baseline: the published Diffusion Policy checkpoint, run by our eval node (stepwise LeRobot runner)
+#  - ours: the native flow-matching VLA trained on lerobot/pusht via the LeRobot dataset adapter
+name: pusht_lerobot
+embodiment: pusht
+env: pusht
+nodes:
+  data:
+    impl: data/lerobot_hub
+    params: {repo_id: lerobot/pusht, key_map: {observation.image: observation.images.top}}
+  eval_baseline:
+    impl: eval/sim_rollout
+    inputs:
+      policy: {format: lerobot, path: lerobot/diffusion_pusht, dataset_repo: lerobot/pusht,
+               key_map: {observation.images.top: observation.image}}
+    params: {episodes: 50, batch: 25, videos: 2}
+  vla:
+    impl: vla/train
+    preset: vla/flow_tiny
+    inputs: {dataset: data.dataset}
+    params: {train: {steps: 5000, batch_size: 64, num_workers: 6}}
+  eval:
+    impl: eval/sim_rollout
+    inputs: {policy: vla.policy}
+    params: {episodes: 50, batch: 25, videos: 2}

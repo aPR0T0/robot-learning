@@ -1,0 +1,4316 @@
+{
+ "repo": "https://github.com/aPR0T0/robot-learning",
+ "branch": "main",
+ "stages": [
+  {
+   "id": "vlm",
+   "n": "01",
+   "title": "VLM pretraining",
+   "sub": "Internet image + text",
+   "cat": "train",
+   "components": [
+    "backbone/tiny_cnn",
+    "backbone/hf_vlm",
+    "vlm/scratch",
+    "vlm/hf_pretrained",
+    "vlm/er_finetune"
+   ],
+   "files": [
+    "src/vlalab/policy/backbones.py",
+    "src/vlalab/stages/vlm.py"
+   ]
+  },
+  {
+   "id": "data",
+   "n": "02",
+   "title": "Robot data",
+   "sub": "Teleop demos",
+   "cat": "data",
+   "components": [
+    "expert/reach2d_pd",
+    "expert/random",
+    "env/reach2d",
+    "data/scripted_sim",
+    "data/lerobot_hub",
+    "data/mixture",
+    "data/synthetic"
+   ],
+   "files": [
+    "src/vlalab/core/spec.py",
+    "src/vlalab/data/dataset.py",
+    "src/vlalab/data/lerobot_source.py",
+    "src/vlalab/envs/base.py",
+    "src/vlalab/envs/experts.py",
+    "src/vlalab/envs/reach2d.py",
+    "src/vlalab/stages/data.py"
+   ]
+  },
+  {
+   "id": "vla",
+   "n": "03",
+   "title": "VLA pretraining",
+   "sub": "Add action head",
+   "cat": "train",
+   "components": [
+    "obs_encoder/mlp",
+    "obs_encoder/fourier",
+    "obs_encoder/conv_grid",
+    "action_head/flow_matching",
+    "action_head/diffusion",
+    "action_head/l1_regression",
+    "action_head/discrete_bins",
+    "vla/train",
+    "vla/lerobot_train"
+   ],
+   "files": [
+    "src/vlalab/policy/checkpoint.py",
+    "src/vlalab/policy/encoders.py",
+    "src/vlalab/policy/heads.py",
+    "src/vlalab/policy/layers.py",
+    "src/vlalab/policy/lerobot_runner.py",
+    "src/vlalab/policy/normalize.py",
+    "src/vlalab/policy/train.py",
+    "src/vlalab/policy/vla.py",
+    "src/vlalab/stages/vla.py"
+   ]
+  },
+  {
+   "id": "post_train",
+   "n": "04",
+   "title": "Post-training",
+   "sub": "Target robot + task",
+   "cat": "train",
+   "components": [
+    "post_train/finetune"
+   ],
+   "files": [
+    "src/vlalab/policy/checkpoint.py",
+    "src/vlalab/policy/normalize.py",
+    "src/vlalab/policy/train.py",
+    "src/vlalab/stages/post_train.py"
+   ]
+  },
+  {
+   "id": "rl",
+   "n": "05",
+   "title": "RL / refinement",
+   "sub": "Optional, rising",
+   "cat": "train",
+   "components": [
+    "rl/filtered_bc",
+    "rl/dsrl"
+   ],
+   "files": [
+    "src/vlalab/policy/dsrl.py",
+    "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/rl.py"
+   ]
+  },
+  {
+   "id": "eval",
+   "n": "06",
+   "title": "Evaluation",
+   "sub": "Sim + real trials",
+   "cat": "deploy",
+   "components": [
+    "env/gym",
+    "eval/sim_rollout",
+    "eval/offline",
+    "eval/gate"
+   ],
+   "files": [
+    "src/vlalab/envs/gym_env.py",
+    "src/vlalab/policy/lerobot_runner.py",
+    "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/evaluate.py"
+   ]
+  },
+  {
+   "id": "edge",
+   "n": "07",
+   "title": "Optimize for edge",
+   "sub": "Compress + compile",
+   "cat": "deploy",
+   "components": [
+    "edge/optimize"
+   ],
+   "files": [
+    "src/vlalab/policy/checkpoint.py",
+    "src/vlalab/stages/edge.py"
+   ]
+  },
+  {
+   "id": "deploy",
+   "n": "08",
+   "title": "Deployment",
+   "sub": "Robot control loop",
+   "cat": "deploy",
+   "components": [
+    "chunker/sync",
+    "chunker/temporal_ensemble",
+    "chunker/rtc_blend",
+    "driver/sim",
+    "driver/mock",
+    "driver/lerobot_robot",
+    "safety/clamp",
+    "safety/rate_limit",
+    "safety/deadman",
+    "deploy/loop"
+   ],
+   "files": [
+    "src/vlalab/runtime/chunking.py",
+    "src/vlalab/runtime/drivers.py",
+    "src/vlalab/runtime/loop.py",
+    "src/vlalab/runtime/safety.py",
+    "src/vlalab/stages/deploy.py"
+   ]
+  }
+ ],
+ "components": [
+  {
+   "key": "expert/reach2d_pd",
+   "kind": "expert",
+   "name": "reach2d_pd",
+   "stage": "data",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Proportional controller with configurable noise, hesitation and recovery demos.",
+   "doc": "",
+   "class": "Reach2DExpert",
+   "file": "src/vlalab/envs/experts.py",
+   "line": 28,
+   "config": "Reach2DExpertConfig",
+   "params": [
+    {
+     "name": "gain",
+     "type": "float",
+     "default": 1.4,
+     "help": ""
+    },
+    {
+     "name": "noise",
+     "type": "float",
+     "default": 0.08,
+     "help": ""
+    },
+    {
+     "name": "hesitate_prob",
+     "type": "float",
+     "default": 0.0,
+     "help": ""
+    },
+    {
+     "name": "hesitate_steps",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "recovery_prob",
+     "type": "float",
+     "default": 0.0,
+     "help": ""
+    },
+    {
+     "name": "recovery_steps",
+     "type": "int",
+     "default": 6,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "expert/random",
+   "kind": "expert",
+   "name": "random",
+   "stage": "data",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Uniform random actions (sanity checks, exploration data).",
+   "doc": "",
+   "class": "RandomExpert",
+   "file": "src/vlalab/envs/experts.py",
+   "line": 69,
+   "config": "RandomExpertConfig",
+   "params": [
+    {
+     "name": "scale",
+     "type": "float",
+     "default": 1.0,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "env/gym",
+   "kind": "env",
+   "name": "gym",
+   "stage": "eval",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Any gymnasium env (PushT, ALOHA, LIBERO...) with a key map to pipeline features.",
+   "doc": "",
+   "class": "GymEnv",
+   "file": "src/vlalab/envs/gym_env.py",
+   "line": 41,
+   "config": "GymEnvConfig",
+   "params": [
+    {
+     "name": "id",
+     "type": "str",
+     "default": "gym_pusht/PushT-v0",
+     "help": ""
+    },
+    {
+     "name": "import_module",
+     "type": "str | None",
+     "default": null,
+     "help": "module to import first (registers ids)"
+    },
+    {
+     "name": "kwargs",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    },
+    {
+     "name": "obs_map",
+     "type": "dict[str, str]",
+     "default": "dict()",
+     "help": "dotted gym key -> feature key"
+    },
+    {
+     "name": "task",
+     "type": "str",
+     "default": "",
+     "help": ""
+    },
+    {
+     "name": "max_steps",
+     "type": "int",
+     "default": 300,
+     "help": ""
+    },
+    {
+     "name": "fps",
+     "type": "float",
+     "default": 10.0,
+     "help": ""
+    },
+    {
+     "name": "success_key",
+     "type": "str",
+     "default": "is_success",
+     "help": ""
+    },
+    {
+     "name": "success_on_terminated",
+     "type": "bool",
+     "default": false,
+     "help": ""
+    },
+    {
+     "name": "image_size",
+     "type": "list[int] | None",
+     "default": null,
+     "help": "resize images to [H, W]"
+    }
+   ]
+  },
+  {
+   "key": "env/reach2d",
+   "kind": "env",
+   "name": "reach2d",
+   "stage": "data",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Language-conditioned 2D reaching with coloured targets (pure numpy, fast).",
+   "doc": "",
+   "class": "Reach2D",
+   "file": "src/vlalab/envs/reach2d.py",
+   "line": 57,
+   "config": "Reach2DConfig",
+   "params": [
+    {
+     "name": "image_size",
+     "type": "int",
+     "default": 96,
+     "help": ""
+    },
+    {
+     "name": "num_targets",
+     "type": "int",
+     "default": 3,
+     "help": ""
+    },
+    {
+     "name": "colors",
+     "type": "list[str]",
+     "default": [
+      "red",
+      "green",
+      "blue",
+      "yellow"
+     ],
+     "help": ""
+    },
+    {
+     "name": "goal_colors",
+     "type": "list[str] | None",
+     "default": null,
+     "help": "colours that can be the goal"
+    },
+    {
+     "name": "templates",
+     "type": "list[str]",
+     "default": "list(TEMPLATES)",
+     "help": ""
+    },
+    {
+     "name": "max_steps",
+     "type": "int",
+     "default": 60,
+     "help": ""
+    },
+    {
+     "name": "max_speed",
+     "type": "float",
+     "default": 0.04,
+     "help": ""
+    },
+    {
+     "name": "success_radius",
+     "type": "float",
+     "default": 0.06,
+     "help": ""
+    },
+    {
+     "name": "target_radius",
+     "type": "float",
+     "default": 0.06,
+     "help": ""
+    },
+    {
+     "name": "fps",
+     "type": "float",
+     "default": 10.0,
+     "help": ""
+    },
+    {
+     "name": "dense_reward",
+     "type": "bool",
+     "default": false,
+     "help": ""
+    },
+    {
+     "name": "force_noise",
+     "type": "float",
+     "default": 0.01,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "backbone/tiny_cnn",
+   "kind": "backbone",
+   "name": "tiny_cnn",
+   "stage": "vlm",
+   "paper": "RT-1 (FiLM CNN + tokens)",
+   "year": 2022,
+   "url": "https://arxiv.org/abs/2212.06817",
+   "summary": "From-scratch CNN + hashed word embeddings + fusion transformer. No pretraining, CPU-fast.",
+   "doc": "",
+   "class": "TinyCNNBackbone",
+   "file": "src/vlalab/policy/backbones.py",
+   "line": 54,
+   "config": "TinyCNNConfig",
+   "params": [
+    {
+     "name": "width",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "dim",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "vocab",
+     "type": "int",
+     "default": 4096,
+     "help": ""
+    },
+    {
+     "name": "max_words",
+     "type": "int",
+     "default": 16,
+     "help": ""
+    },
+    {
+     "name": "fusion_layers",
+     "type": "int",
+     "default": 2,
+     "help": ""
+    },
+    {
+     "name": "heads",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "film",
+     "type": "bool",
+     "default": true,
+     "help": "FiLM-condition conv features on the instruction (RT-1)"
+    }
+   ]
+  },
+  {
+   "key": "backbone/hf_vlm",
+   "kind": "backbone",
+   "name": "hf_vlm",
+   "stage": "vlm",
+   "paper": "SmolVLM2 / any HF VLM",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2504.05299",
+   "summary": "Pretrained HF VLM as the prefix encoder; layer truncation, freezing and LoRA are options.",
+   "doc": "",
+   "class": "HFVLMBackbone",
+   "file": "src/vlalab/policy/backbones.py",
+   "line": 137,
+   "config": "HFVLMConfig",
+   "params": [
+    {
+     "name": "model_id",
+     "type": "str",
+     "default": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+     "help": ""
+    },
+    {
+     "name": "path",
+     "type": "str | None",
+     "default": null,
+     "help": "local weights (e.g. from the vlm stage)"
+    },
+    {
+     "name": "num_layers",
+     "type": "int | None",
+     "default": null,
+     "help": "keep first N LM layers (SmolVLA: half)"
+    },
+    {
+     "name": "freeze",
+     "type": "str",
+     "default": "all",
+     "help": "all | vision | none"
+    },
+    {
+     "name": "lora",
+     "type": "dict[str, Any] | None",
+     "default": null,
+     "help": "{r, alpha, dropout, target_modules}"
+    },
+    {
+     "name": "dtype",
+     "type": "str",
+     "default": "bfloat16",
+     "help": ""
+    },
+    {
+     "name": "image_size",
+     "type": "int",
+     "default": 512,
+     "help": ""
+    },
+    {
+     "name": "prompt",
+     "type": "str",
+     "default": "{task}",
+     "help": ""
+    },
+    {
+     "name": "gradient_checkpointing",
+     "type": "bool",
+     "default": false,
+     "help": ""
+    },
+    {
+     "name": "fast_preprocess",
+     "type": "bool",
+     "default": true,
+     "help": "resize/normalise images on the GPU and cache tokenised prompts (falls back if unsupported)"
+    }
+   ]
+  },
+  {
+   "key": "obs_encoder/mlp",
+   "kind": "obs_encoder",
+   "name": "mlp",
+   "stage": "vla",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Two-layer MLP -> k tokens (default for state / force vectors).",
+   "doc": "",
+   "class": "MLPEncoder",
+   "file": "src/vlalab/policy/encoders.py",
+   "line": 26,
+   "config": "MLPEncoderConfig",
+   "params": [
+    {
+     "name": "hidden",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "tokens",
+     "type": "int",
+     "default": 1,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "obs_encoder/fourier",
+   "kind": "obs_encoder",
+   "name": "fourier",
+   "stage": "vla",
+   "paper": "Fourier features",
+   "year": 2020,
+   "url": "https://arxiv.org/abs/2006.10739",
+   "summary": "Random Fourier features + MLP; sharper for low-dim positions.",
+   "doc": "",
+   "class": "FourierEncoder",
+   "file": "src/vlalab/policy/encoders.py",
+   "line": 48,
+   "config": "FourierEncoderConfig",
+   "params": [
+    {
+     "name": "features",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "scale",
+     "type": "float",
+     "default": 2.0,
+     "help": ""
+    },
+    {
+     "name": "hidden",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "tokens",
+     "type": "int",
+     "default": 1,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "obs_encoder/conv_grid",
+   "kind": "obs_encoder",
+   "name": "conv_grid",
+   "stage": "vla",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Small CNN for grid sensors (tactile pads, depth patches) -> pool x pool tokens.",
+   "doc": "",
+   "class": "GridEncoder",
+   "file": "src/vlalab/policy/encoders.py",
+   "line": 71,
+   "config": "GridEncoderConfig",
+   "params": [
+    {
+     "name": "channels",
+     "type": "int",
+     "default": 32,
+     "help": ""
+    },
+    {
+     "name": "pool",
+     "type": "int",
+     "default": 2,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "action_head/flow_matching",
+   "kind": "action_head",
+   "name": "flow_matching",
+   "stage": "vla",
+   "paper": "\u03c00 (flow matching action expert)",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2410.24164",
+   "summary": "Noise -> action chunk by integrating a learned velocity field (pi0 / SmolVLA / GR00T).",
+   "doc": "",
+   "class": "FlowMatchingHead",
+   "file": "src/vlalab/policy/heads.py",
+   "line": 62,
+   "config": "FlowConfig",
+   "params": [
+    {
+     "name": "num_steps",
+     "type": "int",
+     "default": 10,
+     "help": ""
+    },
+    {
+     "name": "time_beta_a",
+     "type": "float",
+     "default": 1.5,
+     "help": ""
+    },
+    {
+     "name": "time_beta_b",
+     "type": "float",
+     "default": 1.0,
+     "help": ""
+    },
+    {
+     "name": "time_min",
+     "type": "float",
+     "default": 0.001,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "action_head/diffusion",
+   "kind": "action_head",
+   "name": "diffusion",
+   "stage": "vla",
+   "paper": "Diffusion Policy / Octo",
+   "year": 2023,
+   "url": "https://arxiv.org/abs/2303.04137",
+   "summary": "DDPM-trained epsilon predictor, DDIM sampling (Diffusion Policy, Octo).",
+   "doc": "",
+   "class": "DiffusionHead",
+   "file": "src/vlalab/policy/heads.py",
+   "line": 114,
+   "config": "DiffusionConfig",
+   "params": [
+    {
+     "name": "train_steps",
+     "type": "int",
+     "default": 100,
+     "help": ""
+    },
+    {
+     "name": "inference_steps",
+     "type": "int",
+     "default": 10,
+     "help": ""
+    },
+    {
+     "name": "prediction",
+     "type": "str",
+     "default": "epsilon",
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "action_head/l1_regression",
+   "kind": "action_head",
+   "name": "l1_regression",
+   "stage": "vla",
+   "paper": "ACT / OpenVLA-OFT",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2502.19645",
+   "summary": "Parallel decoding of the whole chunk with learned queries and an L1 loss (OFT, ACT).",
+   "doc": "",
+   "class": "L1Head",
+   "file": "src/vlalab/policy/heads.py",
+   "line": 166,
+   "config": "L1Config",
+   "params": [
+    {
+     "name": "loss",
+     "type": "str",
+     "default": "l1",
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "action_head/discrete_bins",
+   "kind": "action_head",
+   "name": "discrete_bins",
+   "stage": "vla",
+   "paper": "RT-2 / OpenVLA action tokens",
+   "year": 2023,
+   "url": "https://arxiv.org/abs/2307.15818",
+   "summary": "Each action dim split into 256 bins and classified (RT-2 / OpenVLA), decoded in parallel.",
+   "doc": "",
+   "class": "BinsHead",
+   "file": "src/vlalab/policy/heads.py",
+   "line": 199,
+   "config": "BinsConfig",
+   "params": [
+    {
+     "name": "bins",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "decode",
+     "type": "str",
+     "default": "argmax",
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "chunker/sync",
+   "kind": "chunker",
+   "name": "sync",
+   "stage": "deploy",
+   "paper": "Action chunking (ACT)",
+   "year": 2023,
+   "url": "https://arxiv.org/abs/2304.13705",
+   "summary": "Receding horizon: run the policy, execute the first n actions, re-plan.",
+   "doc": "",
+   "class": "SyncChunker",
+   "file": "src/vlalab/runtime/chunking.py",
+   "line": 29,
+   "config": "SyncConfig",
+   "params": [
+    {
+     "name": "execute",
+     "type": "int | None",
+     "default": null,
+     "help": "actions per chunk (default: spec.chunk.execute)"
+    }
+   ]
+  },
+  {
+   "key": "chunker/temporal_ensemble",
+   "kind": "chunker",
+   "name": "temporal_ensemble",
+   "stage": "deploy",
+   "paper": "ACT temporal ensembling",
+   "year": 2023,
+   "url": "https://arxiv.org/abs/2304.13705",
+   "summary": "Infer every tick and average all chunks that cover the current tick (ACT).",
+   "doc": "",
+   "class": "TemporalEnsembleChunker",
+   "file": "src/vlalab/runtime/chunking.py",
+   "line": 60,
+   "config": "TemporalEnsembleConfig",
+   "params": [
+    {
+     "name": "k",
+     "type": "float",
+     "default": 0.01,
+     "help": "w_i = exp(-k * i), i = 0 for the oldest prediction"
+    },
+    {
+     "name": "every",
+     "type": "int",
+     "default": 1,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "chunker/rtc_blend",
+   "kind": "chunker",
+   "name": "rtc_blend",
+   "stage": "deploy",
+   "paper": "Real-time chunking (simplified)",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2506.07339",
+   "summary": "Latency-aware: skips actions consumed during inference and blends into the new chunk.",
+   "doc": "Output-space approximation of RTC. True RTC inpaints during denoising (see docs/papers.md).",
+   "class": "RTCBlendChunker",
+   "file": "src/vlalab/runtime/chunking.py",
+   "line": 94,
+   "config": "RTCBlendConfig",
+   "params": [
+    {
+     "name": "execute",
+     "type": "int | None",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "blend",
+     "type": "int",
+     "default": 4,
+     "help": "ticks over which the old chunk hands over to the new one"
+    }
+   ]
+  },
+  {
+   "key": "driver/sim",
+   "kind": "driver",
+   "name": "sim",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Drive a simulator through the real-time loop (same code path as hardware).",
+   "doc": "",
+   "class": "SimDriver",
+   "file": "src/vlalab/runtime/drivers.py",
+   "line": 53,
+   "config": "SimDriverConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": "env spec (default: the pipeline env)"
+    }
+   ]
+  },
+  {
+   "key": "driver/mock",
+   "kind": "driver",
+   "name": "mock",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Hardware-free robot that matches any embodiment spec (test loops, rates, new sensors).",
+   "doc": "First-order joint dynamics + random images, shaped by the spec. Every declared sensor is filled,\nso a brand new feedback channel can be exercised end to end before the hardware exists.",
+   "class": "MockDriver",
+   "file": "src/vlalab/runtime/drivers.py",
+   "line": 94,
+   "config": "MockDriverConfig",
+   "params": [
+    {
+     "name": "task",
+     "type": "str",
+     "default": "do the thing",
+     "help": ""
+    },
+    {
+     "name": "gain",
+     "type": "float",
+     "default": 0.5,
+     "help": ""
+    },
+    {
+     "name": "obs_latency_ms",
+     "type": "float",
+     "default": 0.0,
+     "help": ""
+    },
+    {
+     "name": "action_latency_ms",
+     "type": "float",
+     "default": 0.0,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "driver/lerobot_robot",
+   "kind": "driver",
+   "name": "lerobot_robot",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Any LeRobot-supported robot (SO-100/101, Koch, ALOHA, LeKiwi ...) via its robot config.",
+   "doc": "Adapter over ``lerobot.robots``. Not exercised in CI (needs hardware); see docs/hardware.md.",
+   "class": "LeRobotDriver",
+   "file": "src/vlalab/runtime/drivers.py",
+   "line": 146,
+   "config": "LeRobotDriverConfig",
+   "params": [
+    {
+     "name": "robot",
+     "type": "dict[str, Any]",
+     "default": {
+      "type": "so100_follower",
+      "port": "/dev/ttyACM0"
+     },
+     "help": ""
+    },
+    {
+     "name": "key_map",
+     "type": "dict[str, str]",
+     "default": "dict()",
+     "help": "lerobot obs key -> spec key"
+    },
+    {
+     "name": "motor_order",
+     "type": "list[str]",
+     "default": "list()",
+     "help": "action vector -> motor names"
+    },
+    {
+     "name": "state_keys",
+     "type": "list[str]",
+     "default": "list()",
+     "help": "lerobot keys stacked into the state"
+    },
+    {
+     "name": "task",
+     "type": "str",
+     "default": "",
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "safety/clamp",
+   "kind": "safety",
+   "name": "clamp",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Clamp actions to the embodiment's joint / command limits.",
+   "doc": "",
+   "class": "Clamp",
+   "file": "src/vlalab/runtime/safety.py",
+   "line": 26,
+   "config": "ClampConfig",
+   "params": [
+    {
+     "name": "margin",
+     "type": "float",
+     "default": 0.0,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "safety/rate_limit",
+   "kind": "safety",
+   "name": "rate_limit",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Limit the change between consecutive commands (velocity clamp).",
+   "doc": "",
+   "class": "RateLimit",
+   "file": "src/vlalab/runtime/safety.py",
+   "line": 51,
+   "config": "RateLimitConfig",
+   "params": [
+    {
+     "name": "max_delta",
+     "type": "list[float] | None",
+     "default": null,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "safety/deadman",
+   "kind": "safety",
+   "name": "deadman",
+   "stage": "deploy",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Repeat the last safe command (hold) if the policy stops producing actions in time.",
+   "doc": "",
+   "class": "Deadman",
+   "file": "src/vlalab/runtime/safety.py",
+   "line": 80,
+   "config": "DeadmanConfig",
+   "params": [
+    {
+     "name": "timeout_s",
+     "type": "float",
+     "default": 0.5,
+     "help": ""
+    }
+   ]
+  },
+  {
+   "key": "data/scripted_sim",
+   "kind": "stage",
+   "name": "data/scripted_sim",
+   "stage": "data",
+   "paper": "Scripted teleop stand-in",
+   "year": null,
+   "url": null,
+   "summary": "Roll a scripted expert in sim and log LeRobot-style episodes.",
+   "doc": "",
+   "class": "ScriptedSim",
+   "file": "src/vlalab/stages/data.py",
+   "line": 37,
+   "config": "ScriptedSimConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": "env spec (default: pipeline env)"
+    },
+    {
+     "name": "env_overrides",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "e.g. {goal_colors: [purple]}"
+    },
+    {
+     "name": "expert",
+     "type": "Any",
+     "default": {
+      "type": "reach2d_pd"
+     },
+     "help": ""
+    },
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 200,
+     "help": ""
+    },
+    {
+     "name": "seed",
+     "type": "int",
+     "default": 0,
+     "help": ""
+    },
+    {
+     "name": "batch",
+     "type": "int",
+     "default": 16,
+     "help": ""
+    },
+    {
+     "name": "only_success",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "videos",
+     "type": "int",
+     "default": 2,
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "dataset": "native dataset ref"
+   }
+  },
+  {
+   "key": "data/lerobot_hub",
+   "kind": "stage",
+   "name": "data/lerobot_hub",
+   "stage": "data",
+   "paper": "LeRobotDataset",
+   "year": 2024,
+   "url": "https://huggingface.co/lerobot",
+   "summary": "Any LeRobot dataset on the Hub (ALOHA, PushT, SO-100, DROID, LIBERO ...) as a source.",
+   "doc": "",
+   "class": "LeRobotHub",
+   "file": "src/vlalab/stages/data.py",
+   "line": 86,
+   "config": "LeRobotHubConfig",
+   "params": [
+    {
+     "name": "repo_id",
+     "type": "str",
+     "default": "lerobot/pusht",
+     "help": ""
+    },
+    {
+     "name": "episodes",
+     "type": "list[int] | int | None",
+     "default": null,
+     "help": "list, or N for the first N"
+    },
+    {
+     "name": "key_map",
+     "type": "dict[str, str]",
+     "default": "dict()",
+     "help": "lerobot key -> spec key"
+    },
+    {
+     "name": "task",
+     "type": "str | None",
+     "default": null,
+     "help": "override the dataset's task strings"
+    },
+    {
+     "name": "weight",
+     "type": "float",
+     "default": 1.0,
+     "help": ""
+    },
+    {
+     "name": "root",
+     "type": "str | None",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "video_backend",
+     "type": "str | None",
+     "default": null,
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "dataset": "lerobot dataset ref"
+   }
+  },
+  {
+   "key": "data/mixture",
+   "kind": "stage",
+   "name": "data/mixture",
+   "stage": "data",
+   "paper": "Data mixtures (OXE / pi0)",
+   "year": 2023,
+   "url": "https://arxiv.org/abs/2310.08864",
+   "summary": "Weighted mixture of several datasets (cross-embodiment / co-training).",
+   "doc": "",
+   "class": "Mixture",
+   "file": "src/vlalab/stages/data.py",
+   "line": 111,
+   "config": "MixtureConfig",
+   "params": [
+    {
+     "name": "weights",
+     "type": "list[float]",
+     "default": "list()",
+     "help": "one per input dataset"
+    }
+   ],
+   "inputs": {
+    "datasets": "list of dataset refs"
+   },
+   "outputs": {
+    "dataset": "list of weighted refs"
+   }
+  },
+  {
+   "key": "data/synthetic",
+   "kind": "stage",
+   "name": "data/synthetic",
+   "stage": "data",
+   "paper": null,
+   "year": null,
+   "url": null,
+   "summary": "Random data shaped by the embodiment spec: bring-up tests for new robots / sensors.",
+   "doc": "Fills every feature the spec declares (cameras, state, new sensors) so the full stack - dataset,\npolicy encoders, runtime loop - can be exercised before any real data exists.",
+   "class": "Synthetic",
+   "file": "src/vlalab/stages/data.py",
+   "line": 136,
+   "config": "SyntheticConfig",
+   "params": [
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 20,
+     "help": ""
+    },
+    {
+     "name": "length",
+     "type": "int",
+     "default": 50,
+     "help": ""
+    },
+    {
+     "name": "task",
+     "type": "str",
+     "default": "synthetic task",
+     "help": ""
+    },
+    {
+     "name": "smooth",
+     "type": "float",
+     "default": 0.9,
+     "help": "AR(1) coefficient for action trajectories"
+    },
+    {
+     "name": "seed",
+     "type": "int",
+     "default": 0,
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "dataset": "native dataset ref"
+   }
+  },
+  {
+   "key": "deploy/loop",
+   "kind": "stage",
+   "name": "deploy/loop",
+   "stage": "deploy",
+   "paper": "Async chunked control loop",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2506.07339",
+   "summary": "observe -> infer (async) -> act at control_hz with safety filters and episode logging.",
+   "doc": "",
+   "class": "Deploy",
+   "file": "src/vlalab/stages/deploy.py",
+   "line": 44,
+   "config": "DeployConfig",
+   "params": [
+    {
+     "name": "driver",
+     "type": "Any",
+     "default": {
+      "type": "sim"
+     },
+     "help": ""
+    },
+    {
+     "name": "chunker",
+     "type": "Any",
+     "default": {
+      "type": "rtc_blend"
+     },
+     "help": ""
+    },
+    {
+     "name": "safety",
+     "type": "list[Any]",
+     "default": [
+      {
+       "type": "clamp"
+      },
+      {
+       "type": "rate_limit"
+      }
+     ],
+     "help": ""
+    },
+    {
+     "name": "hz",
+     "type": "float | None",
+     "default": null,
+     "help": "control rate (default: embodiment.control_hz)"
+    },
+    {
+     "name": "realtime",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "asynchronous",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 5,
+     "help": ""
+    },
+    {
+     "name": "max_steps",
+     "type": "int",
+     "default": 200,
+     "help": ""
+    },
+    {
+     "name": "seed_start",
+     "type": "int",
+     "default": 2000000,
+     "help": ""
+    },
+    {
+     "name": "record",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "runtime",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir or lerobot ref"
+   },
+   "outputs": {
+    "dataset": "logged episodes (feeds back to data)"
+   }
+  },
+  {
+   "key": "edge/optimize",
+   "kind": "stage",
+   "name": "edge/optimize",
+   "stage": "edge",
+   "paper": "Quantise / fewer steps / compile",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2503.14734",
+   "summary": "Benchmark dtype / flow-step / compile / int8 variants and ship one via runtime.yaml.",
+   "doc": "",
+   "class": "Optimize",
+   "file": "src/vlalab/stages/edge.py",
+   "line": 44,
+   "config": "OptimizeConfig",
+   "params": [
+    {
+     "name": "variants",
+     "type": "dict[str, dict[str, Any]]",
+     "default": {
+      "fp32": {
+       "dtype": "float32"
+      },
+      "bf16": {
+       "dtype": "bfloat16"
+      },
+      "bf16_5steps": {
+       "dtype": "bfloat16",
+       "num_steps": 5
+      },
+      "bf16_5steps_compile": {
+       "dtype": "bfloat16",
+       "num_steps": 5,
+       "compile": true
+      }
+     },
+     "help": ""
+    },
+    {
+     "name": "choose",
+     "type": "str",
+     "default": "bf16_5steps",
+     "help": "variant to ship, or 'fastest'"
+    },
+    {
+     "name": "iters",
+     "type": "int",
+     "default": 30,
+     "help": ""
+    },
+    {
+     "name": "batch",
+     "type": "int",
+     "default": 1,
+     "help": ""
+    },
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir"
+   },
+   "outputs": {
+    "policy": "checkpoint dir with runtime.yaml"
+   }
+  },
+  {
+   "key": "eval/sim_rollout",
+   "kind": "stage",
+   "name": "eval/sim_rollout",
+   "stage": "eval",
+   "paper": "LIBERO / SimplerEnv-style sim eval",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2405.05941",
+   "summary": "N seeded rollouts -> success rate with a 95% Wilson interval, per-task and failure triage.",
+   "doc": "",
+   "class": "SimRollout",
+   "file": "src/vlalab/stages/evaluate.py",
+   "line": 38,
+   "config": "SimRolloutConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "env_overrides",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    },
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 100,
+     "help": ""
+    },
+    {
+     "name": "seed_start",
+     "type": "int",
+     "default": 1000000,
+     "help": ""
+    },
+    {
+     "name": "batch",
+     "type": "int",
+     "default": 32,
+     "help": ""
+    },
+    {
+     "name": "chunker",
+     "type": "Any",
+     "default": "sync",
+     "help": ""
+    },
+    {
+     "name": "runtime",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "dtype / num_steps / quantize"
+    },
+    {
+     "name": "videos",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "policy_ref",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "extra keys for lerobot refs"
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir or lerobot ref"
+   },
+   "outputs": {
+    "report": "eval report json",
+    "policy": "pass-through"
+   }
+  },
+  {
+   "key": "eval/offline",
+   "kind": "stage",
+   "name": "eval/offline",
+   "stage": "eval",
+   "paper": "Offline action error",
+   "year": null,
+   "url": null,
+   "summary": "Action MSE / L1 on held-out demos. Cheap, and only loosely tied to real success.",
+   "doc": "",
+   "class": "Offline",
+   "file": "src/vlalab/stages/evaluate.py",
+   "line": 83,
+   "config": "OfflineConfig",
+   "params": [
+    {
+     "name": "batches",
+     "type": "int",
+     "default": 20,
+     "help": ""
+    },
+    {
+     "name": "batch_size",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "num_steps",
+     "type": "int | None",
+     "default": null,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir",
+    "dataset": "held-out dataset ref(s)"
+   },
+   "outputs": {
+    "policy": "pass-through"
+   }
+  },
+  {
+   "key": "eval/gate",
+   "kind": "stage",
+   "name": "eval/gate",
+   "stage": "eval",
+   "paper": "Regression gate",
+   "year": null,
+   "url": null,
+   "summary": "Compare a candidate report to a baseline; fail (or flag) if it regresses.",
+   "doc": "",
+   "class": "Gate",
+   "file": "src/vlalab/stages/evaluate.py",
+   "line": 118,
+   "config": "GateConfig",
+   "params": [
+    {
+     "name": "max_drop",
+     "type": "float",
+     "default": 0.05,
+     "help": "allowed drop in success rate"
+    },
+    {
+     "name": "metric",
+     "type": "str",
+     "default": "success_rate",
+     "help": ""
+    },
+    {
+     "name": "fail_pipeline",
+     "type": "bool",
+     "default": false,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "candidate": "eval report path",
+    "baseline": "eval report path"
+   },
+   "optional_inputs": {
+    "policy": "candidate policy (passed through if the gate opens)"
+   },
+   "outputs": {
+    "passed": "bool",
+    "policy": "candidate policy or None"
+   }
+  },
+  {
+   "key": "post_train/finetune",
+   "kind": "stage",
+   "name": "post_train/finetune",
+   "stage": "post_train",
+   "paper": "OpenVLA-OFT / GR00T N1.5 recipes",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2502.19645",
+   "summary": "Fine-tune a pretrained VLA on target data: full, frozen-backbone, head-only or LoRA.",
+   "doc": "",
+   "class": "Finetune",
+   "file": "src/vlalab/stages/post_train.py",
+   "line": 47,
+   "config": "FinetuneConfig",
+   "params": [
+    {
+     "name": "method",
+     "type": "str",
+     "default": "frozen_backbone",
+     "help": "' | '.join(METHODS)"
+    },
+    {
+     "name": "lora",
+     "type": "dict[str, Any]",
+     "default": {
+      "r": 16,
+      "alpha": 32
+     },
+     "help": ""
+    },
+    {
+     "name": "restat",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "vla_overrides",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "e.g. {head: {num_steps: 5}}"
+    },
+    {
+     "name": "train",
+     "type": "TrainConfig",
+     "default": "TrainConfig(steps=1000, lr=0.0001)",
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir",
+    "dataset": "dataset ref(s)"
+   },
+   "outputs": {
+    "policy": "checkpoint dir"
+   }
+  },
+  {
+   "key": "rl/filtered_bc",
+   "kind": "stage",
+   "name": "rl/filtered_bc",
+   "stage": "rl",
+   "paper": "ReST / RWR-style filtered self-imitation",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2509.09674",
+   "summary": "Rollout -> keep successes -> fine-tune, repeat. Success should climb each iteration.",
+   "doc": "",
+   "class": "FilteredBC",
+   "file": "src/vlalab/stages/rl.py",
+   "line": 55,
+   "config": "FilteredBCConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "env_overrides",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    },
+    {
+     "name": "iterations",
+     "type": "int",
+     "default": 3,
+     "help": ""
+    },
+    {
+     "name": "episodes_per_iter",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "eval_episodes",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "action_noise",
+     "type": "float",
+     "default": 0.1,
+     "help": ""
+    },
+    {
+     "name": "demo_weight",
+     "type": "float",
+     "default": 0.5,
+     "help": "sampling weight of the original demos"
+    },
+    {
+     "name": "batch",
+     "type": "int",
+     "default": 32,
+     "help": ""
+    },
+    {
+     "name": "chunker",
+     "type": "Any",
+     "default": "sync",
+     "help": ""
+    },
+    {
+     "name": "train",
+     "type": "TrainConfig",
+     "default": "TrainConfig(steps=300, lr=5e-05, warmup=20, trainable=['encoders', 'head'])",
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir"
+   },
+   "optional_inputs": {
+    "dataset": "original demos to keep mixing in"
+   },
+   "outputs": {
+    "policy": "checkpoint dir"
+   }
+  },
+  {
+   "key": "rl/dsrl",
+   "kind": "stage",
+   "name": "rl/dsrl",
+   "stage": "rl",
+   "paper": "DSRL: steering diffusion/flow policies",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2506.15799",
+   "summary": "RL in the latent-noise space of a frozen flow policy (REINFORCE on success).",
+   "doc": "",
+   "class": "DSRL",
+   "file": "src/vlalab/stages/rl.py",
+   "line": 123,
+   "config": "DSRLConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "env_overrides",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    },
+    {
+     "name": "iterations",
+     "type": "int",
+     "default": 20,
+     "help": ""
+    },
+    {
+     "name": "episodes_per_iter",
+     "type": "int",
+     "default": 32,
+     "help": ""
+    },
+    {
+     "name": "eval_episodes",
+     "type": "int",
+     "default": 64,
+     "help": ""
+    },
+    {
+     "name": "lr",
+     "type": "float",
+     "default": 0.003,
+     "help": ""
+    },
+    {
+     "name": "sigma",
+     "type": "float",
+     "default": 0.6,
+     "help": ""
+    },
+    {
+     "name": "batch",
+     "type": "int",
+     "default": 32,
+     "help": ""
+    },
+    {
+     "name": "chunker",
+     "type": "Any",
+     "default": "sync",
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "policy": "checkpoint dir (flow_matching or diffusion head)"
+   },
+   "outputs": {
+    "policy": "checkpoint dir + dsrl.pt"
+   }
+  },
+  {
+   "key": "vla/train",
+   "kind": "stage",
+   "name": "vla/train",
+   "stage": "vla",
+   "paper": "pi0-style VLA (native)",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2410.24164",
+   "summary": "Train the native VLA: any backbone + obs encoders + action head on a dataset mixture.",
+   "doc": "",
+   "class": "VLATrain",
+   "file": "src/vlalab/stages/vla.py",
+   "line": 46,
+   "config": "VLATrainConfig",
+   "params": [
+    {
+     "name": "policy",
+     "type": "VLAConfig",
+     "default": "VLAConfig()",
+     "help": ""
+    },
+    {
+     "name": "train",
+     "type": "TrainConfig",
+     "default": "TrainConfig()",
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "dataset": "dataset ref(s)"
+   },
+   "optional_inputs": {
+    "backbone": "backbone spec from the vlm stage"
+   },
+   "outputs": {
+    "policy": "checkpoint dir"
+   }
+  },
+  {
+   "key": "vla/lerobot_train",
+   "kind": "stage",
+   "name": "vla/lerobot_train",
+   "stage": "vla",
+   "paper": "LeRobot policies",
+   "year": 2025,
+   "url": "https://github.com/huggingface/lerobot",
+   "summary": "Train / fine-tune any LeRobot policy (SmolVLA, ACT, Diffusion, pi0, GR00T ...) via lerobot-train.",
+   "doc": "",
+   "class": "LeRobotTrain",
+   "file": "src/vlalab/stages/vla.py",
+   "line": 87,
+   "config": "LeRobotTrainConfig",
+   "params": [
+    {
+     "name": "policy_type",
+     "type": "str | None",
+     "default": "act",
+     "help": "act | diffusion | smolvla | pi0 | pi05 ..."
+    },
+    {
+     "name": "policy_path",
+     "type": "str | None",
+     "default": null,
+     "help": "fine-tune from a pretrained policy"
+    },
+    {
+     "name": "repo_id",
+     "type": "str | None",
+     "default": null,
+     "help": "dataset (default: the input dataset ref)"
+    },
+    {
+     "name": "steps",
+     "type": "int",
+     "default": 2000,
+     "help": ""
+    },
+    {
+     "name": "batch_size",
+     "type": "int",
+     "default": 8,
+     "help": ""
+    },
+    {
+     "name": "args",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "extra --key=value flags"
+    },
+    {
+     "name": "key_map",
+     "type": "dict[str, str]",
+     "default": "dict()",
+     "help": "spec key -> policy key, for eval"
+    }
+   ],
+   "optional_inputs": {
+    "dataset": "lerobot dataset ref"
+   },
+   "outputs": {
+    "policy": "lerobot policy ref"
+   }
+  },
+  {
+   "key": "vlm/scratch",
+   "kind": "stage",
+   "name": "vlm/scratch",
+   "stage": "vlm",
+   "paper": "no pretraining (control)",
+   "year": null,
+   "url": null,
+   "summary": "Skip web pretraining: a small backbone trained from scratch with the policy.",
+   "doc": "",
+   "class": "ScratchBackbone",
+   "file": "src/vlalab/stages/vlm.py",
+   "line": 105,
+   "config": "ScratchConfig",
+   "params": [
+    {
+     "name": "backbone",
+     "type": "dict[str, Any]",
+     "default": {
+      "type": "tiny_cnn"
+     },
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "backbone": "backbone spec"
+   }
+  },
+  {
+   "key": "vlm/hf_pretrained",
+   "kind": "stage",
+   "name": "vlm/hf_pretrained",
+   "stage": "vlm",
+   "paper": "SmolVLM2 (or any HF VLM)",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2504.05299",
+   "summary": "Use a web-pretrained VLM as-is and probe its spatial skills on robot images.",
+   "doc": "",
+   "class": "HFPretrained",
+   "file": "src/vlalab/stages/vlm.py",
+   "line": 126,
+   "config": "HFPretrainedConfig",
+   "params": [
+    {
+     "name": "model_id",
+     "type": "str",
+     "default": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+     "help": ""
+    },
+    {
+     "name": "dtype",
+     "type": "str",
+     "default": "bfloat16",
+     "help": ""
+    },
+    {
+     "name": "probe",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "probe_env",
+     "type": "Any",
+     "default": null,
+     "help": "env for probe images (default: pipeline env)"
+    },
+    {
+     "name": "probe_samples",
+     "type": "int",
+     "default": 24,
+     "help": ""
+    },
+    {
+     "name": "backbone",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "extra hf_vlm options"
+    }
+   ],
+   "outputs": {
+    "backbone": "backbone spec",
+    "metrics": "probe results"
+   }
+  },
+  {
+   "key": "vlm/er_finetune",
+   "kind": "stage",
+   "name": "vlm/er_finetune",
+   "stage": "vlm",
+   "paper": "Embodied-reasoning data (Gemini Robotics-ER, pi0.5)",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2503.20020",
+   "summary": "Fine-tune the VLM on pointing / scene QA rendered from the sim before robot training.",
+   "doc": "",
+   "class": "ERFinetune",
+   "file": "src/vlalab/stages/vlm.py",
+   "line": 162,
+   "config": "ERFinetuneConfig",
+   "params": [
+    {
+     "name": "model_id",
+     "type": "str",
+     "default": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+     "help": ""
+    },
+    {
+     "name": "env",
+     "type": "Any",
+     "default": null,
+     "help": ""
+    },
+    {
+     "name": "samples",
+     "type": "int",
+     "default": 2000,
+     "help": ""
+    },
+    {
+     "name": "eval_samples",
+     "type": "int",
+     "default": 48,
+     "help": ""
+    },
+    {
+     "name": "steps",
+     "type": "int",
+     "default": 400,
+     "help": ""
+    },
+    {
+     "name": "batch_size",
+     "type": "int",
+     "default": 16,
+     "help": ""
+    },
+    {
+     "name": "lr",
+     "type": "float",
+     "default": 0.0001,
+     "help": ""
+    },
+    {
+     "name": "lora",
+     "type": "dict[str, Any] | None",
+     "default": {
+      "r": 16,
+      "alpha": 32
+     },
+     "help": ""
+    },
+    {
+     "name": "dtype",
+     "type": "str",
+     "default": "bfloat16",
+     "help": ""
+    },
+    {
+     "name": "backbone",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "backbone": "backbone spec (fine-tuned weights)",
+    "metrics": "before/after probe"
+   }
+  }
+ ],
+ "core": [
+  "src/vlalab/core/registry.py",
+  "src/vlalab/core/config.py",
+  "src/vlalab/core/pipeline.py",
+  "src/vlalab/core/spec.py",
+  "src/vlalab/cli.py"
+ ],
+ "files": [
+  ".github/workflows/ci.yml",
+  ".github/workflows/pages.yml",
+  ".gitignore",
+  "README.md",
+  "configs/embodiment/aloha.yaml",
+  "configs/embodiment/aloha_tactile.yaml",
+  "configs/embodiment/pusht.yaml",
+  "configs/embodiment/reach2d.yaml",
+  "configs/embodiment/so100.yaml",
+  "configs/env/aloha_transfer_cube.yaml",
+  "configs/env/pusht.yaml",
+  "configs/env/reach2d.yaml",
+  "configs/pipeline/aloha_lerobot.yaml",
+  "configs/pipeline/mock_hardware.yaml",
+  "configs/pipeline/pusht_lerobot.yaml",
+  "configs/pipeline/reach_full.yaml",
+  "configs/pipeline/reach_heads.py",
+  "configs/pipeline/reach_smoke.yaml",
+  "configs/presets/vla/bins_tiny.yaml",
+  "configs/presets/vla/diffusion_tiny.yaml",
+  "configs/presets/vla/flow_tiny.yaml",
+  "configs/presets/vla/l1_tiny.yaml",
+  "configs/presets/vla/openvla_oft.yaml",
+  "configs/presets/vla/pi0_style.yaml",
+  "configs/presets/vla/rt2_bins.yaml",
+  "configs/presets/vla/smolvla_style.yaml",
+  "docs/papers.yaml",
+  "pyproject.toml",
+  "scripts/build_site.py",
+  "scripts/gcp_vm.sh",
+  "setup.sh",
+  "site/app.js",
+  "site/index.html",
+  "site/style.css",
+  "src/vlalab/__init__.py",
+  "src/vlalab/cli.py",
+  "src/vlalab/core/__init__.py",
+  "src/vlalab/core/config.py",
+  "src/vlalab/core/pipeline.py",
+  "src/vlalab/core/registry.py",
+  "src/vlalab/core/spec.py",
+  "src/vlalab/data/__init__.py",
+  "src/vlalab/data/dataset.py",
+  "src/vlalab/data/lerobot_source.py",
+  "src/vlalab/envs/__init__.py",
+  "src/vlalab/envs/base.py",
+  "src/vlalab/envs/experts.py",
+  "src/vlalab/envs/gym_env.py",
+  "src/vlalab/envs/reach2d.py",
+  "src/vlalab/policy/__init__.py",
+  "src/vlalab/policy/backbones.py",
+  "src/vlalab/policy/checkpoint.py",
+  "src/vlalab/policy/dsrl.py",
+  "src/vlalab/policy/encoders.py",
+  "src/vlalab/policy/heads.py",
+  "src/vlalab/policy/layers.py",
+  "src/vlalab/policy/lerobot_runner.py",
+  "src/vlalab/policy/normalize.py",
+  "src/vlalab/policy/train.py",
+  "src/vlalab/policy/vla.py",
+  "src/vlalab/runtime/__init__.py",
+  "src/vlalab/runtime/chunking.py",
+  "src/vlalab/runtime/drivers.py",
+  "src/vlalab/runtime/loop.py",
+  "src/vlalab/runtime/rollout.py",
+  "src/vlalab/runtime/safety.py",
+  "src/vlalab/stages/__init__.py",
+  "src/vlalab/stages/data.py",
+  "src/vlalab/stages/deploy.py",
+  "src/vlalab/stages/edge.py",
+  "src/vlalab/stages/evaluate.py",
+  "src/vlalab/stages/post_train.py",
+  "src/vlalab/stages/rl.py",
+  "src/vlalab/stages/vla.py",
+  "src/vlalab/stages/vlm.py",
+  "tests/test_core.py"
+ ],
+ "papers": {
+  "vlm": [
+   {
+    "name": "SmolVLM2 (256M / 500M / 2.2B)",
+    "year": 2025,
+    "status": "native",
+    "key": "backbone/hf_vlm",
+    "url": "https://arxiv.org/abs/2504.05299"
+   },
+   {
+    "name": "Any HF image-text-to-text VLM (Qwen2.5-VL",
+    "PaliGemma 2": null,
+    "Idefics3)": null,
+    "year": 2025,
+    "status": "native",
+    "key": "backbone/hf_vlm"
+   },
+   {
+    "name": "RT-1 FiLM CNN + tokens (from scratch)",
+    "year": 2022,
+    "status": "native",
+    "key": "backbone/tiny_cnn",
+    "url": "https://arxiv.org/abs/2212.06817"
+   },
+   {
+    "name": "Embodied-reasoning fine-tune (Gemini Robotics-ER / pi0.5 pointing data)",
+    "year": 2025,
+    "status": "native",
+    "key": "vlm/er_finetune",
+    "url": "https://arxiv.org/abs/2503.20020"
+   },
+   {
+    "name": "Prismatic fused DINOv2 + SigLIP encoder (OpenVLA)",
+    "year": 2024,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2402.07865"
+   },
+   {
+    "name": "Eagle-2 backbone (GR00T N1)",
+    "year": 2025,
+    "status": "lerobot",
+    "key": "groot"
+   }
+  ],
+  "vla": [
+   {
+    "name": "pi0 flow-matching action expert",
+    "year": 2024,
+    "status": "native",
+    "key": "action_head/flow_matching",
+    "url": "https://arxiv.org/abs/2410.24164"
+   },
+   {
+    "name": "Diffusion Policy / Octo diffusion head",
+    "year": 2023,
+    "status": "native",
+    "key": "action_head/diffusion",
+    "url": "https://arxiv.org/abs/2303.04137"
+   },
+   {
+    "name": "OpenVLA-OFT parallel decoding + L1",
+    "year": 2025,
+    "status": "native",
+    "key": "action_head/l1_regression",
+    "url": "https://arxiv.org/abs/2502.19645"
+   },
+   {
+    "name": "RT-2 / OpenVLA 256-bin action tokens",
+    "year": 2023,
+    "status": "native",
+    "key": "action_head/discrete_bins",
+    "url": "https://arxiv.org/abs/2307.15818"
+   },
+   {
+    "name": "SmolVLA (half-depth VLM + flow expert)",
+    "year": 2025,
+    "status": "native",
+    "key": "presets/vla/smolvla_style",
+    "url": "https://arxiv.org/abs/2506.01844"
+   },
+   {
+    "name": "SmolVLA (official weights)",
+    "year": 2025,
+    "status": "lerobot",
+    "key": "smolvla"
+   },
+   {
+    "name": "ACT (action chunking transformer)",
+    "year": 2023,
+    "status": "lerobot",
+    "key": "act",
+    "url": "https://arxiv.org/abs/2304.13705"
+   },
+   {
+    "name": "pi0 / pi0.5 (official weights)",
+    "year": 2025,
+    "status": "lerobot",
+    "key": "pi0 / pi05"
+   },
+   {
+    "name": "GR00T N1.5",
+    "year": 2025,
+    "status": "lerobot",
+    "key": "groot",
+    "url": "https://arxiv.org/abs/2503.14734"
+   },
+   {
+    "name": "X-VLA",
+    "year": 2025,
+    "status": "lerobot",
+    "key": "xvla"
+   },
+   {
+    "name": "FAST action tokenizer (DCT + BPE)",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2501.09747"
+   },
+   {
+    "name": "Knowledge insulation (stop action-expert gradients into the VLM)",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2505.23705"
+   },
+   {
+    "name": "Joint (blockwise-causal) attention prefix instead of cross-attention",
+    "year": 2024,
+    "status": "planned"
+   }
+  ],
+  "data": [
+   {
+    "name": "Scripted sim demos with noise / hesitation / recovery knobs",
+    "status": "native",
+    "key": "data/scripted_sim"
+   },
+   {
+    "name": "LeRobotDataset hub sources (ALOHA",
+    "PushT": null,
+    "SO-100": null,
+    "DROID": null,
+    "LIBERO)": null,
+    "year": 2024,
+    "status": "native",
+    "key": "data/lerobot_hub"
+   },
+   {
+    "name": "Weighted mixtures / co-training (Open X-Embodiment",
+    "pi0)": null,
+    "year": 2023,
+    "status": "native",
+    "key": "data/mixture",
+    "url": "https://arxiv.org/abs/2310.08864"
+   },
+   {
+    "name": "Spec-shaped synthetic data for hardware bring-up",
+    "status": "native",
+    "key": "data/synthetic"
+   },
+   {
+    "name": "ALOHA / GELLO / SO-100 leader-follower teleop recording",
+    "year": 2023,
+    "status": "lerobot",
+    "key": "lerobot-record"
+   },
+   {
+    "name": "UMI handheld-gripper demos",
+    "year": 2024,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2402.10329"
+   },
+   {
+    "name": "MimicGen-style demo multiplication in sim",
+    "year": 2023,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2310.17596"
+   }
+  ],
+  "post_train": [
+   {
+    "name": "Full fine-tune",
+    "status": "native",
+    "key": "post_train/finetune"
+   },
+   {
+    "name": "Frozen VLM + trained expert (GR00T N1.5)",
+    "year": 2025,
+    "status": "native",
+    "key": "post_train/finetune"
+   },
+   {
+    "name": "LoRA on the VLM (OpenVLA)",
+    "year": 2024,
+    "status": "native",
+    "key": "post_train/finetune",
+    "url": "https://arxiv.org/abs/2406.09246"
+   },
+   {
+    "name": "Quantile action normalisation",
+    "status": "native",
+    "key": "policy/normalize"
+   },
+   {
+    "name": "Data curation / filtering of hesitant demos",
+    "status": "planned"
+   }
+  ],
+  "rl": [
+   {
+    "name": "Filtered self-imitation (ReST / RWR family)",
+    "year": 2025,
+    "status": "native",
+    "key": "rl/filtered_bc"
+   },
+   {
+    "name": "DSRL - RL in the latent-noise space",
+    "year": 2025,
+    "status": "native",
+    "key": "rl/dsrl",
+    "url": "https://arxiv.org/abs/2506.15799"
+   },
+   {
+    "name": "SimpleVLA-RL (GRPO with binary success)",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2509.09674"
+   },
+   {
+    "name": "pi*0.6 Recap (advantage-conditioned policy + value function)",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://www.pi.website/blog/pistar06"
+   },
+   {
+    "name": "HIL-SERL (human-in-the-loop RL)",
+    "year": 2024,
+    "status": "lerobot",
+    "key": "hilserl",
+    "url": "https://arxiv.org/abs/2410.21845"
+   },
+   {
+    "name": "Residual RL on top of a frozen VLA",
+    "status": "planned"
+   }
+  ],
+  "eval": [
+   {
+    "name": "Seeded sim rollouts + 95% Wilson interval + failure triage",
+    "status": "native",
+    "key": "eval/sim_rollout"
+   },
+   {
+    "name": "Offline action error on held-out demos",
+    "status": "native",
+    "key": "eval/offline"
+   },
+   {
+    "name": "Regression gate between builds",
+    "status": "native",
+    "key": "eval/gate"
+   },
+   {
+    "name": "PushT / ALOHA / LIBERO / MetaWorld sims via gymnasium",
+    "year": 2024,
+    "status": "native",
+    "key": "env/gym",
+    "url": "https://arxiv.org/abs/2306.03310"
+   },
+   {
+    "name": "SimplerEnv (real-to-sim matched evaluation)",
+    "year": 2024,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2405.05941"
+   },
+   {
+    "name": "RoboArena-style pairwise A/B comparisons",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2506.18123"
+   }
+  ],
+  "edge": [
+   {
+    "name": "bf16 / fp16 inference",
+    "status": "native",
+    "key": "edge/optimize"
+   },
+   {
+    "name": "Fewer flow / diffusion steps",
+    "status": "native",
+    "key": "edge/optimize"
+   },
+   {
+    "name": "torch.compile of the action expert",
+    "status": "native",
+    "key": "edge/optimize"
+   },
+   {
+    "name": "int8 dynamic (CPU) / int8 weight-only (torchao)",
+    "status": "native",
+    "key": "edge/optimize"
+   },
+   {
+    "name": "Prefix KV caching (re-run only the expert while denoising)",
+    "status": "planned"
+   },
+   {
+    "name": "ONNX / TensorRT export for Jetson",
+    "status": "planned"
+   },
+   {
+    "name": "System 2 / System 1 split (GR00T N1",
+    "Helix)": null,
+    "year": 2025,
+    "status": "planned"
+   }
+  ],
+  "deploy": [
+   {
+    "name": "Receding-horizon chunk execution",
+    "year": 2023,
+    "status": "native",
+    "key": "chunker/sync"
+   },
+   {
+    "name": "ACT temporal ensembling",
+    "year": 2023,
+    "status": "native",
+    "key": "chunker/temporal_ensemble"
+   },
+   {
+    "name": "Latency-aware chunk blending (RTC",
+    "output-space)": null,
+    "year": 2025,
+    "status": "native",
+    "key": "chunker/rtc_blend"
+   },
+   {
+    "name": "Real-time chunking by inpainting during denoising",
+    "year": 2025,
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2506.07339"
+   },
+   {
+    "name": "Async inference control loop + safety filters + episode logging",
+    "status": "native",
+    "key": "deploy/loop"
+   },
+   {
+    "name": "LeRobot robots (SO-100/101",
+    "Koch": null,
+    "ALOHA": null,
+    "LeKiwi)": null,
+    "status": "native",
+    "key": "driver/lerobot_robot"
+   },
+   {
+    "name": "ROS 2 bridge driver",
+    "status": "planned"
+   }
+  ]
+ },
+ "pipelines": [
+  {
+   "name": "aloha_lerobot",
+   "file": "configs/pipeline/aloha_lerobot.yaml",
+   "description": "",
+   "embodiment": "aloha",
+   "env": "aloha_transfer_cube",
+   "nodes": [
+    {
+     "id": "data",
+     "impl": "data/lerobot_hub",
+     "preset": null,
+     "params": {
+      "repo_id": "lerobot/aloha_sim_transfer_cube_human"
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "eval_act",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 20,
+      "batch": 10,
+      "videos": 2
+     },
+     "inputs": {
+      "policy": {
+       "format": "lerobot",
+       "path": "lerobot/act_aloha_sim_transfer_cube_human",
+       "dataset_repo": "lerobot/aloha_sim_transfer_cube_human"
+      }
+     },
+     "uses": []
+    },
+    {
+     "id": "smolvla",
+     "impl": "vla/lerobot_train",
+     "preset": null,
+     "params": {
+      "policy_path": "lerobot/smolvla_base",
+      "steps": 2000,
+      "batch_size": 16,
+      "args": {
+       "policy.empty_cameras": 0,
+       "save_freq": 2000,
+       "log_freq": 100,
+       "rename_map": "{\"observation.images.top\": \"observation.images.camera1\"}"
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_smolvla",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 20,
+      "batch": 10,
+      "videos": 2,
+      "policy_ref": {
+       "key_map": {
+        "observation.images.top": "observation.images.camera1"
+       }
+      }
+     },
+     "inputs": {
+      "policy": "smolvla.policy"
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "smolvla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "smolvla",
+     "from_port": "policy",
+     "to": "eval_smolvla",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "mock_hardware",
+   "file": "configs/pipeline/mock_hardware.yaml",
+   "description": "",
+   "embodiment": "aloha_tactile",
+   "env": null,
+   "nodes": [
+    {
+     "id": "data",
+     "impl": "data/synthetic",
+     "preset": null,
+     "params": {
+      "episodes": 8,
+      "length": 60
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "vla",
+     "impl": "vla/train",
+     "preset": "vla/flow_tiny",
+     "params": {
+      "train": {
+       "steps": 30,
+       "batch_size": 8,
+       "num_workers": 0,
+       "log_every": 10
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "deploy",
+     "impl": "deploy/loop",
+     "preset": null,
+     "params": {
+      "driver": {
+       "type": "mock",
+       "task": "fold the towel"
+      },
+      "chunker": {
+       "type": "rtc_blend",
+       "blend": 5
+      },
+      "safety": [
+       {
+        "type": "rate_limit",
+        "max_delta": [
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05,
+         0.05
+        ]
+       }
+      ],
+      "episodes": 2,
+      "max_steps": 150,
+      "record": true
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": [
+      "chunker/rtc_blend",
+      "driver/mock",
+      "safety/rate_limit"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "deploy",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "pusht_lerobot",
+   "file": "configs/pipeline/pusht_lerobot.yaml",
+   "description": "",
+   "embodiment": "pusht",
+   "env": "pusht",
+   "nodes": [
+    {
+     "id": "data",
+     "impl": "data/lerobot_hub",
+     "preset": null,
+     "params": {
+      "repo_id": "lerobot/pusht",
+      "key_map": {
+       "observation.image": "observation.images.top"
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "eval_baseline",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 50,
+      "batch": 25,
+      "videos": 2
+     },
+     "inputs": {
+      "policy": {
+       "format": "lerobot",
+       "path": "lerobot/diffusion_pusht",
+       "dataset_repo": "lerobot/pusht",
+       "key_map": {
+        "observation.images.top": "observation.image"
+       }
+      }
+     },
+     "uses": []
+    },
+    {
+     "id": "vla",
+     "impl": "vla/train",
+     "preset": "vla/flow_tiny",
+     "params": {
+      "train": {
+       "steps": 5000,
+       "batch_size": 64,
+       "num_workers": 6
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 50,
+      "batch": 25,
+      "videos": 2
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "reach_full",
+   "file": "configs/pipeline/reach_full.yaml",
+   "description": "SmolVLM2 backbone with pointing fine-tune, SmolVLA-style flow policy, all eight stages.",
+   "embodiment": "reach2d",
+   "env": "reach2d",
+   "nodes": [
+    {
+     "id": "vlm",
+     "impl": "vlm/er_finetune",
+     "preset": null,
+     "params": {
+      "samples": 2000,
+      "steps": 300,
+      "batch_size": 16,
+      "backbone": {
+       "num_layers": 15,
+       "freeze": "all"
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "data",
+     "impl": "data/scripted_sim",
+     "preset": null,
+     "params": {
+      "episodes": 400,
+      "expert": {
+       "type": "reach2d_pd",
+       "noise": 0.05,
+       "recovery_prob": 0.1
+      }
+     },
+     "inputs": {},
+     "uses": [
+      "expert/reach2d_pd"
+     ]
+    },
+    {
+     "id": "data_new",
+     "impl": "data/scripted_sim",
+     "preset": null,
+     "params": {
+      "episodes": 24,
+      "seed": 50000,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "vla",
+     "impl": "vla/train",
+     "preset": "vla/smolvla_style",
+     "params": {
+      "train": {
+       "steps": 2500,
+       "batch_size": 64
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset",
+      "backbone": "vlm.backbone"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/hf_vlm"
+     ]
+    },
+    {
+     "id": "eval_pre",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_zeroshot",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "post",
+     "impl": "post_train/finetune",
+     "preset": null,
+     "params": {
+      "method": "frozen_backbone",
+      "train": {
+       "steps": 400,
+       "lr": 0.0001,
+       "warmup": 50,
+       "batch_size": 64
+      }
+     },
+     "inputs": {
+      "policy": "vla.policy",
+      "dataset": [
+       "data_new.dataset",
+       "data.dataset"
+      ]
+     },
+     "uses": []
+    },
+    {
+     "id": "rl",
+     "impl": "rl/filtered_bc",
+     "preset": null,
+     "params": {
+      "iterations": 3,
+      "episodes_per_iter": 64,
+      "eval_episodes": 64,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      },
+      "train": {
+       "steps": 200,
+       "batch_size": 64
+      }
+     },
+     "inputs": {
+      "policy": "post.policy",
+      "dataset": "data_new.dataset"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 200,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "rl.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "edge",
+     "impl": "edge/optimize",
+     "preset": null,
+     "params": {
+      "choose": "bf16_5steps",
+      "variants": {
+       "fp32": {
+        "dtype": "float32"
+       },
+       "bf16": {
+        "dtype": "bfloat16"
+       },
+       "bf16_5steps": {
+        "dtype": "bfloat16",
+        "num_steps": 5
+       },
+       "bf16_5steps_compile": {
+        "dtype": "bfloat16",
+        "num_steps": 5,
+        "compile": true
+       }
+      }
+     },
+     "inputs": {
+      "policy": "rl.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_edge",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 200,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "edge.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "gate",
+     "impl": "eval/gate",
+     "preset": null,
+     "params": {
+      "max_drop": 0.08
+     },
+     "inputs": {
+      "candidate": "eval_edge.report",
+      "baseline": "eval.report",
+      "policy": "edge.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "deploy",
+     "impl": "deploy/loop",
+     "preset": null,
+     "params": {
+      "driver": {
+       "type": "sim",
+       "env": {
+        "type": "reach2d",
+        "goal_colors": [
+         "purple"
+        ]
+       }
+      },
+      "chunker": {
+       "type": "rtc_blend",
+       "blend": 2
+      },
+      "episodes": 4,
+      "max_steps": 60
+     },
+     "inputs": {
+      "policy": "gate.policy"
+     },
+     "uses": [
+      "chunker/rtc_blend",
+      "driver/sim",
+      "env/reach2d"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vlm",
+     "from_port": "backbone",
+     "to": "vla",
+     "to_port": "backbone"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval_pre",
+     "to_port": "policy"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval_zeroshot",
+     "to_port": "policy"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "post",
+     "to_port": "policy"
+    },
+    {
+     "from": "data_new",
+     "from_port": "dataset",
+     "to": "post",
+     "to_port": "dataset"
+    },
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "post",
+     "to_port": "dataset"
+    },
+    {
+     "from": "post",
+     "from_port": "policy",
+     "to": "rl",
+     "to_port": "policy"
+    },
+    {
+     "from": "data_new",
+     "from_port": "dataset",
+     "to": "rl",
+     "to_port": "dataset"
+    },
+    {
+     "from": "rl",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policy"
+    },
+    {
+     "from": "rl",
+     "from_port": "policy",
+     "to": "edge",
+     "to_port": "policy"
+    },
+    {
+     "from": "edge",
+     "from_port": "policy",
+     "to": "eval_edge",
+     "to_port": "policy"
+    },
+    {
+     "from": "eval_edge",
+     "from_port": "report",
+     "to": "gate",
+     "to_port": "candidate"
+    },
+    {
+     "from": "eval",
+     "from_port": "report",
+     "to": "gate",
+     "to_port": "baseline"
+    },
+    {
+     "from": "edge",
+     "from_port": "policy",
+     "to": "gate",
+     "to_port": "policy"
+    },
+    {
+     "from": "gate",
+     "from_port": "policy",
+     "to": "deploy",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "reach_heads",
+   "file": "configs/pipeline/reach_heads.py",
+   "description": "Same data and backbone, four action heads.",
+   "embodiment": "reach2d",
+   "env": "reach2d",
+   "nodes": [
+    {
+     "id": "data",
+     "impl": "data/scripted_sim",
+     "preset": null,
+     "params": {
+      "episodes": 400
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "vla_flow",
+     "impl": "vla/train",
+     "preset": "vla/flow_tiny",
+     "params": {
+      "train": {
+       "steps": 1500
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval_flow",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "videos": 1
+     },
+     "inputs": {
+      "policy": "vla_flow.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "vla_diffusion",
+     "impl": "vla/train",
+     "preset": "vla/diffusion_tiny",
+     "params": {
+      "train": {
+       "steps": 1500
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/diffusion",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval_diffusion",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "videos": 1
+     },
+     "inputs": {
+      "policy": "vla_diffusion.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "vla_l1",
+     "impl": "vla/train",
+     "preset": "vla/l1_tiny",
+     "params": {
+      "train": {
+       "steps": 1500
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/l1_regression",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval_l1",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "videos": 1
+     },
+     "inputs": {
+      "policy": "vla_l1.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "vla_bins",
+     "impl": "vla/train",
+     "preset": "vla/bins_tiny",
+     "params": {
+      "train": {
+       "steps": 1500
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/discrete_bins",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval_bins",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "videos": 1
+     },
+     "inputs": {
+      "policy": "vla_bins.policy"
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla_flow",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla_flow",
+     "from_port": "policy",
+     "to": "eval_flow",
+     "to_port": "policy"
+    },
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla_diffusion",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla_diffusion",
+     "from_port": "policy",
+     "to": "eval_diffusion",
+     "to_port": "policy"
+    },
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla_l1",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla_l1",
+     "from_port": "policy",
+     "to": "eval_l1",
+     "to_port": "policy"
+    },
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla_bins",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla_bins",
+     "from_port": "policy",
+     "to": "eval_bins",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "reach_smoke",
+   "file": "configs/pipeline/reach_smoke.yaml",
+   "description": "Every stage on the Lang-Reach 2D sim with a tiny from-scratch backbone.",
+   "embodiment": "reach2d",
+   "env": "reach2d",
+   "nodes": [
+    {
+     "id": "vlm",
+     "impl": "vlm/scratch",
+     "preset": null,
+     "params": {
+      "backbone": {
+       "type": "tiny_cnn",
+       "width": 48,
+       "dim": 192
+      }
+     },
+     "inputs": {},
+     "uses": [
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "data",
+     "impl": "data/scripted_sim",
+     "preset": null,
+     "params": {
+      "episodes": 400,
+      "expert": {
+       "type": "reach2d_pd",
+       "noise": 0.05,
+       "recovery_prob": 0.1
+      }
+     },
+     "inputs": {},
+     "uses": [
+      "expert/reach2d_pd"
+     ]
+    },
+    {
+     "id": "data_new",
+     "impl": "data/scripted_sim",
+     "preset": null,
+     "params": {
+      "episodes": 24,
+      "seed": 50000,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "vla",
+     "impl": "vla/train",
+     "preset": "vla/flow_tiny",
+     "params": {
+      "train": {
+       "steps": 1500
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset",
+      "backbone": "vlm.backbone"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/tiny_cnn"
+     ]
+    },
+    {
+     "id": "eval_pre",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_zeroshot",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 64,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "post",
+     "impl": "post_train/finetune",
+     "preset": null,
+     "params": {
+      "method": "full",
+      "train": {
+       "steps": 300,
+       "lr": 0.0001,
+       "warmup": 50
+      }
+     },
+     "inputs": {
+      "policy": "vla.policy",
+      "dataset": [
+       "data_new.dataset",
+       "data.dataset"
+      ]
+     },
+     "uses": []
+    },
+    {
+     "id": "rl",
+     "impl": "rl/filtered_bc",
+     "preset": null,
+     "params": {
+      "iterations": 3,
+      "episodes_per_iter": 64,
+      "eval_episodes": 64,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      },
+      "train": {
+       "steps": 200
+      }
+     },
+     "inputs": {
+      "policy": "post.policy",
+      "dataset": "data_new.dataset"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 200,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "rl.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "edge",
+     "impl": "edge/optimize",
+     "preset": null,
+     "params": {
+      "choose": "fp32_5steps",
+      "variants": {
+       "fp32": {
+        "dtype": "float32"
+       },
+       "fp32_5steps": {
+        "dtype": "float32",
+        "num_steps": 5
+       },
+       "fp32_3steps": {
+        "dtype": "float32",
+        "num_steps": 3
+       }
+      }
+     },
+     "inputs": {
+      "policy": "rl.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_edge",
+     "impl": "eval/sim_rollout",
+     "preset": null,
+     "params": {
+      "episodes": 200,
+      "env_overrides": {
+       "goal_colors": [
+        "purple"
+       ]
+      }
+     },
+     "inputs": {
+      "policy": "edge.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "gate",
+     "impl": "eval/gate",
+     "preset": null,
+     "params": {
+      "max_drop": 0.08
+     },
+     "inputs": {
+      "candidate": "eval_edge.report",
+      "baseline": "eval.report",
+      "policy": "edge.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "deploy",
+     "impl": "deploy/loop",
+     "preset": null,
+     "params": {
+      "driver": {
+       "type": "sim",
+       "env": {
+        "type": "reach2d",
+        "goal_colors": [
+         "purple"
+        ]
+       }
+      },
+      "chunker": {
+       "type": "rtc_blend",
+       "blend": 2
+      },
+      "episodes": 4,
+      "max_steps": 60
+     },
+     "inputs": {
+      "policy": "gate.policy"
+     },
+     "uses": [
+      "chunker/rtc_blend",
+      "driver/sim",
+      "env/reach2d"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vlm",
+     "from_port": "backbone",
+     "to": "vla",
+     "to_port": "backbone"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval_pre",
+     "to_port": "policy"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval_zeroshot",
+     "to_port": "policy"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "post",
+     "to_port": "policy"
+    },
+    {
+     "from": "data_new",
+     "from_port": "dataset",
+     "to": "post",
+     "to_port": "dataset"
+    },
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "post",
+     "to_port": "dataset"
+    },
+    {
+     "from": "post",
+     "from_port": "policy",
+     "to": "rl",
+     "to_port": "policy"
+    },
+    {
+     "from": "data_new",
+     "from_port": "dataset",
+     "to": "rl",
+     "to_port": "dataset"
+    },
+    {
+     "from": "rl",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policy"
+    },
+    {
+     "from": "rl",
+     "from_port": "policy",
+     "to": "edge",
+     "to_port": "policy"
+    },
+    {
+     "from": "edge",
+     "from_port": "policy",
+     "to": "eval_edge",
+     "to_port": "policy"
+    },
+    {
+     "from": "eval_edge",
+     "from_port": "report",
+     "to": "gate",
+     "to_port": "candidate"
+    },
+    {
+     "from": "eval",
+     "from_port": "report",
+     "to": "gate",
+     "to_port": "baseline"
+    },
+    {
+     "from": "edge",
+     "from_port": "policy",
+     "to": "gate",
+     "to_port": "policy"
+    },
+    {
+     "from": "gate",
+     "from_port": "policy",
+     "to": "deploy",
+     "to_port": "policy"
+    }
+   ]
+  }
+ ],
+ "presets": [
+  {
+   "name": "vla/bins_tiny",
+   "file": "configs/presets/vla/bins_tiny.yaml",
+   "impl": "vla/train",
+   "paper": "RT-2 / OpenVLA (256-bin action tokens)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "tiny_cnn",
+      "width": 48,
+      "dim": 192
+     },
+     "head": {
+      "type": "discrete_bins",
+      "bins": 256
+     },
+     "d_model": 192,
+     "expert": {
+      "layers": 3,
+      "heads": 4
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 2
+    }
+   },
+   "uses": [
+    "action_head/discrete_bins",
+    "backbone/tiny_cnn"
+   ]
+  },
+  {
+   "name": "vla/diffusion_tiny",
+   "file": "configs/presets/vla/diffusion_tiny.yaml",
+   "impl": "vla/train",
+   "paper": "Diffusion Policy (DDPM train / DDIM sample)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "tiny_cnn",
+      "width": 48,
+      "dim": 192
+     },
+     "head": {
+      "type": "diffusion",
+      "train_steps": 100,
+      "inference_steps": 10
+     },
+     "d_model": 192,
+     "expert": {
+      "layers": 3,
+      "heads": 4
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 2
+    }
+   },
+   "uses": [
+    "action_head/diffusion",
+    "backbone/tiny_cnn"
+   ]
+  },
+  {
+   "name": "vla/flow_tiny",
+   "file": "configs/presets/vla/flow_tiny.yaml",
+   "impl": "vla/train",
+   "paper": "pi0 (flow matching), RT-1 FiLM CNN backbone",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "tiny_cnn",
+      "width": 48,
+      "dim": 192,
+      "fusion_layers": 2
+     },
+     "head": {
+      "type": "flow_matching",
+      "num_steps": 10
+     },
+     "d_model": 192,
+     "expert": {
+      "layers": 3,
+      "heads": 4
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 2
+    }
+   },
+   "uses": [
+    "action_head/flow_matching",
+    "backbone/tiny_cnn"
+   ]
+  },
+  {
+   "name": "vla/l1_tiny",
+   "file": "configs/presets/vla/l1_tiny.yaml",
+   "impl": "vla/train",
+   "paper": "OpenVLA-OFT / ACT (parallel decoding, L1)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "tiny_cnn",
+      "width": 48,
+      "dim": 192
+     },
+     "head": {
+      "type": "l1_regression"
+     },
+     "d_model": 192,
+     "expert": {
+      "layers": 3,
+      "heads": 4
+     }
+    },
+    "train": {
+     "steps": 2000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 2
+    }
+   },
+   "uses": [
+    "action_head/l1_regression",
+    "backbone/tiny_cnn"
+   ]
+  },
+  {
+   "name": "vla/openvla_oft",
+   "file": "configs/presets/vla/openvla_oft.yaml",
+   "impl": "vla/train",
+   "paper": "OpenVLA-OFT (2025)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "hf_vlm",
+      "model_id": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "freeze": "all",
+      "lora": {
+       "r": 16,
+       "alpha": 32
+      },
+      "dtype": "bfloat16"
+     },
+     "head": {
+      "type": "l1_regression"
+     },
+     "d_model": 384,
+     "expert": {
+      "layers": 4,
+      "heads": 6
+     }
+    },
+    "train": {
+     "steps": 3000,
+     "batch_size": 32,
+     "lr": 0.0003,
+     "backbone_lr": 0.0001,
+     "num_workers": 4
+    }
+   },
+   "uses": [
+    "action_head/l1_regression",
+    "backbone/hf_vlm"
+   ]
+  },
+  {
+   "name": "vla/pi0_style",
+   "file": "configs/presets/vla/pi0_style.yaml",
+   "impl": "vla/train",
+   "paper": "pi0 (2024)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "hf_vlm",
+      "model_id": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "freeze": "vision",
+      "dtype": "bfloat16"
+     },
+     "head": {
+      "type": "flow_matching",
+      "num_steps": 10
+     },
+     "d_model": 384,
+     "expert": {
+      "layers": 4,
+      "heads": 6
+     }
+    },
+    "train": {
+     "steps": 3000,
+     "batch_size": 32,
+     "lr": 0.0003,
+     "backbone_lr": 2e-05,
+     "num_workers": 4
+    }
+   },
+   "uses": [
+    "action_head/flow_matching",
+    "backbone/hf_vlm"
+   ]
+  },
+  {
+   "name": "vla/rt2_bins",
+   "file": "configs/presets/vla/rt2_bins.yaml",
+   "impl": "vla/train",
+   "paper": "RT-2 / OpenVLA (2023-24)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "hf_vlm",
+      "model_id": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "num_layers": 15,
+      "freeze": "all",
+      "dtype": "bfloat16"
+     },
+     "head": {
+      "type": "discrete_bins",
+      "bins": 256
+     },
+     "d_model": 384,
+     "expert": {
+      "layers": 4,
+      "heads": 6
+     }
+    },
+    "train": {
+     "steps": 3000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 4
+    }
+   },
+   "uses": [
+    "action_head/discrete_bins",
+    "backbone/hf_vlm"
+   ]
+  },
+  {
+   "name": "vla/smolvla_style",
+   "file": "configs/presets/vla/smolvla_style.yaml",
+   "impl": "vla/train",
+   "paper": "SmolVLA (2025)",
+   "params": {
+    "policy": {
+     "backbone": {
+      "type": "hf_vlm",
+      "model_id": "HuggingFaceTB/SmolVLM2-256M-Video-Instruct",
+      "num_layers": 15,
+      "freeze": "all",
+      "dtype": "bfloat16"
+     },
+     "head": {
+      "type": "flow_matching",
+      "num_steps": 10
+     },
+     "d_model": 384,
+     "expert": {
+      "layers": 4,
+      "heads": 6
+     }
+    },
+    "train": {
+     "steps": 3000,
+     "batch_size": 64,
+     "lr": 0.0003,
+     "num_workers": 4
+    }
+   },
+   "uses": [
+    "action_head/flow_matching",
+    "backbone/hf_vlm"
+   ]
+  }
+ ],
+ "embodiments": [
+  {
+   "name": "aloha",
+   "file": "configs/embodiment/aloha.yaml",
+   "control_hz": 50,
+   "observations": {
+    "observation.images.top": {
+     "type": "image",
+     "shape": [
+      3,
+      240,
+      320
+     ]
+    },
+    "observation.state": {
+     "type": "vector",
+     "shape": [
+      14
+     ]
+    }
+   },
+   "action": {
+    "shape": [
+     14
+    ],
+    "norm": "quantile",
+    "mode": "absolute"
+   },
+   "chunk": {
+    "horizon": 50,
+    "execute": 25
+   }
+  },
+  {
+   "name": "aloha_tactile",
+   "file": "configs/embodiment/aloha_tactile.yaml",
+   "control_hz": 50,
+   "observations": {
+    "observation.images.top": {
+     "type": "image",
+     "shape": [
+      3,
+      240,
+      320
+     ]
+    },
+    "observation.state": {
+     "type": "vector",
+     "shape": [
+      14
+     ]
+    },
+    "observation.images.wrist_left": {
+     "type": "image",
+     "shape": [
+      3,
+      240,
+      320
+     ],
+     "optional": true
+    },
+    "observation.wrench": {
+     "type": "vector",
+     "shape": [
+      12
+     ],
+     "encoder": {
+      "type": "fourier",
+      "features": 32,
+      "tokens": 2
+     },
+     "source": {
+      "driver_key": "ft_sensors",
+      "rate_hz": 500,
+      "filter": "lowpass_30hz"
+     },
+     "optional": true
+    },
+    "observation.tactile": {
+     "type": "grid",
+     "shape": [
+      2,
+      16,
+      16
+     ],
+     "encoder": {
+      "type": "conv_grid",
+      "channels": 32,
+      "pool": 2
+     },
+     "source": {
+      "driver_key": "tactile_pads"
+     },
+     "optional": true
+    }
+   },
+   "action": {
+    "shape": [
+     14
+    ],
+    "norm": "quantile",
+    "mode": "absolute"
+   },
+   "chunk": {
+    "horizon": 50,
+    "execute": 25
+   }
+  },
+  {
+   "name": "pusht",
+   "file": "configs/embodiment/pusht.yaml",
+   "control_hz": 10,
+   "observations": {
+    "observation.images.top": {
+     "type": "image",
+     "shape": [
+      3,
+      96,
+      96
+     ]
+    },
+    "observation.state": {
+     "type": "vector",
+     "shape": [
+      2
+     ]
+    }
+   },
+   "action": {
+    "shape": [
+     2
+    ],
+    "norm": "min_max",
+    "mode": "absolute",
+    "low": [
+     0,
+     0
+    ],
+    "high": [
+     512,
+     512
+    ]
+   },
+   "chunk": {
+    "horizon": 16,
+    "execute": 8
+   }
+  },
+  {
+   "name": "reach2d",
+   "file": "configs/embodiment/reach2d.yaml",
+   "control_hz": 10,
+   "observations": {
+    "observation.images.top": {
+     "type": "image",
+     "shape": [
+      3,
+      96,
+      96
+     ]
+    },
+    "observation.state": {
+     "type": "vector",
+     "shape": [
+      2
+     ]
+    },
+    "observation.force": {
+     "type": "vector",
+     "shape": [
+      2
+     ],
+     "encoder": {
+      "type": "mlp",
+      "hidden": 64
+     },
+     "optional": true
+    }
+   },
+   "action": {
+    "shape": [
+     2
+    ],
+    "names": [
+     "vx",
+     "vy"
+    ],
+    "norm": "quantile",
+    "mode": "delta",
+    "low": [
+     -1.0,
+     -1.0
+    ],
+    "high": [
+     1.0,
+     1.0
+    ],
+    "max_delta": [
+     1.0,
+     1.0
+    ]
+   },
+   "chunk": {
+    "horizon": 10,
+    "execute": 5
+   }
+  },
+  {
+   "name": "so100",
+   "file": "configs/embodiment/so100.yaml",
+   "control_hz": 30,
+   "observations": {
+    "observation.images.front": {
+     "type": "image",
+     "shape": [
+      3,
+      256,
+      256
+     ],
+     "source": {
+      "camera": "front"
+     }
+    },
+    "observation.images.wrist": {
+     "type": "image",
+     "shape": [
+      3,
+      256,
+      256
+     ],
+     "source": {
+      "camera": "wrist"
+     },
+     "optional": true
+    },
+    "observation.state": {
+     "type": "vector",
+     "shape": [
+      6
+     ]
+    }
+   },
+   "action": {
+    "shape": [
+     6
+    ],
+    "norm": "quantile",
+    "mode": "absolute",
+    "names": [
+     "shoulder_pan",
+     "shoulder_lift",
+     "elbow_flex",
+     "wrist_flex",
+     "wrist_roll",
+     "gripper"
+    ]
+   },
+   "chunk": {
+    "horizon": 50,
+    "execute": 25
+   }
+  }
+ ],
+ "envs": [
+  {
+   "name": "aloha_transfer_cube",
+   "file": "configs/env/aloha_transfer_cube.yaml",
+   "spec": {
+    "type": "gym",
+    "id": "gym_aloha/AlohaTransferCube-v0",
+    "import_module": "gym_aloha",
+    "kwargs": {
+     "obs_type": "pixels_agent_pos",
+     "render_mode": "rgb_array"
+    },
+    "obs_map": {
+     "pixels.top": "observation.images.top",
+     "agent_pos": "observation.state"
+    },
+    "task": "Pick up the cube with the right arm and transfer it to the left arm.",
+    "max_steps": 400,
+    "fps": 50
+   }
+  },
+  {
+   "name": "pusht",
+   "file": "configs/env/pusht.yaml",
+   "spec": {
+    "type": "gym",
+    "id": "gym_pusht/PushT-v0",
+    "import_module": "gym_pusht",
+    "kwargs": {
+     "obs_type": "pixels_agent_pos",
+     "render_mode": "rgb_array"
+    },
+    "obs_map": {
+     "pixels": "observation.images.top",
+     "agent_pos": "observation.state"
+    },
+    "task": "Push the T-shaped block onto the T-shaped target.",
+    "max_steps": 300,
+    "fps": 10
+   }
+  },
+  {
+   "name": "reach2d",
+   "file": "configs/env/reach2d.yaml",
+   "spec": {
+    "type": "reach2d",
+    "image_size": 96,
+    "num_targets": 3,
+    "colors": [
+     "red",
+     "green",
+     "blue",
+     "yellow"
+    ],
+    "max_steps": 60
+   }
+  }
+ ]
+}

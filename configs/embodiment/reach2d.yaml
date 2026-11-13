@@ -1,0 +1,25 @@
+# Lang-Reach 2D: one top camera, 2D position, a 2D contact-force sensor, 2D velocity actions.
+name: reach2d
+control_hz: 10
+instruction: true
+observations:
+  observation.images.top: {type: image, shape: [3, 96, 96]}
+  observation.state: {type: vector, shape: [2], norm: min_max, names: [x, y]}
+  # Extra feedback channel. The policy adds tokens for it automatically; `optional` lets datasets or
+  # robots without the sensor still work (a learned placeholder token is used), `dropout` trains that.
+  observation.force:
+    type: vector
+    shape: [2]
+    norm: mean_std
+    encoder: {type: mlp, hidden: 64}
+    optional: true
+    dropout: 0.1
+action:
+  shape: [2]
+  names: [vx, vy]
+  norm: quantile
+  mode: delta
+  low: [-1.0, -1.0]
+  high: [1.0, 1.0]
+  max_delta: [1.0, 1.0]
+chunk: {horizon: 10, execute: 5}

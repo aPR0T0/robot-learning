@@ -1,0 +1,8 @@
+type: gym
+id: gym_pusht/PushT-v0
+import_module: gym_pusht
+kwargs: {obs_type: pixels_agent_pos, render_mode: rgb_array}
+obs_map: {pixels: observation.images.top, agent_pos: observation.state}
+task: Push the T-shaped block onto the T-shaped target.
+max_steps: 300
+fps: 10

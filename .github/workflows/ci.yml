@@ -1,0 +1,19 @@
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: install (CPU torch)
+        run: |
+          uv venv -p 3.12
+          uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -e ".[dev]"
+      - run: uv run --no-sync ruff check src tests scripts
+      - run: uv run --no-sync pytest -q
+      - name: every pipeline config validates
+        run: for p in reach_smoke reach_full mock_hardware pusht_lerobot aloha_lerobot configs/pipeline/reach_heads.py; do uv run --no-sync vlab validate $p; done

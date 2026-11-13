@@ -1,0 +1,8 @@
+# Bimanual ALOHA (sim or real): 2 x (6 joints + gripper), top camera, 50 Hz.
+name: aloha
+control_hz: 50
+observations:
+  observation.images.top: {type: image, shape: [3, 240, 320]}
+  observation.state: {type: vector, shape: [14], norm: mean_std}
+action: {shape: [14], norm: quantile, mode: absolute}
+chunk: {horizon: 50, execute: 25}

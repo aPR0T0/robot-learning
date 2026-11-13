@@ -1,0 +1,15 @@
+# RT-2 / OpenVLA-style discrete action bins on a pretrained VLM.
+impl: vla/train
+paper: RT-2 / OpenVLA (2023-24)
+params:
+  policy:
+    backbone:
+      type: hf_vlm
+      model_id: HuggingFaceTB/SmolVLM2-256M-Video-Instruct
+      num_layers: 15
+      freeze: all
+      dtype: bfloat16
+    head: {type: discrete_bins, bins: 256}
+    d_model: 384
+    expert: {layers: 4, heads: 6}
+  train: {steps: 3000, batch_size: 64, lr: 3.0e-4, num_workers: 4}

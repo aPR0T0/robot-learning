@@ -1,0 +1,9 @@
+impl: vla/train
+paper: Diffusion Policy (DDPM train / DDIM sample)
+params:
+  policy:
+    backbone: {type: tiny_cnn, width: 48, dim: 192}
+    head: {type: diffusion, train_steps: 100, inference_steps: 10}
+    d_model: 192
+    expert: {layers: 3, heads: 4}
+  train: {steps: 2000, batch_size: 64, lr: 3.0e-4, num_workers: 2}

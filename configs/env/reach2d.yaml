@@ -1,0 +1,5 @@
+type: reach2d
+image_size: 96
+num_targets: 3
+colors: [red, green, blue, yellow]
+max_steps: 60

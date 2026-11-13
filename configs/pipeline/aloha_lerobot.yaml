@@ -1,0 +1,30 @@
+# Bimanual ALOHA sim (requires the lerobot extra, MuJoCo with EGL).
+#  - eval the published ACT checkpoint in gym-aloha through our eval node
+#  - fine-tune SmolVLA (lerobot/smolvla_base) with lerobot-train, then evaluate it the same way
+name: aloha_lerobot
+embodiment: aloha
+env: aloha_transfer_cube
+nodes:
+  data:
+    impl: data/lerobot_hub
+    params: {repo_id: lerobot/aloha_sim_transfer_cube_human}
+  eval_act:
+    impl: eval/sim_rollout
+    inputs:
+      policy: {format: lerobot, path: lerobot/act_aloha_sim_transfer_cube_human,
+               dataset_repo: lerobot/aloha_sim_transfer_cube_human}
+    params: {episodes: 20, batch: 10, videos: 2}
+  smolvla:
+    impl: vla/lerobot_train
+    inputs: {dataset: data.dataset}
+    params:
+      policy_path: lerobot/smolvla_base
+      steps: 2000
+      batch_size: 16
+      args: {policy.empty_cameras: 0, save_freq: 2000, log_freq: 100,
+             rename_map: '{"observation.images.top": "observation.images.camera1"}'}
+  eval_smolvla:
+    impl: eval/sim_rollout
+    inputs: {policy: smolvla.policy}
+    params: {episodes: 20, batch: 10, videos: 2,
+             policy_ref: {key_map: {observation.images.top: observation.images.camera1}}}

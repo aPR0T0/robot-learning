@@ -1,0 +1,24 @@
+# Hardware bring-up dry run: a robot that does not exist yet (ALOHA + wrist F/T + tactile pads).
+# Synthetic data shaped by the spec -> a policy with encoders for every sensor -> the real-time loop at
+# 50 Hz on the mock driver. Checks the plumbing and whether inference keeps up with the control rate.
+name: mock_hardware
+embodiment: aloha_tactile
+nodes:
+  data:
+    impl: data/synthetic
+    params: {episodes: 8, length: 60}
+  vla:
+    impl: vla/train
+    preset: vla/flow_tiny
+    inputs: {dataset: data.dataset}
+    params: {train: {steps: 30, batch_size: 8, num_workers: 0, log_every: 10}}
+  deploy:
+    impl: deploy/loop
+    inputs: {policy: vla.policy}
+    params:
+      driver: {type: mock, task: "fold the towel"}
+      chunker: {type: rtc_blend, blend: 5}
+      safety: [{type: rate_limit, max_delta: [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]}]
+      episodes: 2
+      max_steps: 150
+      record: true

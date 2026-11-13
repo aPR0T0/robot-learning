@@ -1,0 +1,7 @@
+name: pusht
+control_hz: 10
+observations:
+  observation.images.top: {type: image, shape: [3, 96, 96], dataset_key: observation.image}
+  observation.state: {type: vector, shape: [2], norm: min_max}
+action: {shape: [2], norm: min_max, mode: absolute, low: [0, 0], high: [512, 512]}
+chunk: {horizon: 16, execute: 8}

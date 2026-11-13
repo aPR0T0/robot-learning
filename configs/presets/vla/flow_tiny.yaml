@@ -1,0 +1,10 @@
+# pi0-style flow-matching head on the from-scratch tiny backbone (CPU-friendly control group).
+impl: vla/train
+paper: pi0 (flow matching), RT-1 FiLM CNN backbone
+params:
+  policy:
+    backbone: {type: tiny_cnn, width: 48, dim: 192, fusion_layers: 2}
+    head: {type: flow_matching, num_steps: 10}
+    d_model: 192
+    expert: {layers: 3, heads: 4}
+  train: {steps: 2000, batch_size: 64, lr: 3.0e-4, num_workers: 2}

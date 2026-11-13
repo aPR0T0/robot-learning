@@ -1,0 +1,13 @@
+# local artefacts
+runs/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+plugins/__pycache__/
+.claude/
+outputs/
+wandb/
+*.log

@@ -1,0 +1,14 @@
+# pi0-style: the VLM's language model trains too (vision frozen), flow-matching action expert.
+impl: vla/train
+paper: pi0 (2024)
+params:
+  policy:
+    backbone:
+      type: hf_vlm
+      model_id: HuggingFaceTB/SmolVLM2-256M-Video-Instruct
+      freeze: vision
+      dtype: bfloat16
+    head: {type: flow_matching, num_steps: 10}
+    d_model: 384
+    expert: {layers: 4, heads: 6}
+  train: {steps: 3000, batch_size: 32, lr: 3.0e-4, backbone_lr: 2.0e-5, num_workers: 4}

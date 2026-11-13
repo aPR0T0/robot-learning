@@ -1,0 +1,15 @@
+# OpenVLA-OFT-style: LoRA on the VLM, parallel decoding of a continuous chunk with an L1 loss.
+impl: vla/train
+paper: OpenVLA-OFT (2025)
+params:
+  policy:
+    backbone:
+      type: hf_vlm
+      model_id: HuggingFaceTB/SmolVLM2-256M-Video-Instruct
+      freeze: all
+      lora: {r: 16, alpha: 32}
+      dtype: bfloat16
+    head: {type: l1_regression}
+    d_model: 384
+    expert: {layers: 4, heads: 6}
+  train: {steps: 3000, batch_size: 32, lr: 3.0e-4, backbone_lr: 1.0e-4, num_workers: 4}

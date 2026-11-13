@@ -1,0 +1,58 @@
+[project]
+name = "vlalab"
+version = "0.1.0"
+description = "A node-based, YAML/Python-configurable VLA pipeline: VLM -> robot data -> VLA -> post-train -> RL -> eval -> edge -> deploy."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Mohd Alqama Shaikh" }]
+dependencies = [
+  "torch>=2.7,<2.16",
+  "torchvision>=0.22",
+  "numpy>=2.0,<2.3",
+  "omegaconf>=2.3",
+  "pyyaml>=6",
+  "safetensors>=0.4.3",
+  "einops>=0.8",
+  "tqdm>=4.66",
+  "pillow>=10",
+  "imageio>=2.34",
+  "transformers>=5.0",
+  "huggingface-hub>=0.34",
+  "gymnasium>=1.1",
+]
+
+[project.optional-dependencies]
+# LeRobot: hub datasets, ALOHA / PushT sims, and the paper implementations it ships
+# (SmolVLA, ACT, Diffusion Policy, pi0 / pi0.5, GR00T, ...). Used through adapters.
+lerobot = ["lerobot[smolvla,pusht,aloha,diffusion,peft]==0.7.0", "num2words>=0.5.14"]
+# Parameter-efficient fine-tuning for the VLM backbone (LoRA).
+peft = ["peft>=0.18"]
+# Edge optimisation extras: ONNX export + runtime and torchao quantisation.
+edge = ["onnx>=1.16", "onnxruntime>=1.16", "torchao>=0.12"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+vlab = "vlalab.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vlalab"]
+
+[tool.uv]
+default-groups = []
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008", "B905"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

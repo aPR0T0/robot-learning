@@ -1,0 +1,9 @@
+impl: vla/train
+paper: RT-2 / OpenVLA (256-bin action tokens)
+params:
+  policy:
+    backbone: {type: tiny_cnn, width: 48, dim: 192}
+    head: {type: discrete_bins, bins: 256}
+    d_model: 192
+    expert: {layers: 3, heads: 4}
+  train: {steps: 2000, batch_size: 64, lr: 3.0e-4, num_workers: 2}

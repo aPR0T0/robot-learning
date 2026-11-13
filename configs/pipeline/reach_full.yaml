@@ -1,0 +1,83 @@
+# The reach pipeline with a real pretrained VLM (SmolVLM2-256M) - GPU recommended (~20-30 min on an L4).
+#   vlm (SmolVLM2 + embodied-reasoning pointing fine-tune) -> data -> vla (SmolVLA-style)
+#   -> zero-shot eval on a NEW colour (purple) -> post-train on purple demos -> RL (filtered BC)
+#   -> eval -> edge (dtype / fewer flow steps) -> re-eval + regression gate -> deploy (async loop)
+name: reach_full
+description: SmolVLM2 backbone with pointing fine-tune, SmolVLA-style flow policy, all eight stages.
+embodiment: reach2d
+env: reach2d
+seed: 0
+nodes:
+  vlm:                            # probe + fine-tune the VLM on pointing questions rendered from the sim
+    impl: vlm/er_finetune
+    params: {samples: 2000, steps: 300, batch_size: 16, backbone: {num_layers: 15, freeze: all}}
+
+  data:
+    impl: data/scripted_sim
+    params: {episodes: 400, expert: {type: reach2d_pd, noise: 0.05, recovery_prob: 0.1}}
+
+  data_new:                       # the target task: a colour never seen in pretraining (few demos on purpose)
+    impl: data/scripted_sim
+    params: {episodes: 24, seed: 50000, env_overrides: {goal_colors: [purple]}}
+
+  vla:
+    impl: vla/train
+    preset: vla/smolvla_style
+    inputs: {dataset: data.dataset, backbone: vlm.backbone}
+    params: {train: {steps: 2500, batch_size: 64}}
+
+  eval_pre:                       # how well does the generalist do on old colours?
+    impl: eval/sim_rollout
+    inputs: {policy: vla.policy}
+    params: {episodes: 64}
+
+  eval_zeroshot:                  # ... and on the unseen colour?
+    impl: eval/sim_rollout
+    inputs: {policy: vla.policy}
+    params: {episodes: 64, env_overrides: {goal_colors: [purple]}}
+
+  post:
+    impl: post_train/finetune
+    inputs: {policy: vla.policy, dataset: [data_new.dataset, data.dataset]}
+    params: {method: frozen_backbone, train: {steps: 400, lr: 1.0e-4, warmup: 50, batch_size: 64}}
+
+  rl:
+    impl: rl/filtered_bc
+    inputs: {policy: post.policy, dataset: data_new.dataset}
+    params: {iterations: 3, episodes_per_iter: 64, eval_episodes: 64, env_overrides: {goal_colors: [purple]},
+             train: {steps: 200, batch_size: 64}}
+
+  eval:
+    impl: eval/sim_rollout
+    inputs: {policy: rl.policy}
+    params: {episodes: 200, env_overrides: {goal_colors: [purple]}}
+
+  edge:
+    impl: edge/optimize
+    inputs: {policy: rl.policy}
+    params:
+      choose: bf16_5steps
+      variants:
+        fp32: {dtype: float32}
+        bf16: {dtype: bfloat16}
+        bf16_5steps: {dtype: bfloat16, num_steps: 5}
+        bf16_5steps_compile: {dtype: bfloat16, num_steps: 5, compile: true}
+
+  eval_edge:
+    impl: eval/sim_rollout
+    inputs: {policy: edge.policy}
+    params: {episodes: 200, env_overrides: {goal_colors: [purple]}}
+
+  gate:                           # block deployment if the optimised build regresses
+    impl: eval/gate
+    inputs: {candidate: eval_edge.report, baseline: eval.report, policy: edge.policy}
+    params: {max_drop: 0.08}
+
+  deploy:
+    impl: deploy/loop
+    inputs: {policy: gate.policy}
+    params:
+      driver: {type: sim, env: {type: reach2d, goal_colors: [purple]}}
+      chunker: {type: rtc_blend, blend: 2}
+      episodes: 4
+      max_steps: 60

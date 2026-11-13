@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>robot-learning: the VLA pipeline as swappable nodes</title>
+  <meta name="description" content="Node map of the robot-learning repo: every stage of the VLA pipeline, every swappable component (paper), and the files that implement it.">
+  <script>(function(){var t="light";try{t=localStorage.getItem("theme")||"light"}catch(e){}document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light")})();</script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand"><b>MOHD ALQAMA SHAIKH</b><small>robotics &amp; embedded systems / robot-learning</small></div>
+    <button class="theme-btn" id="themeBtn" type="button">[ dark ]</button>
+  </header>
+  <nav class="nav" aria-label="pages">
+    <a href="https://apr0t0.github.io/">./home</a>
+    <a href="https://apr0t0.github.io/vla/">./blogs/vla</a>
+    <a id="repoLink" href="https://github.com/aPR0T0/robot-learning">./github</a>
+    <a href="#catalogue">./papers</a>
+  </nav>
+
+  <div class="terminal">
+    <div class="term-head"><span class="dots"><i></i><i></i><i></i></span><span class="term-title">bash: guest@aPR0T0: ~/robot-learning</span></div>
+    <main>
+      <header class="intro">
+        <div class="eyebrow">repo · node map · vlalab 0.1</div>
+        <h1>robot-learning: the VLA pipeline as swappable nodes</h1>
+        <p class="lede">A working base for each of the eight stages in the <a href="https://apr0t0.github.io/vla/">VLA blog</a>. Every stage is a node, every paper is a component you plug into a node, and everything is configured from YAML or Python. Pick a stage, a component or a pipeline node below, and the files that implement it light up in the tree.</p>
+        <div class="quick">
+          <pre class="cmd"><span class="k">$</span> git clone https://github.com/aPR0T0/robot-learning
+<span class="k">$</span> cd robot-learning &amp;&amp; ./setup.sh   <span class="k"># uv, CUDA torch, sims</span>
+<span class="k">$</span> source .venv/bin/activate
+<span class="k">$</span> vlab run reach_smoke               <span class="k"># 8 stages, ~3 min</span>
+<span class="k"># swap a paper or a param from the CLI:</span>
+<span class="k">$</span> vlab run reach_smoke vla.preset=vla/diffusion_tiny
+<span class="k">$</span> vlab run reach_smoke post.method=head_only</pre>
+        </div>
+        <div class="tags" id="stats"></div>
+      </header>
+
+      <div class="grid">
+        <div class="col">
+          <section class="panel" id="mapPanel">
+            <div class="panel-bar"><b>00</b><span>the pipeline</span><small id="mapHint">click a stage</small></div>
+            <div class="map" id="map"></div>
+            <div class="legend"><span><i class="train"></i>training stage</span><span><i class="data"></i>data stage</span><span><i class="deploy"></i>deploy / eval</span><span><i class="dash"></i>logged episodes feed back</span></div>
+          </section>
+
+          <section class="panel" id="pipePanel">
+            <div class="panel-bar"><b>&gt;_</b><span>pipelines</span><small>configs/pipeline/*</small></div>
+            <div class="strip" id="pipeTabs" role="tablist"></div>
+            <div class="pipe-head" id="pipeHead"></div>
+            <div class="dag" id="dag"></div>
+          </section>
+
+          <section class="panel" id="catalogue">
+            <div class="panel-bar"><b>§</b><span>paper catalogue</span><small id="catHint">docs/papers.yaml</small></div>
+            <div class="strip" id="catTabs" role="tablist"></div>
+            <div class="cat-body" id="catBody"></div>
+          </section>
+        </div>
+
+        <aside class="col side">
+          <section class="panel" id="detailPanel">
+            <div class="panel-bar"><b id="detailTag">i</b><span id="detailTitle">select something</span><button class="tbtn" id="clearBtn" type="button" hidden>[ clear ]</button></div>
+            <div class="detail" id="detail"></div>
+          </section>
+          <section class="panel" id="filesPanel">
+            <div class="panel-bar"><b>/</b><span>files</span><small id="fileCount"></small></div>
+            <div class="tree" id="tree"></div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <footer>© 2026 M. A. Shaikh · generated from the repo by scripts/build_site.py · <a href="https://apr0t0.github.io/vla/">read the blog</a></footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
