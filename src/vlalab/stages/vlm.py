@@ -54,7 +54,80 @@ def _parse_point(text: str) -> tuple[float, float] | None:
     return None
 
 
-def _probe(model, processor, samples: list[dict], device: str, max_new_tokens: int = 16) -> dict:
+class FastVLMBatcher:
+    """Processor-equivalent VLM batches, ~5x faster: text is tokenised once with the image placeholder
+    expanded to the exact token span the processor produces, and images are resized + normalised on
+    the GPU (the same path the hf_vlm backbone uses, so fine-tuning, probing and the policy all see
+    identical pixels). ``ok`` is False when the processor tiles images; callers then use the processor."""
+
+    def __init__(self, processor, device: str, image_size: int = 512):
+        import torch
+
+        self.proc, self.dev, self.size = processor, device, image_size
+        self.ok = False
+        ip = getattr(processor, "image_processor", None)
+        tok = getattr(processor, "tokenizer", None)
+        if ip is None or tok is None:
+            return
+        img_tok = getattr(processor, "image_token", "<image>")
+        img_tok = getattr(img_tok, "content", img_tok)
+        self.img_id = tok.convert_tokens_to_ids(img_tok)
+        q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": "probe"}]}]
+        prompt = processor.apply_chat_template(q, add_generation_prompt=True)
+        dummy = np.zeros((image_size, image_size, 3), np.uint8)
+        full = processor(text=[prompt], images=[[dummy]], return_tensors="pt")
+        if full["pixel_values"].ndim != 5 or full["pixel_values"].shape[1] != 1:
+            return
+        plain = tok(prompt)["input_ids"]
+        if plain.count(self.img_id) != 1:
+            return
+        k = plain.index(self.img_id)
+        ids = full["input_ids"][0].tolist()
+        self.span = ids[k: k + len(ids) - len(plain) + 1]
+        self.has_pmask = "pixel_attention_mask" in full
+        self.mean = torch.tensor(ip.image_mean).view(1, 3, 1, 1)
+        self.std = torch.tensor(ip.image_std).view(1, 3, 1, 1)
+        self.ok = True
+
+    def _ids(self, text: str) -> list[int]:
+        out = []
+        for t in self.proc.tokenizer(text)["input_ids"]:
+            out.extend(self.span if t == self.img_id else [t])
+        return out
+
+    def __call__(self, texts: list[str], images: list) -> dict:
+        import torch
+
+        rows = [self._ids(t) for t in texts]
+        n = max(len(r) for r in rows)
+        pad = self.proc.tokenizer.pad_token_id or 0
+        left = self.proc.tokenizer.padding_side == "left"
+        ids = torch.full((len(rows), n), pad, dtype=torch.long)
+        mask = torch.zeros((len(rows), n), dtype=torch.long)
+        for i, r in enumerate(rows):
+            sl = slice(n - len(r), n) if left else slice(0, len(r))
+            ids[i, sl] = torch.tensor(r)
+            mask[i, sl] = 1
+        x = torch.as_tensor(np.stack(images)).to(self.dev).permute(0, 3, 1, 2).float() / 255.0
+        x = torch.nn.functional.interpolate(x, size=(self.size, self.size), mode="bilinear", align_corners=False,
+                                            antialias=True)
+        x = (x - self.mean.to(self.dev)) / self.std.to(self.dev)
+        out = {"input_ids": ids.to(self.dev), "attention_mask": mask.to(self.dev), "pixel_values": x[:, None]}
+        if self.has_pmask:
+            out["pixel_attention_mask"] = torch.ones((len(rows), 1, self.size, self.size), dtype=torch.bool,
+                                                     device=self.dev)
+        return out
+
+    def matches_processor(self, texts: list[str], images: list) -> bool:
+        ref = self.proc(text=texts, images=[[im] for im in images], return_tensors="pt", padding=True)
+        mine = self(texts, images)
+        return (ref["input_ids"].shape == mine["input_ids"].shape
+                and bool((ref["input_ids"] == mine["input_ids"].cpu()).all())
+                and bool((ref["attention_mask"] == mine["attention_mask"].cpu()).all()))
+
+
+def _probe(model, processor, samples: list[dict], device: str, max_new_tokens: int = 16,
+           batcher: FastVLMBatcher | None = None) -> dict:
     import torch
 
     errs, answers, color_hits, color_n = [], [], 0, 0
@@ -62,7 +135,10 @@ def _probe(model, processor, samples: list[dict], device: str, max_new_tokens: i
     for s in samples:
         msgs = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": s["question"]}]}]
         prompt = processor.apply_chat_template(msgs, add_generation_prompt=True)
-        inputs = processor(text=[prompt], images=[[s["image"]]], return_tensors="pt").to(device)
+        if batcher is not None and batcher.ok:
+            inputs = batcher([prompt], [s["image"]])
+        else:
+            inputs = processor(text=[prompt], images=[[s["image"]]], return_tensors="pt").to(device)
         if "pixel_values" in inputs:
             inputs["pixel_values"] = inputs["pixel_values"].to(next(model.parameters()).dtype)
         with torch.inference_mode():
@@ -117,6 +193,7 @@ class HFPretrainedConfig:
     probe: bool = True
     probe_env: Any = field(default=None, metadata={"help": "env for probe images (default: pipeline env)"})
     probe_samples: int = 24
+    fast_preprocess: bool = True
     backbone: dict[str, Any] = field(default_factory=dict, metadata={"help": "extra hf_vlm options"})
 
 
@@ -133,7 +210,8 @@ class HFPretrained(StageNode):
         if cfg.probe:
             model, proc = _load_vlm(cfg.model_id, self.ctx.device, cfg.dtype)
             samples = _pointing_samples(cfg.probe_env or self.ctx.env, cfg.probe_samples, seed=10_000)
-            metrics.update(_probe(model, proc, samples, self.ctx.device))
+            fast = FastVLMBatcher(proc, self.ctx.device) if cfg.fast_preprocess else None
+            metrics.update(_probe(model, proc, samples, self.ctx.device, batcher=fast))
             metrics["params_m"] = round(sum(p.numel() for p in model.parameters()) / 1e6, 1)
             self.ctx.save_json("probe.json", metrics)
             log.info("probe: pointing error %.3f, colour acc %s", metrics["pointing_error"] or -1,
@@ -152,6 +230,7 @@ class ERFinetuneConfig:
     lr: float = 1e-4
     lora: dict[str, Any] | None = field(default_factory=lambda: {"r": 16, "alpha": 32})
     dtype: str = "bfloat16"
+    fast_preprocess: bool = field(default=True, metadata={"help": "GPU image preprocessing (checked vs the processor)"})
     backbone: dict[str, Any] = field(default_factory=dict)
 
 
@@ -171,7 +250,19 @@ class ERFinetune(StageNode):
         model, proc = _load_vlm(cfg.model_id, dev, cfg.dtype)
         train = _pointing_samples(env, cfg.samples, seed=0)
         held = _pointing_samples(env, cfg.eval_samples, seed=50_000)
-        before = _probe(model, proc, held, dev)
+        fast = FastVLMBatcher(proc, dev) if cfg.fast_preprocess else None
+        if fast is not None and fast.ok:
+            chk = []
+            for s in train[:4]:
+                q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": s["question"]}]}]
+                chk.append(proc.apply_chat_template(q, add_generation_prompt=True) + s["answer"] + "<end_of_utterance>")
+            fast.ok = fast.matches_processor(chk, [s["image"] for s in train[:4]])
+            log.info("fast VLM preprocessing %s the processor's tokens", "matches" if fast.ok else "does NOT match")
+        if fast is None or not fast.ok:
+            log.info("fast preprocessing unavailable for %s; using the processor", cfg.model_id)
+            fast = FastVLMBatcher.__new__(FastVLMBatcher)
+            fast.ok = False
+        before = _probe(model, proc, held, dev, batcher=fast)
         log.info("before: pointing error %.3f", before["pointing_error"] or -1)
 
         for n, p in model.named_parameters():
@@ -194,14 +285,19 @@ class ERFinetune(StageNode):
                 q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": s["question"]}]}]
                 prompts.append(proc.apply_chat_template(q, add_generation_prompt=True))
                 fulls.append(prompts[-1] + s["answer"] + "<end_of_utterance>")
-            enc = proc(text=fulls, images=[[s["image"]] for s in batch], return_tensors="pt", padding=True).to(dev)
-            pre = proc(text=prompts, images=[[s["image"]] for s in batch], return_tensors="pt", padding=True)
+            imgs = [s["image"] for s in batch]
+            if fast.ok:
+                enc = fast(fulls, imgs)
+                n_pre = [len(fast._ids(p)) for p in prompts]
+            else:
+                enc = proc(text=fulls, images=[[im] for im in imgs], return_tensors="pt", padding=True).to(dev)
+                pre = proc(text=prompts, images=[[im] for im in imgs], return_tensors="pt", padding=True)
+                n_pre = [int(m.sum()) for m in pre["attention_mask"]]
             labels = enc["input_ids"].clone()
             labels[enc["attention_mask"] == 0] = -100
             for i in range(len(batch)):
-                n_pre = int(pre["attention_mask"][i].sum())
                 pad_left = int((enc["attention_mask"][i] == 0).sum()) if proc.tokenizer.padding_side == "left" else 0
-                labels[i, : pad_left + n_pre] = -100
+                labels[i, : pad_left + n_pre[i]] = -100
             enc["pixel_values"] = enc["pixel_values"].to(getattr(torch, cfg.dtype))
             out = model(**enc, labels=labels)
             opt.zero_grad()
@@ -213,7 +309,7 @@ class ERFinetune(StageNode):
                 log.info("er step %d loss %.4f", step + 1, np.mean(losses[-50:]))
         if cfg.lora:
             model = model.merge_and_unload()
-        after = _probe(model, proc, held, dev)
+        after = _probe(model, proc, held, dev, batcher=fast)
         log.info("after: pointing error %.3f", after["pointing_error"] or -1)
         path = self.ctx.path("vlm")
         model.save_pretrained(path)
