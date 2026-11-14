@@ -163,14 +163,14 @@
   }
   function metricLine(m) {
     if (!m) return null;
+    if (typeof m.pointing_error_after === "number") return ["point err", m.pointing_error_before.toFixed(2) + "→" + m.pointing_error_after.toFixed(2)];
     if (typeof m.tick_ms_mean === "number") return ["loop", Math.round(m.hz) + " Hz · infer " + Math.round(m.infer_ms_p50) + " ms"];
     if (typeof m.success_rate === "number") return ["success", (m.success_rate * 100).toFixed(0) + "%" + (m.ci95 ? " [" + Math.round(m.ci95[0] * 100) + "–" + Math.round(m.ci95[1] * 100) + "]" : "")];
     if (typeof m.success_after === "number") return ["success", Math.round(m.success_before * 100) + "→" + Math.round(m.success_after * 100) + "%"];
-    if (typeof m.final_loss === "number") return ["loss", m.final_loss.toFixed(3) + " · " + m.steps + " st"];
+    if (typeof m.final_loss === "number") return ["loss", m.final_loss.toFixed(3) + (m.steps ? " · " + m.steps + " st" : "")];
     if (typeof m.latency_ms_p50 === "number") return ["p50", m.latency_ms_p50.toFixed(1) + " ms · " + m.chosen];
     if (typeof m.kept === "number") return ["demos", m.kept + " eps"];
     if (typeof m.passed === "boolean") return ["gate", m.passed ? "pass" : "FAIL"];
-    if (typeof m.pointing_error_after === "number") return ["point err", m.pointing_error_before.toFixed(2) + "→" + m.pointing_error_after.toFixed(2)];
     if (m.episodes && m.repo_id) return ["eps", m.episodes];
     return null;
   }

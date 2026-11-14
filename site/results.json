@@ -1,1 +1,877 @@
-{}
+{
+ "aloha_lerobot": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "data": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "repo_id": "lerobot/aloha_sim_transfer_cube_human",
+     "fps": 50,
+     "episodes": 50,
+     "total_frames": 20000,
+     "features": [
+      "action",
+      "episode_index",
+      "frame_index",
+      "index",
+      "next.done",
+      "observation.images.top",
+      "observation.state",
+      "task_index",
+      "timestamp"
+     ]
+    }
+   },
+   "eval_act": {
+    "status": "ran",
+    "seconds": 99.8,
+    "metrics": {
+     "success_rate": 0.8,
+     "ci95": [
+      0.584,
+      0.9193
+     ],
+     "n": 20,
+     "mean_length": 314.95,
+     "failures": {
+      "timeout": 4
+     },
+     "per_task": {
+      "Pick up the cube with the right arm and transfer it to the left arm.": 0.8
+     },
+     "runtime": {}
+    }
+   },
+   "smolvla": {
+    "status": "ran",
+    "seconds": 629.4,
+    "metrics": {
+     "steps": 2000,
+     "policy": "lerobot/smolvla_base"
+    }
+   },
+   "eval_smolvla": {
+    "status": "ran",
+    "seconds": 123.0,
+    "metrics": {
+     "success_rate": 0.3,
+     "ci95": [
+      0.1455,
+      0.519
+     ],
+     "n": 20,
+     "mean_length": 359.1,
+     "failures": {
+      "timeout": 14
+     },
+     "per_task": {
+      "Pick up the cube with the right arm and transfer it to the left arm.": 0.3
+     },
+     "runtime": {}
+    }
+   }
+  },
+  "run": "aloha_lerobot"
+ },
+ "mock_hardware": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "data": {
+    "status": "ran",
+    "seconds": 1.5,
+    "metrics": {
+     "episodes": 8,
+     "features": [
+      "observation.images.top",
+      "observation.state",
+      "observation.images.wrist_left",
+      "observation.wrench",
+      "observation.tactile"
+     ]
+    }
+   },
+   "vla": {
+    "status": "ran",
+    "seconds": 4.8,
+    "metrics": {
+     "final_loss": 1.1752962827682496,
+     "steps": 30,
+     "seconds": 3.2,
+     "trainable_params_m": 4.027,
+     "total_params_m": 4.027
+    }
+   },
+   "deploy": {
+    "status": "ran",
+    "seconds": 6.5,
+    "metrics": {
+     "success_rate": 0.0,
+     "episodes": 2,
+     "ticks": 294,
+     "stalls": 6,
+     "inferences": 12,
+     "infer_ms_p50": 43.975786500027425,
+     "infer_ms_p95": 45.224677299938776,
+     "tick_ms_mean": 19.99783283673612,
+     "tick_ms_p95": 20.026333699956922,
+     "tick_jitter_ms": 0.019616118217644054,
+     "safety_hits": {
+      "RateLimit": 292
+     },
+     "hz": 50.0,
+     "chunker": {
+      "type": "rtc_blend",
+      "blend": 5
+     },
+     "realtime": true
+    }
+   }
+  },
+  "run": "mock_hardware"
+ },
+ "pusht_lerobot": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "data": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "repo_id": "lerobot/pusht",
+     "fps": 10,
+     "episodes": 206,
+     "total_frames": 25650,
+     "features": [
+      "action",
+      "episode_index",
+      "frame_index",
+      "index",
+      "next.done",
+      "next.reward",
+      "next.success",
+      "observation.image",
+      "observation.state",
+      "task_index",
+      "timestamp"
+     ]
+    }
+   },
+   "eval_baseline": {
+    "status": "ran",
+    "seconds": 193.6,
+    "metrics": {
+     "success_rate": 0.74,
+     "ci95": [
+      0.6045,
+      0.8413
+     ],
+     "n": 50,
+     "mean_length": 219.64,
+     "failures": {
+      "timeout": 13
+     },
+     "per_task": {
+      "Push the T-shaped block onto the T-shaped target.": 0.74
+     },
+     "runtime": {}
+    }
+   },
+   "vla": {
+    "status": "ran",
+    "seconds": 325.2,
+    "metrics": {
+     "final_loss": 0.029736675173044205,
+     "steps": 5000,
+     "seconds": 304.5,
+     "trainable_params_m": 3.877,
+     "total_params_m": 3.877
+    }
+   },
+   "eval": {
+    "status": "ran",
+    "seconds": 60.3,
+    "metrics": {
+     "success_rate": 0.1,
+     "ci95": [
+      0.0435,
+      0.2136
+     ],
+     "n": 50,
+     "mean_length": 288.92,
+     "failures": {
+      "timeout": 45
+     },
+     "per_task": {
+      "Push the T-shaped block onto the T-shaped target.": 0.1
+     },
+     "runtime": {}
+    }
+   }
+  },
+  "run": "pusht_lerobot"
+ },
+ "reach_full": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "vlm": {
+    "status": "ran",
+    "seconds": 216.5,
+    "metrics": {
+     "pointing_error_before": 0.7890303593238062,
+     "pointing_error_after": 0.07735745079364124,
+     "color_acc_before": 0.9166666666666666,
+     "color_acc_after": 1.0,
+     "final_loss": 0.3679779601097107
+    }
+   },
+   "data": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "episodes": 400,
+     "kept": 400,
+     "expert_success": 1.0,
+     "frames": 4214,
+     "mean_length": 10.535,
+     "tasks": 16
+    }
+   },
+   "data_new": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "episodes": 24,
+     "kept": 24,
+     "expert_success": 1.0,
+     "frames": 244,
+     "mean_length": 10.166666666666666,
+     "tasks": 4
+    }
+   },
+   "vla": {
+    "status": "ran",
+    "seconds": 141.4,
+    "metrics": {
+     "final_loss": 0.2049925857782364,
+     "steps": 2500,
+     "seconds": 96.4,
+     "trainable_params_m": 10.117,
+     "total_params_m": 185.115
+    }
+   },
+   "eval_pre": {
+    "status": "ran",
+    "seconds": 8.9,
+    "metrics": {
+     "success_rate": 0.96875,
+     "ci95": [
+      0.893,
+      0.9914
+     ],
+     "n": 64,
+     "mean_length": 16.15625,
+     "failures": {
+      "timeout": 1,
+      "wrong_target": 1
+     },
+     "per_task": {
+      "go to the blue target": 1.0,
+      "go to the green target": 1.0,
+      "go to the red target": 0.0,
+      "move to the blue dot": 1.0,
+      "move to the green dot": 1.0,
+      "move to the red dot": 1.0,
+      "move to the yellow dot": 1.0,
+      "reach the blue marker": 1.0,
+      "reach the green marker": 1.0,
+      "reach the red marker": 1.0,
+      "reach the yellow marker": 1.0,
+      "touch the blue one": 1.0,
+      "touch the green one": 1.0,
+      "touch the red one": 1.0,
+      "touch the yellow one": 0.667
+     },
+     "runtime": {}
+    }
+   },
+   "eval_zeroshot": {
+    "status": "ran",
+    "seconds": 15.5,
+    "metrics": {
+     "success_rate": 0.34375,
+     "ci95": [
+      0.2392,
+      0.466
+     ],
+     "n": 64,
+     "mean_length": 47.125,
+     "failures": {
+      "timeout": 22,
+      "wrong_target": 20
+     },
+     "per_task": {
+      "go to the purple target": 0.167,
+      "move to the purple dot": 0.429,
+      "reach the purple marker": 0.333,
+      "touch the purple one": 0.5
+     },
+     "runtime": {}
+    }
+   },
+   "post": {
+    "status": "ran",
+    "seconds": 63.0,
+    "metrics": {
+     "final_loss": 0.15777718871831894,
+     "steps": 400,
+     "seconds": 15.4,
+     "trainable_params_m": 10.117,
+     "total_params_m": 185.115,
+     "method": "frozen_backbone"
+    }
+   },
+   "rl": {
+    "status": "ran",
+    "seconds": 105.2,
+    "metrics": {
+     "success_before": 0.953125,
+     "success_after": 0.96875,
+     "history": [
+      0.953125,
+      0.9375,
+      0.9375,
+      0.96875
+     ]
+    }
+   },
+   "eval": {
+    "status": "ran",
+    "seconds": 20.2,
+    "metrics": {
+     "success_rate": 0.935,
+     "ci95": [
+      0.892,
+      0.9616
+     ],
+     "n": 200,
+     "mean_length": 18.205,
+     "failures": {
+      "timeout": 11,
+      "wrong_target": 2
+     },
+     "per_task": {
+      "go to the purple target": 0.982,
+      "move to the purple dot": 0.936,
+      "reach the purple marker": 0.959,
+      "touch the purple one": 0.854
+     },
+     "runtime": {}
+    }
+   },
+   "edge": {
+    "status": "ran",
+    "seconds": 17.2,
+    "metrics": {
+     "chosen": "bf16_5steps",
+     "latency_ms_p50": 55.16019949982365,
+     "speedup_vs_fp32": 1.22,
+     "table": {
+      "fp32": 67.06,
+      "bf16": 82.64,
+      "bf16_5steps": 55.16,
+      "bf16_5steps_compile": 42.33
+     }
+    }
+   },
+   "eval_edge": {
+    "status": "ran",
+    "seconds": 16.9,
+    "metrics": {
+     "success_rate": 0.98,
+     "ci95": [
+      0.9497,
+      0.9922
+     ],
+     "n": 200,
+     "mean_length": 15.95,
+     "failures": {
+      "timeout": 4
+     },
+     "per_task": {
+      "go to the purple target": 0.982,
+      "move to the purple dot": 1.0,
+      "reach the purple marker": 1.0,
+      "touch the purple one": 0.938
+     },
+     "runtime": {}
+    }
+   },
+   "gate": {
+    "status": "ran",
+    "seconds": 0.0,
+    "metrics": {
+     "candidate": 0.98,
+     "baseline": 0.935,
+     "drop": -0.04499999999999993,
+     "passed": true,
+     "ci_overlap": true
+    }
+   },
+   "deploy": {
+    "status": "ran",
+    "seconds": 12.3,
+    "metrics": {
+     "success_rate": 1.0,
+     "episodes": 4,
+     "ticks": 103,
+     "stalls": 7,
+     "inferences": 23,
+     "infer_ms_p50": 58.1039899998359,
+     "infer_ms_p95": 125.7392491007522,
+     "tick_ms_mean": 99.9951777766998,
+     "tick_ms_p95": 100.01912379993882,
+     "tick_jitter_ms": 0.017814989074984206,
+     "safety_hits": {
+      "Clamp": 19,
+      "RateLimit": 9
+     },
+     "hz": 10.0,
+     "chunker": {
+      "type": "rtc_blend",
+      "blend": 2
+     },
+     "realtime": true
+    }
+   }
+  },
+  "run": "reach_full"
+ },
+ "reach_heads": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "data": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "episodes": 400,
+     "kept": 400,
+     "expert_success": 1.0,
+     "frames": 4112,
+     "mean_length": 10.28,
+     "tasks": 16
+    }
+   },
+   "vla_flow": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "final_loss": 0.1197971387207508,
+     "steps": 1500,
+     "seconds": 62.0,
+     "trainable_params_m": 3.889,
+     "total_params_m": 3.889
+    }
+   },
+   "eval_flow": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "success_rate": 1.0,
+     "ci95": [
+      0.9434,
+      1.0
+     ],
+     "n": 64,
+     "mean_length": 10.671875,
+     "failures": {},
+     "per_task": {
+      "go to the blue target": 1.0,
+      "go to the green target": 1.0,
+      "go to the red target": 1.0,
+      "move to the blue dot": 1.0,
+      "move to the green dot": 1.0,
+      "move to the red dot": 1.0,
+      "move to the yellow dot": 1.0,
+      "reach the blue marker": 1.0,
+      "reach the green marker": 1.0,
+      "reach the red marker": 1.0,
+      "reach the yellow marker": 1.0,
+      "touch the blue one": 1.0,
+      "touch the green one": 1.0,
+      "touch the red one": 1.0,
+      "touch the yellow one": 1.0
+     },
+     "runtime": {}
+    }
+   },
+   "vla_diffusion": {
+    "status": "ran",
+    "seconds": 62.4,
+    "metrics": {
+     "final_loss": 0.023924104757606982,
+     "steps": 1500,
+     "seconds": 60.8,
+     "trainable_params_m": 3.889,
+     "total_params_m": 3.889
+    }
+   },
+   "eval_diffusion": {
+    "status": "ran",
+    "seconds": 2.8,
+    "metrics": {
+     "success_rate": 0.984375,
+     "ci95": [
+      0.9167,
+      0.9972
+     ],
+     "n": 64,
+     "mean_length": 11.171875,
+     "failures": {
+      "timeout": 1
+     },
+     "per_task": {
+      "go to the blue target": 0.75,
+      "go to the green target": 1.0,
+      "go to the red target": 1.0,
+      "move to the blue dot": 1.0,
+      "move to the green dot": 1.0,
+      "move to the red dot": 1.0,
+      "move to the yellow dot": 1.0,
+      "reach the blue marker": 1.0,
+      "reach the green marker": 1.0,
+      "reach the red marker": 1.0,
+      "reach the yellow marker": 1.0,
+      "touch the blue one": 1.0,
+      "touch the green one": 1.0,
+      "touch the red one": 1.0,
+      "touch the yellow one": 1.0
+     },
+     "runtime": {}
+    }
+   },
+   "vla_l1": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "final_loss": 0.07149878144264221,
+     "steps": 1500,
+     "seconds": 60.4,
+     "trainable_params_m": 3.816,
+     "total_params_m": 3.816
+    }
+   },
+   "eval_l1": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "success_rate": 0.96875,
+     "ci95": [
+      0.893,
+      0.9914
+     ],
+     "n": 64,
+     "mean_length": 12.75,
+     "failures": {
+      "timeout": 2
+     },
+     "per_task": {
+      "go to the blue target": 1.0,
+      "go to the green target": 1.0,
+      "go to the red target": 1.0,
+      "move to the blue dot": 0.8,
+      "move to the green dot": 1.0,
+      "move to the red dot": 1.0,
+      "move to the yellow dot": 1.0,
+      "reach the blue marker": 1.0,
+      "reach the green marker": 1.0,
+      "reach the red marker": 1.0,
+      "reach the yellow marker": 1.0,
+      "touch the blue one": 1.0,
+      "touch the green one": 0.75,
+      "touch the red one": 1.0,
+      "touch the yellow one": 1.0
+     },
+     "runtime": {}
+    }
+   },
+   "vla_bins": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "final_loss": 2.748777976036072,
+     "steps": 1500,
+     "seconds": 60.0,
+     "trainable_params_m": 3.915,
+     "total_params_m": 3.915
+    }
+   },
+   "eval_bins": {
+    "status": "cached",
+    "seconds": null,
+    "metrics": {
+     "success_rate": 0.203125,
+     "ci95": [
+      0.1227,
+      0.3171
+     ],
+     "n": 64,
+     "mean_length": 50.953125,
+     "failures": {
+      "timeout": 49,
+      "wrong_target": 2
+     },
+     "per_task": {
+      "go to the blue target": 0.25,
+      "go to the green target": 0.25,
+      "go to the red target": 0.0,
+      "move to the blue dot": 0.2,
+      "move to the green dot": 0.0,
+      "move to the red dot": 0.0,
+      "move to the yellow dot": 0.0,
+      "reach the blue marker": 0.286,
+      "reach the green marker": 0.333,
+      "reach the red marker": 0.5,
+      "reach the yellow marker": 0.5,
+      "touch the blue one": 0.0,
+      "touch the green one": 0.0,
+      "touch the red one": 0.286,
+      "touch the yellow one": 0.0
+     },
+     "runtime": {}
+    }
+   }
+  },
+  "run": "reach_heads"
+ },
+ "reach_smoke": {
+  "device": "1x NVIDIA L4 (GCP g2-standard-8)",
+  "nodes": {
+   "vlm": {
+    "status": "ran",
+    "seconds": 0.0,
+    "metrics": {
+     "pretrained": false
+    }
+   },
+   "data": {
+    "status": "ran",
+    "seconds": 6.8,
+    "metrics": {
+     "episodes": 400,
+     "kept": 400,
+     "expert_success": 1.0,
+     "frames": 4214,
+     "mean_length": 10.535,
+     "tasks": 16
+    }
+   },
+   "data_new": {
+    "status": "ran",
+    "seconds": 0.5,
+    "metrics": {
+     "episodes": 24,
+     "kept": 24,
+     "expert_success": 1.0,
+     "frames": 244,
+     "mean_length": 10.166666666666666,
+     "tasks": 4
+    }
+   },
+   "vla": {
+    "status": "ran",
+    "seconds": 63.5,
+    "metrics": {
+     "final_loss": 0.26651126116514207,
+     "steps": 1500,
+     "seconds": 62.0,
+     "trainable_params_m": 3.889,
+     "total_params_m": 3.889
+    }
+   },
+   "eval_pre": {
+    "status": "ran",
+    "seconds": 3.0,
+    "metrics": {
+     "success_rate": 0.984375,
+     "ci95": [
+      0.9167,
+      0.9972
+     ],
+     "n": 64,
+     "mean_length": 12.34375,
+     "failures": {
+      "timeout": 1
+     },
+     "per_task": {
+      "go to the blue target": 1.0,
+      "go to the green target": 1.0,
+      "go to the red target": 1.0,
+      "move to the blue dot": 1.0,
+      "move to the green dot": 1.0,
+      "move to the red dot": 1.0,
+      "move to the yellow dot": 1.0,
+      "reach the blue marker": 1.0,
+      "reach the green marker": 0.667,
+      "reach the red marker": 1.0,
+      "reach the yellow marker": 1.0,
+      "touch the blue one": 1.0,
+      "touch the green one": 1.0,
+      "touch the red one": 1.0,
+      "touch the yellow one": 1.0
+     },
+     "runtime": {}
+    }
+   },
+   "eval_zeroshot": {
+    "status": "ran",
+    "seconds": 6.9,
+    "metrics": {
+     "success_rate": 0.015625,
+     "ci95": [
+      0.0028,
+      0.0833
+     ],
+     "n": 64,
+     "mean_length": 59.203125,
+     "failures": {
+      "wrong_target": 30,
+      "timeout": 33
+     },
+     "per_task": {
+      "go to the purple target": 0.0,
+      "move to the purple dot": 0.0,
+      "reach the purple marker": 0.0,
+      "touch the purple one": 0.071
+     },
+     "runtime": {}
+    }
+   },
+   "post": {
+    "status": "ran",
+    "seconds": 12.5,
+    "metrics": {
+     "final_loss": 0.20737764954566956,
+     "steps": 300,
+     "seconds": 12.3,
+     "trainable_params_m": 3.889,
+     "total_params_m": 3.889,
+     "method": "full"
+    }
+   },
+   "rl": {
+    "status": "ran",
+    "seconds": 73.2,
+    "metrics": {
+     "success_before": 0.28125,
+     "success_after": 0.796875,
+     "history": [
+      0.28125,
+      0.453125,
+      0.671875,
+      0.796875
+     ]
+    }
+   },
+   "eval": {
+    "status": "ran",
+    "seconds": 15.9,
+    "metrics": {
+     "success_rate": 0.78,
+     "ci95": [
+      0.7176,
+      0.8318
+     ],
+     "n": 200,
+     "mean_length": 27.32,
+     "failures": {
+      "wrong_target": 7,
+      "timeout": 37
+     },
+     "per_task": {
+      "go to the purple target": 0.643,
+      "move to the purple dot": 0.681,
+      "reach the purple marker": 0.857,
+      "touch the purple one": 0.958
+     },
+     "runtime": {}
+    }
+   },
+   "edge": {
+    "status": "ran",
+    "seconds": 2.6,
+    "metrics": {
+     "chosen": "fp32_5steps",
+     "latency_ms_p50": 19.21406650001245,
+     "speedup_vs_fp32": 1.83,
+     "table": {
+      "fp32": 35.23,
+      "fp32_5steps": 19.21,
+      "fp32_3steps": 13.1
+     }
+    }
+   },
+   "eval_edge": {
+    "status": "ran",
+    "seconds": 12.7,
+    "metrics": {
+     "success_rate": 0.785,
+     "ci95": [
+      0.723,
+      0.8363
+     ],
+     "n": 200,
+     "mean_length": 27.455,
+     "failures": {
+      "timeout": 36,
+      "wrong_target": 7
+     },
+     "per_task": {
+      "go to the purple target": 0.696,
+      "move to the purple dot": 0.66,
+      "reach the purple marker": 0.878,
+      "touch the purple one": 0.917
+     },
+     "runtime": {}
+    }
+   },
+   "gate": {
+    "status": "ran",
+    "seconds": 0.0,
+    "metrics": {
+     "candidate": 0.785,
+     "baseline": 0.78,
+     "drop": -0.0050000000000000044,
+     "passed": true,
+     "ci_overlap": true
+    }
+   },
+   "deploy": {
+    "status": "ran",
+    "seconds": 5.7,
+    "metrics": {
+     "success_rate": 1.0,
+     "episodes": 4,
+     "ticks": 52,
+     "stalls": 4,
+     "inferences": 12,
+     "infer_ms_p50": 22.104301000013038,
+     "infer_ms_p95": 23.312252250138954,
+     "tick_ms_mean": 99.99571896154818,
+     "tick_ms_p95": 100.02291999999215,
+     "tick_jitter_ms": 0.015764413148026974,
+     "safety_hits": {
+      "Clamp": 2,
+      "RateLimit": 0
+     },
+     "hz": 10.0,
+     "chunker": {
+      "type": "rtc_blend",
+      "blend": 2
+     },
+     "realtime": true
+    }
+   }
+  },
+  "run": "reach_smoke"
+ }
+}

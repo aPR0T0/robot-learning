@@ -336,6 +336,10 @@ class Pipeline:
         results: dict[str, dict] = {}
         fps: dict[str, str | None] = {}
         summary: dict[str, Any] = {"pipeline": self.cfg.name, "device": device, "nodes": {}}
+        if device.startswith("cuda"):
+            import torch
+
+            summary["gpu"] = torch.cuda.get_device_name()
         for name in order:
             nc = self.cfg.nodes[name]
             out_dir = run_dir / name

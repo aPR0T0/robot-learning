@@ -39,12 +39,48 @@ says which renderer you got.
 
 | pipeline | what it shows | time (1× L4) |
 |---|---|---|
-| `reach_smoke` | all 8 stages on the built-in Lang-Reach 2D sim with a tiny from-scratch backbone | ~3 min |
-| `reach_full` | same, with **SmolVLM2-256M**: pointing fine-tune → SmolVLA-style flow policy | ~20 min |
-| `reach_heads.py` | a **Python** pipeline: one dataset, four action heads (π0 flow, diffusion, OFT L1, RT-2 bins) | ~6 min |
-| `pusht_lerobot` | LeRobot PushT data + sim; published Diffusion Policy baseline vs the native policy | ~10 min |
-| `aloha_lerobot` | bimanual ALOHA sim: published ACT checkpoint; SmolVLA fine-tune via `lerobot-train` | ~30 min |
-| `mock_hardware` | a robot that does not exist yet (ALOHA + wrist F/T + tactile) through the 50 Hz real-time loop | ~1 min |
+| `reach_smoke` | all 8 stages on the built-in Lang-Reach 2D sim with a tiny from-scratch backbone | 3.5 min |
+| `reach_full` | same, with **SmolVLM2-256M**: pointing fine-tune → SmolVLA-style flow policy | 10.5 min |
+| `reach_heads.py` | a **Python** pipeline: one dataset, four action heads (π0 flow, diffusion, OFT L1, RT-2 bins) | 4.5 min |
+| `pusht_lerobot` | LeRobot PushT data + sim; published Diffusion Policy baseline vs the native policy | 10 min |
+| `aloha_lerobot` | bimanual ALOHA sim: published ACT checkpoint; SmolVLA fine-tune via `lerobot-train` | 14 min |
+| `mock_hardware` | a robot that does not exist yet (ALOHA + wrist F/T + tactile) through the 50 Hz real-time loop | 16 s |
+
+### Verified results (1× NVIDIA L4, 2026-11-14)
+
+Success rates with 95% Wilson intervals; n is the number of seeded sim episodes.
+
+| | from-scratch backbone (`reach_smoke`) | SmolVLM2-256M (`reach_full`) |
+|---|---|---|
+| pretrained policy, colours seen in training (n=64) | 98% (92–100) | 97% (89–99) |
+| **zero-shot on an unseen colour** (n=64) | **2%** (0–8) | **34%** (24–47) |
+| after post-training on 24 demos | 28% | 95% |
+| after RL (filtered self-imitation) | 80% | 97% |
+| final eval (n=200) | 78% (72–83) | 93.5% (89–96) |
+| edge build (fewer flow steps), eval (n=200) | 79%, 1.8× faster | 98%, 1.2× faster |
+| pointing error of the VLM before → after its fine-tune | – | 0.79 → 0.08 |
+
+The web-pretrained VLM knows "purple" without ever seeing it in robot data, which is the RT-2 effect from the blog.
+
+| action head (`reach_heads.py`, same data, 1500 steps, n=64) | success |
+|---|---|
+| flow matching (π0) | 100% (94–100) |
+| diffusion, x0-prediction | 98% (92–100) |
+| L1 regression (OpenVLA-OFT / ACT) | 97% (89–99) |
+| 256-bin tokens (RT-2 / OpenVLA) | 20% (12–32) |
+
+The bins head fits its training data (77% exact-bin accuracy) but compounds errors in closed loop. An
+epsilon-prediction diffusion head reached only 28%, and 22% after 6000 steps, so x0-prediction is the default.
+
+| published checkpoints run through this repo's eval node | here | published |
+|---|---|---|
+| Diffusion Policy, PushT (n=50) | 74% (60–84) | 65.4% |
+| ACT, ALOHA transfer cube (n=20) | 80% (58–92) | 83% |
+
+SmolVLA fine-tuned from `lerobot/smolvla_base` for 2000 steps (10.5 min) reaches 30% (15–52) on ALOHA
+transfer cube. The native tiny flow policy trained 5000 steps on `lerobot/pusht` reaches 10% (4–21).
+Both are budget-limited, not broken. The mock 50 Hz loop held 20.0 ms ticks (0.02 ms jitter) with 44 ms
+inference, because chunked actions keep the queue full.
 
 Measured numbers from the last verified run are on the node map (click a pipeline node).
 

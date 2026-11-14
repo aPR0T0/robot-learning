@@ -702,7 +702,7 @@
    "doc": "",
    "class": "DiffusionHead",
    "file": "src/vlalab/policy/heads.py",
-   "line": 114,
+   "line": 117,
    "config": "DiffusionConfig",
    "params": [
     {
@@ -720,8 +720,8 @@
     {
      "name": "prediction",
      "type": "str",
-     "default": "epsilon",
-     "help": ""
+     "default": "sample",
+     "help": "sample (x0) | epsilon"
     }
    ]
   },
@@ -737,7 +737,7 @@
    "doc": "",
    "class": "L1Head",
    "file": "src/vlalab/policy/heads.py",
-   "line": 166,
+   "line": 164,
    "config": "L1Config",
    "params": [
     {
@@ -760,7 +760,7 @@
    "doc": "",
    "class": "BinsHead",
    "file": "src/vlalab/policy/heads.py",
-   "line": 199,
+   "line": 197,
    "config": "BinsConfig",
    "params": [
     {
@@ -1922,7 +1922,7 @@
    "doc": "",
    "class": "ScratchBackbone",
    "file": "src/vlalab/stages/vlm.py",
-   "line": 105,
+   "line": 200,
    "config": "ScratchConfig",
    "params": [
     {
@@ -1950,7 +1950,7 @@
    "doc": "",
    "class": "HFPretrained",
    "file": "src/vlalab/stages/vlm.py",
-   "line": 126,
+   "line": 222,
    "config": "HFPretrainedConfig",
    "params": [
     {
@@ -1984,6 +1984,12 @@
      "help": ""
     },
     {
+     "name": "fast_preprocess",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
      "name": "backbone",
      "type": "dict[str, Any]",
      "default": "dict()",
@@ -2007,7 +2013,7 @@
    "doc": "",
    "class": "ERFinetune",
    "file": "src/vlalab/stages/vlm.py",
-   "line": 162,
+   "line": 260,
    "config": "ERFinetuneConfig",
    "params": [
     {
@@ -2068,6 +2074,12 @@
      "help": ""
     },
     {
+     "name": "fast_preprocess",
+     "type": "bool",
+     "default": true,
+     "help": "GPU image preprocessing (checked vs the processor)"
+    },
+    {
      "name": "backbone",
      "type": "dict[str, Any]",
      "default": "dict()",
@@ -2118,6 +2130,7 @@
   "scripts/build_site.py",
   "scripts/gcp_vm.sh",
   "scripts/publish_site.sh",
+  "scripts/verify_all.sh",
   "setup.sh",
   "site/app.js",
   "site/index.html",
@@ -3756,7 +3769,8 @@
      "head": {
       "type": "diffusion",
       "train_steps": 100,
-      "inference_steps": 10
+      "inference_steps": 10,
+      "prediction": "sample"
      },
      "d_model": 192,
      "expert": {

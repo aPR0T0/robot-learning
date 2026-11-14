@@ -202,13 +202,15 @@ def collect_results(runs: Path) -> dict:
             if m is None and out.exists():
                 m = json.loads(out.read_text()).get("outputs", {}).get("metrics")
             nodes[n] = {"status": info.get("status"), "seconds": info.get("seconds"), "metrics": m}
-        res[d.get("pipeline", s.parent.name)] = {"device": d.get("device"), "nodes": nodes, "run": s.parent.name}
+        res[d.get("pipeline", s.parent.name)] = {"device": d.get("gpu") or d.get("device"), "nodes": nodes,
+                                                 "run": s.parent.name}
     return res
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", type=Path, help="runs/ directory to summarise into site/results.json")
+    ap.add_argument("--hardware", help="label for where --results ran, e.g. '1x NVIDIA L4 (GCP g2-standard-8)'")
     ap.add_argument("--repo", default="https://github.com/aPR0T0/robot-learning")
     ap.add_argument("--branch", default="main")
     a = ap.parse_args()
@@ -232,6 +234,9 @@ def main() -> None:
     res = ROOT / "site/results.json"
     if a.results:
         r = collect_results(a.results)
+        if a.hardware:
+            for v in r.values():
+                v["device"] = a.hardware
         res.write_text(json.dumps(r, indent=1, default=str))
         print(f"wrote site/results.json: {list(r)}")
     elif not res.exists():
