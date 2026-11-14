@@ -163,6 +163,7 @@
   }
   function metricLine(m) {
     if (!m) return null;
+    if (typeof m.tick_ms_mean === "number") return ["loop", Math.round(m.hz) + " Hz · infer " + Math.round(m.infer_ms_p50) + " ms"];
     if (typeof m.success_rate === "number") return ["success", (m.success_rate * 100).toFixed(0) + "%" + (m.ci95 ? " [" + Math.round(m.ci95[0] * 100) + "–" + Math.round(m.ci95[1] * 100) + "]" : "")];
     if (typeof m.success_after === "number") return ["success", Math.round(m.success_before * 100) + "→" + Math.round(m.success_after * 100) + "%"];
     if (typeof m.final_loss === "number") return ["loss", m.final_loss.toFixed(3) + " · " + m.steps + " st"];

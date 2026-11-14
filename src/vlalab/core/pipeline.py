@@ -374,7 +374,7 @@ class Pipeline:
             if cached is not None and nc.cache and name not in force_set:
                 log.info("[%s] cached (%s)", name, fp)
                 results[name] = cached
-                fps[name] = fp
+                fps[name] = self._stored_fp(out_dir)
                 summary["nodes"][name] = {"status": "cached", "fingerprint": fp}
                 continue
             if dry_run:
@@ -399,9 +399,13 @@ class Pipeline:
                 raise
             dt = time.time() - t0
             outputs = to_plain(outputs)
-            (out_dir / "outputs.json").write_text(json.dumps({"fingerprint": fp, "outputs": outputs}, indent=2))
+            # a unique id per execution: children chain on it, so re-running a node (--force, or new upstream
+            # weights behind the same path) invalidates everything downstream
+            run_id = _fingerprint({"fp": fp, "t": time.time_ns()})
+            (out_dir / "outputs.json").write_text(json.dumps({"fingerprint": fp, "run_id": run_id, "outputs": outputs},
+                                                             indent=2))
             results[name] = outputs
-            fps[name] = fp
+            fps[name] = run_id
             metrics = outputs.get("metrics") if isinstance(outputs.get("metrics"), dict) else None
             summary["nodes"][name] = {"status": "ran", "impl": entry.key, "seconds": round(dt, 1),
                                       **({"metrics": metrics} if metrics else {})}
@@ -434,8 +438,12 @@ class Pipeline:
 
     @staticmethod
     def _stored_fp(out_dir: Path) -> str | None:
+        """The id children chain on: the execution's run_id (older outputs: the config fingerprint)."""
         f = out_dir / "outputs.json"
-        return json.loads(f.read_text()).get("fingerprint") if f.exists() else None
+        if not f.exists():
+            return None
+        d = json.loads(f.read_text())
+        return d.get("run_id") or d.get("fingerprint")
 
     @staticmethod
     def _load_cached(out_dir: Path, fp: str | None) -> dict | None:

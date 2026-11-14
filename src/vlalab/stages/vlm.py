@@ -44,6 +44,25 @@ def _pointing_samples(env_spec: Any, n: int, seed: int) -> list[dict]:
     return out
 
 
+def _common_prefix(a: list[int], b: list[int]) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
+def _qa_texts(proc, question: str, answer: str) -> tuple[str, str]:
+    """(prompt, full) built with the chat template's own assistant turn, so the answer is tokenised
+    exactly as at generation time (concatenating after "Assistant:" merges ':' with the answer)."""
+    q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": question}]}]
+    prompt = proc.apply_chat_template(q, add_generation_prompt=True)
+    full = proc.apply_chat_template(q + [{"role": "assistant", "content": [{"type": "text", "text": answer}]}],
+                                    add_generation_prompt=False)
+    return prompt, full
+
+
 def _parse_point(text: str) -> tuple[float, float] | None:
     m = re.findall(r"-?\d*\.\d+|-?\d+", text)
     if len(m) >= 2:
@@ -252,10 +271,7 @@ class ERFinetune(StageNode):
         held = _pointing_samples(env, cfg.eval_samples, seed=50_000)
         fast = FastVLMBatcher(proc, dev) if cfg.fast_preprocess else None
         if fast is not None and fast.ok:
-            chk = []
-            for s in train[:4]:
-                q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": s["question"]}]}]
-                chk.append(proc.apply_chat_template(q, add_generation_prompt=True) + s["answer"] + "<end_of_utterance>")
+            chk = [_qa_texts(proc, s["question"], s["answer"])[1] for s in train[:4]]
             fast.ok = fast.matches_processor(chk, [s["image"] for s in train[:4]])
             log.info("fast VLM preprocessing %s the processor's tokens", "matches" if fast.ok else "does NOT match")
         if fast is None or not fast.ok:
@@ -280,19 +296,20 @@ class ERFinetune(StageNode):
         for step in range(cfg.steps):
             idx = rng.choice(len(train), cfg.batch_size, replace=False)
             batch = [train[i] for i in idx]
-            prompts, fulls = [], []
-            for s in batch:
-                q = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": s["question"]}]}]
-                prompts.append(proc.apply_chat_template(q, add_generation_prompt=True))
-                fulls.append(prompts[-1] + s["answer"] + "<end_of_utterance>")
+            prompts, fulls = zip(*[_qa_texts(proc, s["question"], s["answer"]) for s in batch])
+            prompts, fulls = list(prompts), list(fulls)
             imgs = [s["image"] for s in batch]
             if fast.ok:
                 enc = fast(fulls, imgs)
-                n_pre = [len(fast._ids(p)) for p in prompts]
+                n_pre = [_common_prefix(fast._ids(p), fast._ids(f)) for p, f in zip(prompts, fulls)]
             else:
                 enc = proc(text=fulls, images=[[im] for im in imgs], return_tensors="pt", padding=True).to(dev)
                 pre = proc(text=prompts, images=[[im] for im in imgs], return_tensors="pt", padding=True)
-                n_pre = [int(m.sum()) for m in pre["attention_mask"]]
+                n_pre = []
+                for i in range(len(batch)):
+                    a = pre["input_ids"][i][pre["attention_mask"][i].bool()].tolist()
+                    b = enc["input_ids"][i][enc["attention_mask"][i].bool()].tolist()
+                    n_pre.append(_common_prefix(a, b))
             labels = enc["input_ids"].clone()
             labels[enc["attention_mask"] == 0] = -100
             for i in range(len(batch)):

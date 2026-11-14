@@ -103,6 +103,10 @@ def test_cache_invalidates_downstream(tmp_path):
     assert calls == ["src", "dst"]  # second run fully cached
     _mk(tmp_path, 2).run()  # upstream param change re-runs the child even though its input path is the same
     assert calls == ["src", "dst", "src", "dst"]
+    _mk(tmp_path, 2).run(force=["a"])  # re-executing the parent (same config) still invalidates the child
+    assert calls == ["src", "dst", "src", "dst", "src", "dst"]
+    _mk(tmp_path, 2).run()
+    assert len(calls) == 6
 
 
 def test_cycle_and_bad_port_detected(tmp_path):
