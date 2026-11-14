@@ -28,7 +28,12 @@ vlab run reach_smoke    # all eight stages, ~3 minutes on one L4
 
 `./setup.sh --minimal` skips LeRobot. CPU-only machines work too (`reach_smoke` takes ~10 min).
 For a GCP VM: `scripts/gcp_vm.sh create && scripts/gcp_vm.sh setup` (1× L4, Ubuntu 24.04 with
-driver 580; `stop` when done).
+driver 580; `ZONE=...` if a zone is out of L4s; `stop` when done). `scripts/verify_all.sh` runs every
+pipeline back to back and prints a pass/fail table; `scripts/gcp_vm.sh pull` brings the metrics back.
+
+`setup.sh` also installs NVIDIA's EGL library when the driver image lacks it (GCP's accelerator images
+do): without it MuJoCo silently renders on the CPU and the ALOHA sim is ~17× slower. `vlab doctor`
+says which renderer you got.
 
 ## What runs
 
@@ -150,6 +155,10 @@ vlab show <component>         every param with defaults
 vlab compare runs/a runs/b    metrics side by side
 vlab new <stage> <name>       scaffold a plugin for a new paper
 vlab doctor                   GPU / CUDA / EGL / extras check
+
+scripts/verify_all.sh [pipelines...]   run pipelines in sequence, pass/fail table
+scripts/publish_site.sh [--results runs/]   rebuild the node map into the apr0t0.github.io checkout
+scripts/gcp_vm.sh create|setup|push|run|pull|stop   GPU VM helper
 ```
 
 MIT licence.

@@ -5,7 +5,8 @@
 #   scripts/gcp_vm.sh push          # copy this checkout to the VM (no git auth needed)
 #   scripts/gcp_vm.sh setup         # push + ./setup.sh on the VM
 #   scripts/gcp_vm.sh run reach_smoke [overrides...]   # run a pipeline on the VM (in tmux-free nohup)
-#   scripts/gcp_vm.sh pull          # copy runs/ back
+#   scripts/gcp_vm.sh pull          # copy run metrics, reports and logs back (no checkpoints)
+#   scripts/gcp_vm.sh pull-all      # copy all of runs/ back (checkpoints included, can be GBs)
 #   scripts/gcp_vm.sh ssh | stop | start | delete
 #
 # Settings (env vars): PROJECT, ZONE, VM, MACHINE, GPU, DISK_GB, SPOT=1
@@ -47,11 +48,20 @@ case "$cmd" in
     ;;
   pull)
     mkdir -p runs
+    gcloud compute ssh "$VM" "${G[@]}" --command 'cd ~/robot-learning && find runs \( -name summary.json \
+      -o -name outputs.json -o -name report.json -o -name "*.log" -o -name history.json -o -name benchmark.json \
+      -o -name probe.json -o -name deploy.json -o -name node.yaml -o -name pipeline.yaml -o -name train_log.jsonl \) \
+      -print0 | tar --null -czf /tmp/runs-metrics.tgz -T -'
+    gcloud compute scp "${G[@]}" "$VM":/tmp/runs-metrics.tgz /tmp/runs-metrics.tgz
+    tar -xzf /tmp/runs-metrics.tgz
+    ;;
+  pull-all)
+    mkdir -p runs
     gcloud compute scp --recurse "${G[@]}" "$VM":~/robot-learning/runs/. runs/
     ;;
   ssh) gcloud compute ssh "$VM" "${G[@]}" "$@" ;;
   stop) gcloud compute instances stop "$VM" "${G[@]}" ;;
   start) gcloud compute instances start "$VM" "${G[@]}" ;;
   delete) gcloud compute instances delete "$VM" "${G[@]}" ;;
-  *) sed -n '2,13p' "$0" ;;
+  *) sed -n '2,12p' "$0" ;;
 esac
