@@ -20,6 +20,7 @@ import difflib
 import importlib
 import inspect
 import pkgutil
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -66,6 +67,13 @@ _REGISTRY: dict[str, dict[str, Entry]] = {k: {} for k in KINDS}
 _IMPORTED = False
 
 
+def _source_file(obj: Any) -> str:
+    try:
+        return inspect.getsourcefile(obj) or ""
+    except TypeError:  # classes whose module is not importable by name
+        return ""
+
+
 def register(
     kind: str,
     name: str,
@@ -99,7 +107,7 @@ def register(
             summary=summary or (doc.splitlines()[0] if doc else ""),
             tags=tuple(tags),
             module=getattr(obj, "__module__", ""),
-            file=inspect.getsourcefile(obj) or "",
+            file=_source_file(obj),
             extra=extra,
         )
         prev = _REGISTRY[kind].get(name)
@@ -135,9 +143,13 @@ def import_plugins(modules: list[str] | None) -> None:
             from pathlib import Path
 
             p = Path(m).resolve()
-            spec = importlib.util.spec_from_file_location(f"vlalab_plugin_{p.stem}", p)
+            name = f"vlalab_plugin_{p.stem}"
+            if getattr(sys.modules.get(name), "__file__", None) == str(p):
+                continue  # already imported (validate() and run() both import plugins)
+            spec = importlib.util.spec_from_file_location(name, p)
             assert spec and spec.loader, m
             mod = importlib.util.module_from_spec(spec)
+            sys.modules[name] = mod  # @register's inspect.getsourcefile looks the class's module up here
             spec.loader.exec_module(mod)
         else:
             importlib.import_module(m)

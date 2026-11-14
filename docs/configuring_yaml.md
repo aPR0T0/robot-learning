@@ -91,6 +91,11 @@ inputs:
 
 (One `inputs` block can only hold one `policy:` key. The lines above show alternatives.)
 
+Literal inputs are fingerprinted by their value (the path), not by the files behind them. After you
+retrain the checkpoint at a path, a pipeline that reads it as a literal still looks cached, so run it with
+`--force <node>`. Wired inputs (`vla.policy`) don't have this problem: a re-run upstream node invalidates
+everything downstream.
+
 In a list of datasets, each one gets the same total sampling weight whatever its size, so 24 new demos are
 drawn as often as 400 old ones. Set `weight:` on literal refs, or use `data/mixture`, to change that.
 
@@ -128,6 +133,14 @@ The two you will edit most belong to `vla/train`, and `post_train/finetune` and 
 | `log_every`, `val_every`, `val_fraction`, `save_every` | `50`, `0`, `0.0`, `0` | logging, held-out validation, checkpoints under `checkpoints/` |
 | `cache_backbone`, `cache_max_frames` | `auto`, `200000` | encode each frame once when the backbone is frozen |
 | `trainable` | `[backbone, encoders, head]` | which parameter groups train |
+
+**Dataclass blocks merge, plain dicts don't.** A block that is a dataclass (`train:`, `policy:`, `expert:`
+inside `policy`) fills unset fields from its defaults, so `vla.train.steps=500` changes one field. A param
+typed as a plain dict (`edge.variants`, `policy.head`, `policy.backbone`, `deploy.driver` ...) takes the value
+you give it as a whole. If the YAML (or a preset) already sets that dict, an override merges into it.
+If the dict's default only lives in code, the override *replaces* it. `vla.policy.head.num_steps=5` works
+on `reach_smoke` because the `flow_tiny` preset sets the head, but on a node without a preset it leaves a
+head with no `type`. Set the whole block in that case: `"vla.policy.head={type: flow_matching, num_steps: 5}"`.
 
 **Component blocks** such as `head`, `backbone`, `encoders.*`, `expert` (in `data/scripted_sim`),
 `chunker`, `safety` items, `driver` and `env` are written `{type: <name>, ...params}`. Their params come

@@ -71,7 +71,12 @@ class VLAPolicy(nn.Module):
 
     @property
     def device(self) -> torch.device:
-        return self.proj[0].weight.device
+        return self.proj[1].weight.device  # the LayerNorm: still a plain tensor after int8 quantisation
+
+    @property
+    def _proj_dtype(self) -> torch.dtype:
+        w = self.proj[0].weight  # a method on dynamically quantised Linear layers (float32 in, float32 out)
+        return w.dtype if isinstance(w, torch.Tensor) else torch.float32
 
     def context(self, batch: dict[str, Any], train: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
         dev = self.device
@@ -80,7 +85,7 @@ class VLAPolicy(nn.Module):
         else:
             images = {k: batch[k] for k in self.spec.image_keys}
             tok, mask = self.backbone(images, list(batch["task"]))
-        ctx = [self.proj(tok.to(self.proj[0].weight.dtype))]
+        ctx = [self.proj(tok.to(self._proj_dtype))]
         masks = [mask.to(dev)]
         for k in self.lowdim:
             x = self.norm.normalize(k, batch[k].to(dev).float())

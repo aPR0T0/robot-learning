@@ -48,6 +48,7 @@ says which renderer you got.
 | `pusht_lerobot` | LeRobot PushT data + sim; published Diffusion Policy baseline vs the native policy | 10 min |
 | `aloha_lerobot` | bimanual ALOHA sim: published ACT checkpoint; SmolVLA fine-tune via `lerobot-train` | 14 min |
 | `mock_hardware` | a robot that does not exist yet (ALOHA + wrist F/T + tactile) through the 50 Hz real-time loop | 16 s |
+| `so100_lerobot` | SO-100 arm on real data (SmolVLA's pick-and-place set): SmolVLA-style policy, held-out open-loop eval, 30 Hz loop on a mock arm | ~25 min |
 
 ### Verified results (1× NVIDIA L4, 2026-11-14)
 
@@ -136,7 +137,11 @@ nodes:
 ```bash
 vlab run eval_post                                   # -> runs/eval_post/eval/report.json
 vlab run eval_post eval.inputs.policy=runs/reach_smoke/rl/policy --run-dir runs/eval_rl
+vlab run eval_post --force eval                      # after the checkpoint behind the path was retrained
 ```
+
+A literal input is fingerprinted by its path, not by what's in it. If you retrain the checkpoint at that
+path, the standalone run still looks cached, so add `--force`.
 
 **3. From Python:** `Pipeline.load("reach_smoke", overrides=["eval.episodes=500"]).run(only=["eval"])`.
 
@@ -273,7 +278,7 @@ full fine-tuning on the 24 purple demos mixed with the original data, it succeed
 
 ```bash
 vlab run reach_smoke --only post post.method=frozen_backbone post.train.steps=600
-vlab run eval_post                                   # evaluate the post-trained checkpoint on its own
+vlab run eval_post --force eval                      # evaluate the new post-trained checkpoint on its own
 ```
 
 ```yaml
@@ -372,7 +377,7 @@ cat runs/reach_smoke/edge/benchmark.json             # p50 / p95 latency of ever
         fp32: {dtype: float32}
         fp32_5steps: {dtype: float32, num_steps: 5}
         bf16_5steps_compile: {dtype: bfloat16, num_steps: 5, compile: true}
-        int8_cpu: {quantize: int8_dynamic}
+        int8_cpu: {quantize: int8_dynamic}            # int8 action head, CPU inference
 ```
 
 **Hands on:** a checkpoint folder whose `runtime.yaml` holds the chosen options. Eval and deploy apply
@@ -409,6 +414,55 @@ Koch, ALOHA ...), or you can [write your own](docs/adding_components.md#8-a-new-
 **Hands on:** `deploy.json` (latency p50/p95, stalls, jitter, interventions per safety filter) and
 output port `dataset`, every tick logged as a native dataset. Wire it into `data/mixture` or
 `post_train/finetune` to close the loop back to stage 02.
+
+### Example: an SO-100 arm, from real demos to the 30 Hz loop
+
+![Real SO-100 pick-and-place demonstrations](docs/images/so100_demos.jpg)
+
+`so100_lerobot` runs the same nodes on a real robot's data: SmolVLA's SO-100 pick-and-place set
+(`lerobot/svla_so100_pickplace`, 50 teleoperated episodes at 30 Hz, overhead and wrist cameras, 6 joints),
+with the embodiment in `configs/embodiment/so100.yaml`. It trains the SmolVLA recipe (`vla/smolvla_style`)
+on episodes 0–44 and keeps 45–49 back. There is no SO-100 simulator here, so closed-loop success can't be
+measured. Instead, the policy is scored open-loop on the held-out episodes and then driven through the
+30 Hz real-time loop on a mock SO-100, which checks timing before the arm is plugged in.
+
+![SO-100 held-out episode: real cameras and the policy's joint commands](docs/images/so100_offline.gif)
+
+*Held-out episode 45, replayed: at every 25th step the policy sees the recorded cameras and joint state and
+plans the next 50 commands (blue) against what the teleoperator did (grey). Mean error is 2.7° per joint
+on this episode, against 3.7° for holding the last command, and L1 4.4° over all five held-out episodes. On
+the mock arm the 30 Hz loop held 33.3 ms ticks (0.02 ms jitter) with 77 ms median inference, since
+re-planning every 25 ticks leaves 833 ms per inference. The mock robot can't succeed at the task, so its
+deploy success rate (0%) means nothing.*
+
+```bash
+vlab run so100_lerobot                               # ~25 min on an L4, lerobot extra; first run downloads the videos
+vlab run so100_lerobot --only eval,deploy deploy.episodes=5
+python scripts/readme_media.py --only so100_demos,so100_offline   # these two pictures, from runs/so100_lerobot
+```
+
+```yaml
+embodiment: so100                  # overhead + wrist camera, 6 joints (degrees), 30 Hz, chunks of 50
+nodes:
+  data:
+    impl: data/lerobot_hub
+    params: {repo_id: lerobot/svla_so100_pickplace, episodes: 45,           # the first 45 episodes
+             key_map: {observation.images.top: observation.images.front}}    # dataset camera -> embodiment camera
+  held_out: {impl: data/lerobot_hub, params: {repo_id: lerobot/svla_so100_pickplace, episodes: [45, 46, 47, 48, 49],
+             key_map: {observation.images.top: observation.images.front}}}
+  vla: {impl: vla/train, preset: vla/smolvla_style, inputs: {dataset: data.dataset}, params: {train: {steps: 3000}}}
+  eval: {impl: eval/offline, inputs: {policy: vla.policy, dataset: held_out.dataset}}
+  deploy:
+    impl: deploy/loop
+    inputs: {policy: vla.policy}
+    params:
+      driver: {type: mock, task: Pick up the cube and place it in the box.}
+      safety: [{type: rate_limit, max_delta: [5, 8, 6, 4, 4, 7]}, {type: deadman, timeout_s: 0.5}]
+```
+
+The rate limits sit just above the largest per-tick change in the recorded data. On the real arm, swap the
+driver for `driver/lerobot_robot` (`robot: {type: so100_follower, port: /dev/ttyACM0}`, cameras mapped with
+`key_map`) and keep the rest.
 
 ## Configure anything
 

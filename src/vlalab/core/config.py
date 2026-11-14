@@ -160,8 +160,12 @@ def _coerce(tp: Any, value: Any, where: str) -> Any:
     if origin in (Union, types.UnionType):
         if value is None and type(None) in args:
             return None
+        # an arm the value already is wins over one it could be coerced into: `list[int] | int` must keep 45
+        # as an int ("first 45 episodes"), not wrap it into [45]
+        exact = [a for a in args if isinstance(get_origin(a) or a, type) and isinstance(value, get_origin(a) or a)
+                 and not (isinstance(value, bool) and (get_origin(a) or a) is not bool)]
         errs = []
-        for a in args:
+        for a in [*exact, *(a for a in args if a not in exact)]:
             if a is type(None):
                 continue
             try:

@@ -16,4 +16,4 @@ jobs:
       - run: uv run --no-sync ruff check src tests scripts
       - run: uv run --no-sync pytest -q
       - name: every pipeline config validates
-        run: for p in reach_smoke reach_full mock_hardware pusht_lerobot aloha_lerobot configs/pipeline/reach_heads.py; do uv run --no-sync vlab validate $p; done
+        run: for p in reach_smoke reach_full mock_hardware pusht_lerobot aloha_lerobot so100_lerobot configs/pipeline/reach_heads.py; do uv run --no-sync vlab validate $p; done

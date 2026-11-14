@@ -34,6 +34,16 @@ def test_to_config_coerces_and_rejects_typos():
         to_config(_Outer, {"nmae": "y"})
 
 
+def test_union_keeps_a_value_that_already_matches_an_arm():
+    from vlalab.stages.data import LeRobotHubConfig
+
+    assert to_config(LeRobotHubConfig, {"episodes": 45}).episodes == 45          # "first 45", not [45]
+    assert to_config(LeRobotHubConfig, {"episodes": [45, 46]}).episodes == [45, 46]
+    assert to_config(_Outer, {"opt": "7"}).opt == 7                             # coercion still works
+    with pytest.raises(ConfigError):
+        to_config(_Outer, {"opt": True})                                        # bool is not an int here
+
+
 def test_typed_merge_replaces_component_on_type_change():
     base = {"head": {"type": "flow_matching", "num_steps": 10}, "d": 1}
     assert merge_components(base, {"head": {"type": "l1_regression"}})["head"] == {"type": "l1_regression"}
@@ -41,7 +51,7 @@ def test_typed_merge_replaces_component_on_type_change():
 
 
 def test_all_shipped_configs_validate():
-    for p in ["reach_smoke", "reach_full", "mock_hardware", "pusht_lerobot", "aloha_lerobot",
+    for p in ["reach_smoke", "reach_full", "mock_hardware", "pusht_lerobot", "aloha_lerobot", "so100_lerobot",
               "configs/pipeline/reach_heads.py"]:
         assert Pipeline.load(p).validate() == [], p
 

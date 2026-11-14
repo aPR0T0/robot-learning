@@ -1,0 +1,36 @@
+# SO-100 arm on real data: SmolVLA's pick-and-place set (lerobot/svla_so100_pickplace, 50 episodes, 30 Hz,
+# top + wrist cameras) with the SmolVLA recipe (frozen half-depth SmolVLM2 + flow-matching expert).
+# There is no SO-100 simulator here, so the policy is scored open-loop on 5 held-out episodes, then pushed
+# through the 30 Hz real-time loop on the mock driver to check latency before the arm is plugged in.
+# Requires the lerobot extra. Deploy on the real arm: swap the driver for driver/lerobot_robot.
+name: so100_lerobot
+embodiment: so100
+nodes:
+  data:                            # episodes 0-44 for training
+    impl: data/lerobot_hub
+    params: {repo_id: lerobot/svla_so100_pickplace, episodes: 45,
+             key_map: {observation.images.top: observation.images.front}}
+  held_out:                        # episodes 45-49, never trained on
+    impl: data/lerobot_hub
+    params: {repo_id: lerobot/svla_so100_pickplace, episodes: [45, 46, 47, 48, 49],
+             key_map: {observation.images.top: observation.images.front}}
+  vla:
+    impl: vla/train
+    preset: vla/smolvla_style
+    inputs: {dataset: data.dataset}
+    params: {train: {steps: 3000, batch_size: 64, num_workers: 6}}
+  eval:                            # action error on the held-out episodes
+    impl: eval/offline
+    inputs: {policy: vla.policy, dataset: held_out.dataset}
+    params: {batches: 40, batch_size: 64}
+  deploy:                          # real-time loop on a fake SO-100 shaped by the embodiment
+    impl: deploy/loop
+    inputs: {policy: vla.policy}
+    params:
+      driver: {type: mock, task: Pick up the cube and place it in the box.}
+      chunker: {type: rtc_blend, blend: 5}
+      safety:                      # per-tick limits just above the largest change in the recorded data (degrees)
+        - {type: rate_limit, max_delta: [5, 8, 6, 4, 4, 7]}
+        - {type: deadman, timeout_s: 0.5}
+      episodes: 2
+      max_steps: 300

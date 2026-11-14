@@ -210,8 +210,12 @@ nodes:
 ```bash
 vlab validate chunker_sweep         # imports the plugin, checks params and ports
 vlab run chunker_sweep              # -> runs/chunker_sweep/sweep/sweep.json
-vlab run chunker_sweep sweep.chunkers.rtc.blend=2 --force sweep
+vlab run chunker_sweep "sweep.chunkers={sync: {type: sync}, rtc2: {type: rtc_blend, blend: 2}}"
+vlab run chunker_sweep --force sweep                 # after editing plugins/chunker_sweep.py
 ```
+
+`chunkers` is a plain dict with its default in code, so an override replaces it whole. Give the complete
+dict, as above. `sweep.chunkers.rtc.blend=2` alone would leave `{rtc: {blend: 2}}`, with no `type`.
 
 **Caching.** A node is skipped when its *config* matches the previous run: impl, params, inputs,
 upstream runs, embodiment and env. The fingerprint does not include your *code*, so after editing a

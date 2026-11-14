@@ -94,7 +94,11 @@ class PolicyRunner:
             dt = torch.bfloat16  # CPU autocast only supports bf16
         if self.opts.quantize == "int8_dynamic":
             self.device, dt = "cpu", torch.float32
-            self.policy = torch.ao.quantization.quantize_dynamic(self.policy.cpu(), {torch.nn.Linear}, dtype=torch.qint8)
+            # the action head (run once per flow / diffusion step) like int8_weight; torch's TransformerEncoder
+            # fast path in the backbones can't take quantised Linear layers
+            self.policy = self.policy.cpu()
+            self.policy.head = torch.ao.quantization.quantize_dynamic(self.policy.head, {torch.nn.Linear},
+                                                                      dtype=torch.qint8)
         else:
             self.policy = self.policy.to(device) if dt == torch.float32 else self.policy.to(device, dt)
             if self.opts.quantize == "int8_weight":

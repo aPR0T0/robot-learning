@@ -4,10 +4,11 @@
     python scripts/readme_media.py --runs runs --out docs/images --only data_demos,eval_sims
 
 Inputs (from `scripts/verify_all.sh`, or `vlab run` of each pipeline): reach_smoke, reach_full (its vlm node),
-pusht_lerobot and aloha_lerobot, plus runs/eval_post (the README's
-eval-one-checkpoint example, `vlab run eval_post`) for the post-training and RL pictures. Captions (instructions, outcomes, success rates, latencies) come from the
-same runs' report.json / episodes.json / outputs.json, so the pictures always match the numbers. Pictures
-whose runs are missing are skipped with a note.
+pusht_lerobot, aloha_lerobot and so100_lerobot, plus runs/eval_post (the README's eval-one-checkpoint
+example, `vlab run eval_post`) for the post-training and RL pictures. Captions (instructions, outcomes,
+success rates, latencies, action errors) come from the same runs' report.json / episodes.json /
+outputs.json, so the pictures always match the numbers. Pictures whose runs are missing are skipped.
+so100_offline runs the trained SO-100 policy over a held-out episode, so it wants the lerobot extra and a GPU.
 """
 
 from __future__ import annotations
@@ -109,12 +110,12 @@ def hstack(panels: list[list[Image.Image]], gap: int = 12) -> list[Image.Image]:
     return out
 
 
-def save_gif(frames: list[Image.Image], path: Path, fps: float, hold_s: float = 1.5) -> None:
+def save_gif(frames: list[Image.Image], path: Path, fps: float, hold_s: float = 1.5, colors: int = 192) -> None:
     frames = frames + [frames[-1]] * int(hold_s * fps)
     sample = Image.new("RGB", (frames[0].width, frames[0].height * 4))
     for j, i in enumerate(np.linspace(0, len(frames) - 1, 4).astype(int)):
         sample.paste(frames[i], (0, j * frames[0].height))
-    pal = sample.quantize(colors=192, method=Image.Quantize.MEDIANCUT)
+    pal = sample.quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     q[0].save(path, save_all=True, append_images=q[1:], duration=int(1000 / fps), loop=0, optimize=True)
     print(f"wrote {path} ({path.stat().st_size / 1e6:.2f} MB, {len(frames)} frames)")
@@ -284,9 +285,134 @@ def vlm_pointing(runs: Path, out: Path) -> None:
     print(f"wrote {out / 'vlm_pointing.png'}")
 
 
+def _traj_plot(rec: np.ndarray, pred: np.ndarray, names: list[str], w: int, h: int):
+    """Small-multiples line plot (one panel per joint): recorded in grey, predicted in blue. Returns the
+    image and each panel's plot box (x0, y0, x1, y1) so a time cursor can be drawn per frame."""
+    img = Image.new("RGB", (w, h), "white")
+    d = ImageDraw.Draw(img)
+    f = font(11)
+    cols, rows = 3, (len(names) + 2) // 3
+    pw, ph = w // cols, h // rows
+    t_n = len(rec)
+    boxes = []
+    for j, name in enumerate(names):
+        cx, cy = (j % cols) * pw, (j // cols) * ph
+        x0, y0, x1, y1 = cx + 6, cy + 16, cx + pw - 6, cy + ph - 6
+        lo, hi = float(min(rec[:, j].min(), pred[:, j].min())), float(max(rec[:, j].max(), pred[:, j].max()))
+        pad = 0.08 * (hi - lo or 1.0)
+        lo, hi = lo - pad, hi + pad
+        d.rectangle((x0, y0, x1, y1), outline=LINE)
+        d.text((x0, cy + 2), name.replace("_", " "), font=f, fill=SUB)
+
+        def pts(series, x0=x0, x1=x1, y0=y0, y1=y1, lo=lo, hi=hi):
+            return [(x0 + (x1 - x0) * i / max(t_n - 1, 1), y1 - (y1 - y0) * (v - lo) / (hi - lo))
+                    for i, v in enumerate(series)]
+
+        d.line(pts(rec[:, j]), fill=(110, 118, 129), width=2)
+        d.line(pts(pred[:, j]), fill=(9, 105, 218), width=2)
+        boxes.append((x0, y0, x1, y1))
+    return img, boxes
+
+
+def so100_offline(runs: Path, out: Path) -> None:
+    """Held-out SO-100 episode: real cameras + recorded vs predicted joint commands (open loop)."""
+    import torch
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    from vlalab.policy.checkpoint import load_policy
+    from vlalab.policy.vla import obs_to_batch
+
+    root = runs / "so100_lerobot"
+    held = load(root / "held_out/outputs.json")["outputs"]["dataset"]
+    offline = load(root / "eval/outputs.json")["outputs"]["metrics"]
+    ep = held["episodes"][0]
+    inv = {v: k for k, v in (held.get("key_map") or {}).items()}          # embodiment key -> dataset key
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    pol = load_policy(root / "vla/policy", dev).eval()
+    spec, exe = pol.spec, pol.spec.chunk.execute
+    torch.manual_seed(0)                                                  # flow sampling noise: same picture every time
+    ds = LeRobotDataset(held["repo_id"], episodes=[ep])
+    items = [ds[i] for i in range(len(ds))]
+    rec = np.stack([np.asarray(it["action"], np.float32) for it in items])
+    pred = []
+    for t in range(0, len(items), exe):                                   # re-plan every `execute` steps, as deployed
+        it = items[t]
+        obs = {k: it[inv.get(k, k)] for k in spec.observations if inv.get(k, k) in it}
+        batch = obs_to_batch([obs], [it["task"]], spec)
+        batch = {k: (v.to(dev) if isinstance(v, torch.Tensor) else v) for k, v in batch.items()}
+        pred.append(pol.predict(batch)[0, :exe].float().cpu().numpy())
+    pred = np.concatenate(pred)[: len(items)]
+    hold = np.repeat(rec[::exe], exe, axis=0)[: len(items)]                # baseline: hold each window's first command
+    l1_pol, l1_hold = float(np.abs(pred - rec).mean()), float(np.abs(hold - rec).mean())
+    names = spec.action.names or [f"joint {i}" for i in range(spec.action_dim)]
+    from PIL import ImageFilter
+
+    w, cw, ch = 512, 256, 192                    # small and slightly smoothed: sensor noise defeats GIF compression
+    base, boxes = _traj_plot(rec, pred, names, w, 200)
+    cam = {k: inv.get(k, k) for k in spec.image_keys}
+    frames = []
+    for t in range(0, len(items), 6):            # 30 Hz data, every 6th step, played at 5 fps = real time
+        row = [Image.fromarray((np.asarray(items[t][cam[k]]).transpose(1, 2, 0) * 255).astype(np.uint8))
+               .resize((cw, ch), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.9)) for k in spec.image_keys[:2]]
+        canvas = Image.new("RGB", (w, ch + base.height), "white")
+        for i, im in enumerate(row):
+            canvas.paste(im, (i * cw, 0))
+        plot = base.copy()
+        d = ImageDraw.Draw(plot)
+        for x0, y0, x1, y1 in boxes:
+            x = x0 + (x1 - x0) * t / max(len(items) - 1, 1)
+            d.line((x, y0, x, y1), fill=INK, width=1)
+        canvas.paste(plot, (0, ch))
+        frames.append(np.asarray(canvas))
+    lines = [(f"“{items[0]['task']}”", INK),
+             (f"grey: recorded joint commands · blue: policy, re-planning every {exe} steps", SUB),
+             (f"error {l1_pol:.1f}° per joint (holding still: {l1_hold:.1f}°) · 5 held-out episodes: "
+              f"L1 {offline['action_l1']:.1f}°", SUB)]
+    save_gif(panel(frames, w, f"SO-100 · held-out episode {ep}, real robot, not trained on", lines),
+             out / "so100_offline.gif", fps=5, hold_s=1.0, colors=128)
+
+
+def so100_demos(runs: Path, out: Path) -> None:
+    """Static strip of real SO-100 training demos: front and wrist camera from start to finish."""
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    ref = load(runs / "so100_lerobot/data/outputs.json")["outputs"]["dataset"]
+    inv = {v: k for k, v in (ref.get("key_map") or {}).items()}
+    front, wrist = inv.get("observation.images.front", "observation.images.front"), "observation.images.wrist"
+    eps, cols, tw, th = ref["episodes"][:3], 4, 200, 150
+    fb, fs = font(15, True), font(13)
+    rows = []
+    for e in eps:
+        ds = LeRobotDataset(ref["repo_id"], episodes=[e])
+        idx = np.linspace(0, len(ds) - 1, cols).astype(int)
+        items = [ds[int(i)] for i in idx]
+        task = items[0]["task"]
+        row = Image.new("RGB", (cols * (tw + 6) - 6, th + th // 2 + 26), "white")
+        d = ImageDraw.Draw(row)
+        d.text((0, 2), f"episode {e} · {len(ds)} steps at 30 Hz · “{task}”", font=fs, fill=SUB)
+        for c, (i, it) in enumerate(zip(idx, items)):
+            x = c * (tw + 6)
+            to_im = lambda k, it=it: Image.fromarray(  # noqa: E731
+                (np.asarray(it[k]).transpose(1, 2, 0) * 255).astype(np.uint8))
+            row.paste(to_im(front).resize((tw, th), Image.LANCZOS), (x, 22))
+            row.paste(to_im(wrist).resize((tw // 2, th // 2), Image.LANCZOS), (x, 22 + th + 2))
+            d.text((x + tw // 2 + 6, 22 + th + 6), f"t = {i / 30:.1f} s", font=fs, fill=INK)
+        rows.append(row)
+    w = rows[0].width
+    canvas = Image.new("RGB", (w, 30 + sum(r.height + 8 for r in rows)), "white")
+    ImageDraw.Draw(canvas).text((0, 4), f"SO-100 demonstrations ({ref['repo_id']}): overhead camera, wrist camera below",
+                                font=fb, fill=INK)
+    y = 30
+    for r in rows:
+        canvas.paste(r, (0, y))
+        y += r.height + 8
+    canvas.save(out / "so100_demos.jpg", quality=88, optimize=True)
+    print(f"wrote {out / 'so100_demos.jpg'} ({(out / 'so100_demos.jpg').stat().st_size / 1e6:.2f} MB)")
+
+
 FIGURES = {"vlm_pointing": vlm_pointing, "data_demos": data_demos, "vla_eval": vla_eval,
            "post_purple": post_purple, "rl_purple": rl_purple, "edge_steps": edge_steps, "eval_sims": eval_sims,
-           "deploy_loop": deploy_loop}
+           "deploy_loop": deploy_loop, "so100_demos": so100_demos, "so100_offline": so100_offline}
 
 
 def main() -> None:
