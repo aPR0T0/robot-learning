@@ -56,6 +56,20 @@ if [[ -e /dev/dri/renderD128 ]] && ! id -nG | grep -qw render && sudo -n true 2>
   sudo usermod -aG render "$USER" || true
 fi
 
+# Compute-only driver images (e.g. GCP "ubuntu-accelerator") ship CUDA but not NVIDIA's EGL/OpenGL
+# libraries, so MuJoCo silently renders on the CPU (ALOHA sim: ~170 ms/step instead of ~10 ms).
+# Install the GL package that matches the installed driver exactly.
+if [[ -n "$DRIVER" && ! -e /usr/share/glvnd/egl_vendor.d/10_nvidia.json ]] && command -v dpkg >/dev/null 2>&1; then
+  COMPUTE_PKG=$(dpkg-query -W -f='${Package}\n' 'libnvidia-compute-*' 2>/dev/null | head -1)
+  GL_PKG=${COMPUTE_PKG/compute/gl}; GL_PKG=${GL_PKG%%:*}
+  if [[ -n "$GL_PKG" ]] && sudo -n true 2>/dev/null; then
+    say "installing $GL_PKG (GPU EGL rendering for MuJoCo)"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$GL_PKG" >/dev/null || echo "    could not install $GL_PKG"
+  else
+    echo "    NVIDIA EGL missing: install the libnvidia-gl package matching driver $DRIVER for GPU rendering"
+  fi
+fi
+
 # -------------------------------------------------------------------- uv
 if ! command -v uv >/dev/null 2>&1; then
   say "installing uv"

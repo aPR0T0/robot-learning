@@ -214,7 +214,13 @@ def cmd_doctor(a) -> int:
             r = mujoco.Renderer(m, 32, 32)
             r.update_scene(mujoco.MjData(m))
             r.render()
-            print("mujoco   offscreen render ok")
+            gpu_egl = any(Path(d, "10_nvidia.json").exists() for d in
+                          ("/usr/share/glvnd/egl_vendor.d", "/etc/glvnd/egl_vendor.d"))
+            if os.environ.get("MUJOCO_GL") == "egl" and shutil.which("nvidia-smi") and not gpu_egl:
+                print("mujoco   offscreen render ok, but on the CPU: NVIDIA EGL is missing "
+                      "(install the libnvidia-gl package matching your driver; ./setup.sh does this)")
+            else:
+                print(f"mujoco   offscreen render ok ({'NVIDIA EGL' if gpu_egl else os.environ.get('MUJOCO_GL', 'default')})")
         except Exception as e:  # noqa: BLE001
             print(f"mujoco   render FAILED ({e}); set MUJOCO_GL=egl and install libegl1")
     from vlalab.core import registry

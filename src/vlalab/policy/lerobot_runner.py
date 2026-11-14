@@ -3,7 +3,8 @@
     policy: {format: lerobot, path: lerobot/diffusion_pusht, dataset_repo: lerobot/pusht,
              key_map: {observation.images.top: observation.image}}
 
-``dataset_repo`` is only needed for old checkpoints without processor files (normalisation stats).
+Old (pre-0.4) checkpoints ship no processor files; their normalisation stats are read from the buffers
+inside ``model.safetensors`` (what LeRobot's migration script does), else from ``dataset_repo``.
 
 LeRobot policies keep their own action queues and observation history, so this runner is *stepwise*:
 the rollout calls ``step()`` every control tick and LeRobot decides when to re-plan.
@@ -35,15 +36,11 @@ class LeRobotRunner:
             self.pre, self.post = make_pre_post_processors(
                 cfg, pretrained_path=path, preprocessor_overrides={"device_processor": {"device": device}})
         except Exception as e:  # noqa: BLE001 - pre-0.4 checkpoints ship no processor files
-            if not ref.get("dataset_repo"):
-                raise RuntimeError(f"{path} has no processor files; set dataset_repo for stats ({e})") from e
-            from lerobot.datasets.lerobot_dataset import LeRobotDatasetMetadata
-
-            stats = LeRobotDatasetMetadata(ref["dataset_repo"]).stats
+            stats = _checkpoint_stats(path) or _dataset_stats(ref.get("dataset_repo"))
+            if not stats:
+                raise RuntimeError(f"{path} has no processor files or normalisation buffers; "
+                                   f"set dataset_repo for stats ({e})") from e
             self.pre, self.post = make_pre_post_processors(cfg, dataset_stats=stats)
-            for p in self.pre.steps:
-                if hasattr(p, "device"):
-                    p.device = device
         self.key_map: dict[str, str] = dict(ref.get("key_map") or {})
         self.inputs = set(self.policy.config.input_features)
         self.device = device
@@ -84,3 +81,29 @@ class LeRobotRunner:
         with torch.inference_mode():
             chunk = self.policy.predict_action_chunk(batch)
         return self.post(chunk).float().cpu().numpy()
+
+
+def _checkpoint_stats(path: str) -> dict:
+    """Training-time normalisation stats stored as buffers in an old checkpoint's weights."""
+    from pathlib import Path
+
+    from safetensors.torch import load_file
+
+    try:
+        from lerobot.processor.migrate_policy_normalization import extract_normalization_stats
+    except ImportError:
+        return {}
+    f = Path(path) / "model.safetensors"
+    if not f.exists():
+        from huggingface_hub import hf_hub_download
+
+        f = Path(hf_hub_download(path, "model.safetensors"))
+    return extract_normalization_stats(load_file(str(f)))
+
+
+def _dataset_stats(repo: str | None) -> dict:
+    if not repo:
+        return {}
+    from lerobot.datasets.lerobot_dataset import LeRobotDatasetMetadata
+
+    return LeRobotDatasetMetadata(repo).stats
