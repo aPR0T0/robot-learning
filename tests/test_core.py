@@ -69,6 +69,17 @@ def test_embodiment_defaults_compose():
     assert load_yaml("reach2d", group="env")["type"] == "reach2d"
 
 
+def test_lerobot_keys_use_dataset_key_unless_key_map_says_otherwise():
+    from vlalab.data.lerobot_source import lerobot_keys
+
+    spec = EmbodimentSpec.load("pusht")  # observation.images.top has dataset_key: observation.image
+    keys = lerobot_keys({"repo_id": "lerobot/pusht"}, spec)
+    assert keys["observation.images.top"] == "observation.image"
+    assert keys["observation.state"] == "observation.state" and keys["action"] == "action"
+    mapped = lerobot_keys({"key_map": {"observation.images.cam": "observation.images.top"}}, spec)
+    assert mapped["observation.images.top"] == "observation.images.cam"
+
+
 # --------------------------------------------------------------------------------------- pipeline
 @dataclass
 class _C:
@@ -117,6 +128,21 @@ def test_cache_invalidates_downstream(tmp_path):
     assert calls == ["src", "dst", "src", "dst", "src", "dst"]
     _mk(tmp_path, 2).run()
     assert len(calls) == 6
+
+
+def test_dry_run_writes_nothing(tmp_path):
+    calls.clear()
+    _mk(tmp_path / "fresh", 1).run(dry_run=True)
+    assert calls == [] and not (tmp_path / "fresh").exists()
+    _mk(tmp_path, 1).run()
+    before = {f: (tmp_path / f).read_text() for f in ("pipeline.yaml", "summary.json")}
+    p = _mk(tmp_path, 3)
+    p.run(dry_run=True)  # a would re-run, and so would its child b: only reported
+    assert {n: s["status"] for n, s in p.summary["nodes"].items()} == {"a": "dry-run", "b": "dry-run"}
+    assert {f: (tmp_path / f).read_text() for f in before} == before and len(calls) == 2
+    p = _mk(tmp_path, 1)
+    p.run(dry_run=True)
+    assert {n: s["status"] for n, s in p.summary["nodes"].items()} == {"a": "cached", "b": "cached"}
 
 
 def test_cycle_and_bad_port_detected(tmp_path):

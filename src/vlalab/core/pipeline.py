@@ -156,6 +156,7 @@ class Pipeline:
             config.run_dir = config.run_dir.replace("${name}", config.name)
         self.cfg: PipelineConfig = config
         self.source: str | None = None
+        self.summary: dict[str, Any] | None = None  # status / seconds / metrics of the last run(), dry or not
 
     # ---- construction -------------------------------------------------------------------------
     @classmethod
@@ -319,8 +320,9 @@ class Pipeline:
             raise ConfigError("pipeline is invalid:\n  " + "\n  ".join(problems))
 
         run_dir = Path(self.cfg.run_dir)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        dump_yaml(self.to_dict(), run_dir / "pipeline.yaml")
+        if not dry_run:  # a dry run only reports: pipeline.yaml and summary.json keep describing the last real run
+            run_dir.mkdir(parents=True, exist_ok=True)
+            dump_yaml(self.to_dict(), run_dir / "pipeline.yaml")
         device = _resolve_device(self.cfg.device)
         emb = EmbodimentSpec.load(self.cfg.embodiment) if self.cfg.embodiment is not None else None
         env = load_group("env", self.cfg.env) if self.cfg.env is not None else None
@@ -358,6 +360,7 @@ class Pipeline:
                 else:
                     log.info("[%s] would run %s (after its inputs)", name, entry.key)
                     summary["nodes"][name] = {"status": "dry-run", "impl": entry.key}
+                    fps[name] = f"dry-run:{name}"  # a re-run gets a new run_id, so its children would re-run too
                     continue
             # upstream fingerprints chain in, so a re-trained parent invalidates its children even when
             # the checkpoint path it hands down is unchanged
@@ -384,6 +387,7 @@ class Pipeline:
             if dry_run:
                 log.info("[%s] would run %s", name, entry.key)
                 summary["nodes"][name] = {"status": "dry-run", "impl": entry.key}
+                fps[name] = f"dry-run:{name}"  # a re-run gets a new run_id, so its children would re-run too
                 continue
 
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -415,7 +419,9 @@ class Pipeline:
                                       **({"metrics": metrics} if metrics else {})}
             log.info("[%s] done in %.1fs", name, dt)
             (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
-        (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+        self.summary = summary
+        if not dry_run:
+            (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
         return results
 
     def _materialise_inputs(self, name: str, results: dict[str, dict], run_dir: Path) -> dict[str, Any]:

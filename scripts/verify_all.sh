@@ -9,7 +9,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 [[ -f .venv/bin/activate ]] && source .venv/bin/activate
 PIPES=("$@")
-((${#PIPES[@]})) || PIPES=(reach_smoke configs/pipeline/reach_heads.py mock_hardware pusht_lerobot reach_full aloha_lerobot)
+((${#PIPES[@]})) || PIPES=(reach_smoke configs/pipeline/reach_heads.py mock_hardware pusht_lerobot reach_full aloha_lerobot
+                           so100_lerobot)
 mkdir -p runs/_logs
 declare -A STATUS SECS
 for p in "${PIPES[@]}"; do

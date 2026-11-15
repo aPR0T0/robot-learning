@@ -31,6 +31,16 @@ def _inverse(key_map: dict[str, str]) -> dict[str, str]:
     return {v: k for k, v in (key_map or {}).items()}
 
 
+def lerobot_keys(ref: dict, spec) -> dict[str, str]:
+    """Spec key -> LeRobot key: the ref's ``key_map`` wins, then the embodiment's ``dataset_key``, else the
+    same name. (PushT's spec maps ``observation.images.top`` to ``observation.image`` this way, so a bare
+    ``{format: lerobot, repo_id: lerobot/pusht}`` ref works without a key_map.)"""
+    keys = {k: spec.dataset_key(k) for k in spec.observations}
+    keys["action"] = getattr(spec.action, "dataset_key", None) or "action"
+    keys.update(_inverse(ref.get("key_map", {})))
+    return keys
+
+
 class LeRobotChunkDataset:
     def __init__(self, ref: dict, spec, horizon: int, split: str = "train", val_fraction: float = 0.0, seed: int = 0):
         import torch  # noqa: F401
@@ -47,7 +57,7 @@ class LeRobotChunkDataset:
             n_val = max(1, int(len(eps) * val_fraction))
             eps = sorted(eps[:n_val] if split == "val" else eps[n_val:])
         fps = meta.fps
-        self.inv = _inverse(ref.get("key_map", {}))  # spec key -> lerobot key
+        self.inv = lerobot_keys(ref, spec)  # spec key -> lerobot key
         act_key = self.inv.get("action", "action")
         self.ds = LeRobotDataset(
             ref["repo_id"], root=ref.get("root"), episodes=eps,
@@ -88,7 +98,7 @@ def lerobot_stats(ref: dict, spec) -> dict[str, dict]:
     """Per-feature stats with quantiles, for the spec's low-dim keys + action."""
     from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
-    inv = _inverse(ref.get("key_map", {}))
+    inv = lerobot_keys(ref, spec)
     meta = _meta(ref["repo_id"], ref.get("root"))
     keys = [*spec.lowdim_keys, "action"]
     out: dict[str, dict] = {}

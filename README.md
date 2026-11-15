@@ -29,7 +29,7 @@ source .venv/bin/activate
 vlab run reach_smoke    # all eight stages, ~3 minutes on one L4
 ```
 
-`./setup.sh --minimal` skips LeRobot. CPU-only machines work too (`reach_smoke` takes ~10 min).
+`./setup.sh --minimal` skips LeRobot. CPU-only machines work too (`reach_smoke` takes ~23 min on 8 vCPUs).
 For a GCP VM: `scripts/gcp_vm.sh create && scripts/gcp_vm.sh setup` (1× L4, Ubuntu 24.04 with
 driver 580; `ZONE=...` if a zone is out of L4s; `stop` when done). `scripts/verify_all.sh` runs every
 pipeline back to back and prints a pass/fail table; `scripts/gcp_vm.sh pull` brings the metrics back.
@@ -112,7 +112,7 @@ last run, so running a pipeline again only redoes what changed. There are three 
 ```bash
 vlab run reach_smoke                                 # once: all 13 nodes, 3.5 min on an L4
 vlab run reach_smoke --only eval eval.episodes=500   # only this node; its inputs come from runs/reach_smoke
-vlab run reach_smoke --from post                     # post and every node after it in the run order
+vlab run reach_smoke --from post                     # post and every node after it (unchanged ones stay cached)
 vlab run reach_smoke --force vla                     # re-run vla even if cached (do this after editing code)
 vlab run reach_smoke --dry-run                       # show what would run and what is cached
 ```
@@ -485,8 +485,10 @@ nodes:
   eval: {impl: eval/sim_rollout, inputs: {policy: vla.policy}, params: {episodes: 100}}
 ```
 
-Override from the CLI: `vlab run my_experiment vla.train.steps=500 vla.policy.head.type=l1_regression`
-(`node.param` is shorthand for `nodes.node.params.param`). The same pipeline in Python:
+Override from the CLI: `vlab run my_experiment vla.train.steps=500 vla.policy.head.inference_steps=20`
+(`node.param` is shorthand for `nodes.node.params.param`). To switch the head's `type`, edit the YAML: an
+override merges into the `head` block this file sets, so `diffusion`'s `inference_steps` would stay behind
+([details](docs/configuring_yaml.md#cli-overrides)). The same pipeline in Python:
 
 ```python
 from vlalab import Pipeline

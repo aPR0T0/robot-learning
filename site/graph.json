@@ -2117,6 +2117,7 @@
   "configs/pipeline/reach_full.yaml",
   "configs/pipeline/reach_heads.py",
   "configs/pipeline/reach_smoke.yaml",
+  "configs/pipeline/so100_lerobot.yaml",
   "configs/presets/vla/bins_tiny.yaml",
   "configs/presets/vla/diffusion_tiny.yaml",
   "configs/presets/vla/flow_tiny.yaml",
@@ -2125,11 +2126,24 @@
   "configs/presets/vla/pi0_style.yaml",
   "configs/presets/vla/rt2_bins.yaml",
   "configs/presets/vla/smolvla_style.yaml",
+  "docs/adding_components.md",
+  "docs/configuring_yaml.md",
+  "docs/images/data_demos.gif",
+  "docs/images/deploy_loop.gif",
+  "docs/images/edge_steps.gif",
+  "docs/images/eval_sims.gif",
+  "docs/images/post_purple.gif",
+  "docs/images/rl_purple.gif",
+  "docs/images/so100_demos.jpg",
+  "docs/images/so100_offline.gif",
+  "docs/images/vla_eval.gif",
+  "docs/images/vlm_pointing.png",
   "docs/papers.yaml",
   "pyproject.toml",
   "scripts/build_site.py",
   "scripts/gcp_vm.sh",
   "scripts/publish_site.sh",
+  "scripts/readme_media.py",
   "scripts/verify_all.sh",
   "setup.sh",
   "site/app.js",
@@ -3712,6 +3726,151 @@
     },
     {
      "from": "gate",
+     "from_port": "policy",
+     "to": "deploy",
+     "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "so100_lerobot",
+   "file": "configs/pipeline/so100_lerobot.yaml",
+   "description": "",
+   "embodiment": "so100",
+   "env": null,
+   "nodes": [
+    {
+     "id": "data",
+     "impl": "data/lerobot_hub",
+     "preset": null,
+     "params": {
+      "repo_id": "lerobot/svla_so100_pickplace",
+      "episodes": 45,
+      "key_map": {
+       "observation.images.top": "observation.images.front"
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "held_out",
+     "impl": "data/lerobot_hub",
+     "preset": null,
+     "params": {
+      "repo_id": "lerobot/svla_so100_pickplace",
+      "episodes": [
+       45,
+       46,
+       47,
+       48,
+       49
+      ],
+      "key_map": {
+       "observation.images.top": "observation.images.front"
+      }
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "vla",
+     "impl": "vla/train",
+     "preset": "vla/smolvla_style",
+     "params": {
+      "train": {
+       "steps": 3000,
+       "batch_size": 64,
+       "num_workers": 6
+      }
+     },
+     "inputs": {
+      "dataset": "data.dataset"
+     },
+     "uses": [
+      "action_head/flow_matching",
+      "backbone/hf_vlm"
+     ]
+    },
+    {
+     "id": "eval",
+     "impl": "eval/offline",
+     "preset": null,
+     "params": {
+      "batches": 40,
+      "batch_size": 64
+     },
+     "inputs": {
+      "policy": "vla.policy",
+      "dataset": "held_out.dataset"
+     },
+     "uses": []
+    },
+    {
+     "id": "deploy",
+     "impl": "deploy/loop",
+     "preset": null,
+     "params": {
+      "driver": {
+       "type": "mock",
+       "task": "Pick up the cube and place it in the box."
+      },
+      "chunker": {
+       "type": "rtc_blend",
+       "blend": 5
+      },
+      "safety": [
+       {
+        "type": "rate_limit",
+        "max_delta": [
+         5,
+         8,
+         6,
+         4,
+         4,
+         7
+        ]
+       },
+       {
+        "type": "deadman",
+        "timeout_s": 0.5
+       }
+      ],
+      "episodes": 2,
+      "max_steps": 300
+     },
+     "inputs": {
+      "policy": "vla.policy"
+     },
+     "uses": [
+      "chunker/rtc_blend",
+      "driver/mock",
+      "safety/deadman",
+      "safety/rate_limit"
+     ]
+    }
+   ],
+   "edges": [
+    {
+     "from": "data",
+     "from_port": "dataset",
+     "to": "vla",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policy"
+    },
+    {
+     "from": "held_out",
+     "from_port": "dataset",
+     "to": "eval",
+     "to_port": "dataset"
+    },
+    {
+     "from": "vla",
      "from_port": "policy",
      "to": "deploy",
      "to_port": "policy"

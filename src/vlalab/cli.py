@@ -37,7 +37,7 @@ def cmd_run(a) -> int:
         p.cfg.run_dir = a.run_dir
     force = True if a.force == "all" else (a.force.split(",") if a.force else False)
     res = p.run(only=a.only.split(",") if a.only else None, start=a.start, force=force, dry_run=a.dry_run)
-    summary = json.loads((Path(p.cfg.run_dir) / "summary.json").read_text())
+    summary = p.summary
     print(f"\n== {p.cfg.name} -> {p.cfg.run_dir}")
     for n, s in summary["nodes"].items():
         m = s.get("metrics") or (res.get(n) or {}).get("metrics") or {}
