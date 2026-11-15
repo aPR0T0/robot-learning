@@ -1,5 +1,7 @@
 # Editing the YAML configs
 
+[← README](../README.md)
+
 Every run is configured by YAML, plus optional CLI overrides. This page covers the four kinds of
 config files, every key a pipeline file accepts, how params, presets and overrides merge, and the edits
 people make most often. To add *new code* (a new head, node, driver ...), see

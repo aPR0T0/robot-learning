@@ -92,7 +92,7 @@ class RTCBlendConfig:
           year=2025, url="https://arxiv.org/abs/2506.07339",
           summary="Latency-aware: skips actions consumed during inference and blends into the new chunk.")
 class RTCBlendChunker:
-    """Output-space approximation of RTC. True RTC inpaints during denoising (see docs/papers.md)."""
+    """Output-space approximation of RTC. True RTC inpaints during denoising (see docs/stages/08_deploy.md)."""
 
     def __init__(self, cfg: RTCBlendConfig, horizon: int = 16, default_execute: int = 8):
         self.n = min(cfg.execute or default_execute, horizon)

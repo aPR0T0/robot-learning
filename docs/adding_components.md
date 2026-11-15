@@ -1,5 +1,7 @@
 # Adding and registering a new component
 
+[← README](../README.md)
+
 Anything you can name in a pipeline is a Python class registered under a **kind** and a **name**. That
 covers a stage node (`vla/train`), an action head (`flow_matching`), a sensor encoder, a chunker, a
 safety filter, a robot driver, an env and a scripted expert. YAML refers to the class by name. The

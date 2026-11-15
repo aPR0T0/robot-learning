@@ -1,10 +1,10 @@
-"""Turn simulator videos and logs from finished runs into the captioned pictures used in the README.
+"""Turn simulator videos and logs from finished runs into the captioned pictures used in the docs.
 
     python scripts/readme_media.py                 # reads runs/, writes docs/images/
     python scripts/readme_media.py --runs runs --out docs/images --only data_demos,eval_sims
 
 Inputs (from `scripts/verify_all.sh`, or `vlab run` of each pipeline): reach_smoke, reach_full (its vlm node),
-pusht_lerobot, aloha_lerobot and so100_lerobot, plus runs/eval_post (the README's eval-one-checkpoint
+pusht_lerobot, aloha_lerobot and so100_lerobot, plus runs/eval_post (the eval-one-checkpoint
 example, `vlab run eval_post`) for the post-training and RL pictures. Captions (instructions, outcomes,
 success rates, latencies, action errors) come from the same runs' report.json / episodes.json /
 outputs.json, so the pictures always match the numbers. Pictures whose runs are missing are skipped.
@@ -161,7 +161,7 @@ def vla_eval(runs: Path, out: Path) -> None:
 def post_purple(runs: Path, out: Path) -> None:
     demos = load(runs / "reach_smoke/data_new/outputs.json")["outputs"]["metrics"]["kept"]
     a, ea, ra = rollout(runs, "reach_smoke/eval_zeroshot", 0)
-    b, eb, rb = rollout(runs, "eval_post/eval", 0)              # the README's eval-a-checkpoint example
+    b, eb, rb = rollout(runs, "eval_post/eval", 0)              # the eval-a-checkpoint example in docs/running.md
     assert ea["seed"] == eb["seed"], "expected the same eval seed in both reports"
     pa = panel(a, 288, "vla: pretrained only", [(f"“{ea['task']}”", INK), outcome(ea), (rate(ra), SUB)])
     pb = panel(b, 288, f"+ post-train on {demos} purple demos", [(f"“{eb['task']}”", INK), outcome(eb), (rate(rb), SUB)])
