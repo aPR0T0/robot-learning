@@ -33,7 +33,12 @@
     "data/scripted_sim",
     "data/lerobot_hub",
     "data/mixture",
-    "data/synthetic"
+    "data/synthetic",
+    "data/umi_demo",
+    "data/scene_masks",
+    "data/sam3d_scene",
+    "data/physics_match",
+    "data/steel_scene"
    ],
    "files": [
     "src/vlalab/core/spec.py",
@@ -42,7 +47,8 @@
     "src/vlalab/envs/base.py",
     "src/vlalab/envs/experts.py",
     "src/vlalab/envs/reach2d.py",
-    "src/vlalab/stages/data.py"
+    "src/vlalab/stages/data.py",
+    "src/vlalab/stages/real2sim.py"
    ]
   },
   {
@@ -1645,6 +1651,367 @@
    }
   },
   {
+   "key": "data/umi_demo",
+   "kind": "stage",
+   "name": "data/umi_demo",
+   "stage": "data",
+   "paper": "UMI",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2402.10329",
+   "summary": "One demonstration from a UMI session: SLAM poses in the table frame, gripper width, keyframes.",
+   "doc": "",
+   "class": "UmiDemo",
+   "file": "src/vlalab/stages/real2sim.py",
+   "line": 83,
+   "config": "UmiDemoConfig",
+   "params": [
+    {
+     "name": "session",
+     "type": "str",
+     "default": "f'{HOME_R2S}/data/umi_cup_example'",
+     "help": ""
+    },
+    {
+     "name": "url",
+     "type": "str",
+     "default": "https://real.stanford.edu/umi/data/example_demo_session/",
+     "help": "where the session's GoPro MP4s are listed (used when the session is missing)"
+    },
+    {
+     "name": "umi_dir",
+     "type": "str",
+     "default": "f'{HOME_R2S}/umi'",
+     "help": ""
+    },
+    {
+     "name": "python",
+     "type": "str",
+     "default": "f'{HOME_R2S}/umi/.venv/bin/python'",
+     "help": ""
+    },
+    {
+     "name": "demo",
+     "type": "str",
+     "default": "auto",
+     "help": "episode index in dataset_plan.pkl, or auto"
+    },
+    {
+     "name": "keyframe",
+     "type": "str",
+     "default": "pre_grasp",
+     "help": "start | pre_grasp | grasp | <frame>"
+    },
+    {
+     "name": "pre_grasp_s",
+     "type": "float",
+     "default": 0.75,
+     "help": ""
+    },
+    {
+     "name": "rect_fov",
+     "type": "float",
+     "default": 100.0,
+     "help": ""
+    },
+    {
+     "name": "rect_size",
+     "type": "int",
+     "default": 1024,
+     "help": ""
+    },
+    {
+     "name": "task",
+     "type": "str",
+     "default": "Put the espresso cup on the saucer.",
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "bundle": "dir: demo.json, trajectory.npz, keyframe_rect.png, preview.mp4"
+   }
+  },
+  {
+   "key": "data/scene_masks",
+   "kind": "stage",
+   "name": "data/scene_masks",
+   "stage": "data",
+   "paper": "SAM 3",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2511.16719",
+   "summary": "Text-prompted object masks on the demo keyframe (SAM 3; Grounding DINO + SAM 2.1 fallback).",
+   "doc": "",
+   "class": "SceneMasks",
+   "file": "src/vlalab/stages/real2sim.py",
+   "line": 121,
+   "config": "SceneMasksConfig",
+   "params": [
+    {
+     "name": "prompts",
+     "type": "list[Any]",
+     "default": [
+      "cup",
+      "saucer"
+     ],
+     "help": "text, or {text, name, max} per object"
+    },
+    {
+     "name": "backend",
+     "type": "str",
+     "default": "auto",
+     "help": "auto | sam3 | gdino_sam2"
+    },
+    {
+     "name": "model",
+     "type": "str",
+     "default": "facebook/sam3",
+     "help": ""
+    },
+    {
+     "name": "threshold",
+     "type": "float",
+     "default": 0.4,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "bundle": "UMI demo bundle"
+   },
+   "outputs": {
+    "masks": "dir: masks.json, one PNG per object, overlay.jpg"
+   }
+  },
+  {
+   "key": "data/sam3d_scene",
+   "kind": "stage",
+   "name": "data/sam3d_scene",
+   "stage": "data",
+   "paper": "SAM 3D Objects",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2511.16624",
+   "summary": "Metric 3D objects in the table frame from one keyframe; scale from the SLAM camera height.",
+   "doc": "",
+   "class": "Sam3dScene",
+   "file": "src/vlalab/stages/real2sim.py",
+   "line": 157,
+   "config": "Sam3dSceneConfig",
+   "params": [
+    {
+     "name": "method",
+     "type": "str",
+     "default": "sam3d",
+     "help": "sam3d | moge (the visible metric points only: measured, nothing generated)"
+    },
+    {
+     "name": "moge",
+     "type": "str",
+     "default": "Ruicheng/moge-vitl",
+     "help": ""
+    },
+    {
+     "name": "repo",
+     "type": "str",
+     "default": "f'{HOME_R2S}/sam-3d-objects'",
+     "help": ""
+    },
+    {
+     "name": "python",
+     "type": "str",
+     "default": "~/miniforge3/envs/sam3d-objects/bin/python",
+     "help": ""
+    },
+    {
+     "name": "checkpoint",
+     "type": "str",
+     "default": "checkpoints/hf/pipeline.yaml",
+     "help": ""
+    },
+    {
+     "name": "seed",
+     "type": "int",
+     "default": 42,
+     "help": ""
+    },
+    {
+     "name": "offload",
+     "type": "bool",
+     "default": true,
+     "help": "generators to CPU while decoding (GPUs under 32 GB)"
+    },
+    {
+     "name": "layout_refine",
+     "type": "bool",
+     "default": false,
+     "help": ""
+    },
+    {
+     "name": "scale_source",
+     "type": "str",
+     "default": "slam_table",
+     "help": "slam_table | moge"
+    }
+   ],
+   "inputs": {
+    "bundle": "UMI demo bundle",
+    "masks": "object masks"
+   },
+   "outputs": {
+    "scene": "dir: scene.json, objects/<name>.npz|glb, scene_points.npz"
+   }
+  },
+  {
+   "key": "data/physics_match",
+   "kind": "stage",
+   "name": "data/physics_match",
+   "stage": "data",
+   "paper": "YCB + ABO object databases",
+   "year": 2022,
+   "url": "https://amazon-berkeley-objects.s3.amazonaws.com/index.html",
+   "summary": "One-to-one match of each reconstructed object to a database object with known mass (CLIP + size).",
+   "doc": "",
+   "class": "PhysicsMatch",
+   "file": "src/vlalab/stages/real2sim.py",
+   "line": 209,
+   "config": "PhysicsMatchConfig",
+   "params": [
+    {
+     "name": "library",
+     "type": "list[dict]",
+     "default": "[{'type': 'ycb', 'root': f'{HOME_R2S}/data/ycb'}, {'type': 'abo', 'root': f'{HOME_R2S}/data/abo'}]",
+     "help": "sources: ycb {root} | abo {root, max_dim, max_mass, product_types} | steel_shelf {root} | json {path}"
+    },
+    {
+     "name": "clip_model",
+     "type": "str",
+     "default": "openai/clip-vit-large-patch14",
+     "help": ""
+    },
+    {
+     "name": "embed_cache",
+     "type": "str",
+     "default": "f'{HOME_R2S}/cache/library_clip.npy'",
+     "help": ""
+    },
+    {
+     "name": "w_appearance",
+     "type": "float",
+     "default": 0.6,
+     "help": "score = appearance^w x size^(1-w)"
+    },
+    {
+     "name": "size_sigma",
+     "type": "float",
+     "default": 0.35,
+     "help": "tolerance on log size ratios (0.35 ~ +-40%)"
+    },
+    {
+     "name": "min_score",
+     "type": "float",
+     "default": 0.5,
+     "help": "below this the match is not used for the mass"
+    },
+    {
+     "name": "fallback_density",
+     "type": "float",
+     "default": 700.0,
+     "help": ""
+    },
+    {
+     "name": "top_k",
+     "type": "int",
+     "default": 5,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scene": "reconstructed scene",
+    "bundle": "UMI demo bundle",
+    "masks": "object masks"
+   },
+   "outputs": {
+    "physics": "physics.json",
+    "library": "dir: library.json (+ hulls/ for Steel entries)"
+   }
+  },
+  {
+   "key": "data/steel_scene",
+   "kind": "stage",
+   "name": "data/steel_scene",
+   "stage": "data",
+   "paper": "Steel / Newton",
+   "year": 2026,
+   "url": "https://www.skild.ai/blogs/steel",
+   "summary": "The reconstructed 3D environment in Newton with the Steel solver; an FR3 plays the demo as joint angles.",
+   "doc": "",
+   "class": "SteelScene",
+   "file": "src/vlalab/stages/real2sim.py",
+   "line": 276,
+   "config": "SteelSceneConfig",
+   "params": [
+    {
+     "name": "joints",
+     "type": "str | None",
+     "default": null,
+     "help": "recorded joint angles (npz: t, q [N x 9], base [x, y, z, yaw]); default: IK from the demo"
+    },
+    {
+     "name": "base",
+     "type": "str",
+     "default": "auto",
+     "help": "auto, or [x, y, yaw_deg] in the table frame"
+    },
+    {
+     "name": "steel_dir",
+     "type": "str",
+     "default": "f'{HOME_R2S}/steel/examples'",
+     "help": ""
+    },
+    {
+     "name": "python",
+     "type": "str",
+     "default": "f'{HOME_R2S}/steel/examples/.venv/bin/python'",
+     "help": ""
+    },
+    {
+     "name": "solver",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "SolverSteel arguments over the defaults"
+    },
+    {
+     "name": "fps",
+     "type": "int",
+     "default": 60,
+     "help": ""
+    },
+    {
+     "name": "substeps",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "settle",
+     "type": "float",
+     "default": 0.5,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scene": "reconstructed scene",
+    "physics": "physics.json",
+    "bundle": "UMI demo bundle"
+   },
+   "outputs": {
+    "rollout": "dir: env.json, env/, joint_trajectory.npz/csv, replay.usd, replay_*.mp4, report.json"
+   }
+  },
+  {
    "key": "rl/filtered_bc",
    "kind": "stage",
    "name": "rl/filtered_bc",
@@ -2103,6 +2470,7 @@
   ".github/workflows/ci.yml",
   ".gitignore",
   "README.md",
+  "configs/README.md",
   "configs/embodiment/aloha.yaml",
   "configs/embodiment/aloha_tactile.yaml",
   "configs/embodiment/pusht.yaml",
@@ -2118,6 +2486,7 @@
   "configs/pipeline/reach_heads.py",
   "configs/pipeline/reach_smoke.yaml",
   "configs/pipeline/so100_lerobot.yaml",
+  "configs/pipeline/umi_real2sim.yaml",
   "configs/presets/vla/bins_tiny.yaml",
   "configs/presets/vla/diffusion_tiny.yaml",
   "configs/presets/vla/flow_tiny.yaml",
@@ -2126,6 +2495,7 @@
   "configs/presets/vla/pi0_style.yaml",
   "configs/presets/vla/rt2_bins.yaml",
   "configs/presets/vla/smolvla_style.yaml",
+  "docs/README.md",
   "docs/adding_components.md",
   "docs/configuring_yaml.md",
   "docs/getting_started.md",
@@ -2135,12 +2505,16 @@
   "docs/images/edge_steps.gif",
   "docs/images/eval_sims.gif",
   "docs/images/post_purple.gif",
+  "docs/images/real2sim/replay_side.png",
+  "docs/images/real2sim/scene_moge.png",
+  "docs/images/real2sim/scene_sam3d.png",
   "docs/images/rl_purple.gif",
   "docs/images/so100_demos.jpg",
   "docs/images/so100_offline.gif",
   "docs/images/vla_eval.gif",
   "docs/images/vlm_pointing.png",
   "docs/papers.yaml",
+  "docs/real2sim.md",
   "docs/references.bib",
   "docs/results.md",
   "docs/running.md",
@@ -2153,15 +2527,26 @@
   "docs/stages/07_edge.md",
   "docs/stages/08_deploy.md",
   "pyproject.toml",
+  "scripts/README.md",
   "scripts/build_site.py",
   "scripts/gcp_vm.sh",
   "scripts/publish_site.sh",
   "scripts/readme_media.py",
+  "scripts/real2sim/README.md",
+  "scripts/real2sim/fetch_umi_session.sh",
+  "scripts/real2sim/plot_scene.py",
+  "scripts/real2sim/render_ycb.py",
+  "scripts/real2sim/setup_physics_db.sh",
+  "scripts/real2sim/setup_sam3d.sh",
+  "scripts/real2sim/setup_steel.sh",
+  "scripts/real2sim/setup_umi.sh",
   "scripts/verify_all.sh",
   "setup.sh",
+  "site/README.md",
   "site/app.js",
   "site/index.html",
   "site/style.css",
+  "src/vlalab/README.md",
   "src/vlalab/__init__.py",
   "src/vlalab/cli.py",
   "src/vlalab/core/__init__.py",
@@ -2188,6 +2573,14 @@
   "src/vlalab/policy/normalize.py",
   "src/vlalab/policy/train.py",
   "src/vlalab/policy/vla.py",
+  "src/vlalab/real2sim/README.md",
+  "src/vlalab/real2sim/__init__.py",
+  "src/vlalab/real2sim/library.py",
+  "src/vlalab/real2sim/masks.py",
+  "src/vlalab/real2sim/workers/metric_depth.py",
+  "src/vlalab/real2sim/workers/robot_replay.py",
+  "src/vlalab/real2sim/workers/sam3d_scene.py",
+  "src/vlalab/real2sim/workers/umi_demo.py",
   "src/vlalab/runtime/__init__.py",
   "src/vlalab/runtime/chunking.py",
   "src/vlalab/runtime/drivers.py",
@@ -2200,9 +2593,11 @@
   "src/vlalab/stages/edge.py",
   "src/vlalab/stages/evaluate.py",
   "src/vlalab/stages/post_train.py",
+  "src/vlalab/stages/real2sim.py",
   "src/vlalab/stages/rl.py",
   "src/vlalab/stages/vla.py",
   "src/vlalab/stages/vlm.py",
+  "tests/README.md",
   "tests/test_core.py"
  ],
  "papers": {
@@ -3887,6 +4282,153 @@
      "from_port": "policy",
      "to": "deploy",
      "to_port": "policy"
+    }
+   ]
+  },
+  {
+   "name": "umi_real2sim",
+   "file": "configs/pipeline/umi_real2sim.yaml",
+   "description": "",
+   "embodiment": null,
+   "env": null,
+   "nodes": [
+    {
+     "id": "demo",
+     "impl": "data/umi_demo",
+     "preset": null,
+     "params": {
+      "demo": "auto",
+      "keyframe": "pre_grasp"
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "masks",
+     "impl": "data/scene_masks",
+     "preset": null,
+     "params": {
+      "prompts": [
+       "cup",
+       {
+        "text": "saucer",
+        "also": [
+         "small plate",
+         "plate"
+        ]
+       },
+       {
+        "text": "game controller",
+        "name": "controller"
+       },
+       {
+        "text": "candle jar",
+        "name": "jar",
+        "max": 2
+       }
+      ]
+     },
+     "inputs": {
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "scene",
+     "impl": "data/sam3d_scene",
+     "preset": null,
+     "params": {
+      "method": "sam3d",
+      "offload": true
+     },
+     "inputs": {
+      "bundle": "demo.bundle",
+      "masks": "masks.masks"
+     },
+     "uses": []
+    },
+    {
+     "id": "physics",
+     "impl": "data/physics_match",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scene": "scene.scene",
+      "bundle": "demo.bundle",
+      "masks": "masks.masks"
+     },
+     "uses": []
+    },
+    {
+     "id": "sim",
+     "impl": "data/steel_scene",
+     "preset": null,
+     "params": {
+      "fps": 60,
+      "substeps": 4
+     },
+     "inputs": {
+      "scene": "scene.scene",
+      "physics": "physics.physics",
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "masks",
+     "to_port": "bundle"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "scene",
+     "to_port": "bundle"
+    },
+    {
+     "from": "masks",
+     "from_port": "masks",
+     "to": "scene",
+     "to_port": "masks"
+    },
+    {
+     "from": "scene",
+     "from_port": "scene",
+     "to": "physics",
+     "to_port": "scene"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "physics",
+     "to_port": "bundle"
+    },
+    {
+     "from": "masks",
+     "from_port": "masks",
+     "to": "physics",
+     "to_port": "masks"
+    },
+    {
+     "from": "scene",
+     "from_port": "scene",
+     "to": "sim",
+     "to_port": "scene"
+    },
+    {
+     "from": "physics",
+     "from_port": "physics",
+     "to": "sim",
+     "to_port": "physics"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "sim",
+     "to_port": "bundle"
     }
    ]
   }

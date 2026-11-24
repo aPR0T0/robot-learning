@@ -1,0 +1,29 @@
+# Real-to-sim from one UMI demonstration (the single-demo research track, S1-S5).
+#   UMI session (SLAM) -> one demo -> object masks -> SAM 3D metric objects -> mass from a matched database object
+#   -> the 3D environment in Newton with Skild AI's Steel solver, a Franka FR3 playing the demo as joint angles
+#   (from IK on the demo's SLAM poses, or `nodes.sim.params.joints=<npz>` for angles recorded on a robot).
+# Default data: the UMI authors' example session (cup on saucer, 2.7K fisheye GoPro, 5 demos).
+# Needs the real2sim envs: scripts/real2sim/setup_{umi,sam3d,steel}.sh (see docs/real2sim.md).
+# Without SAM 3D's gated weights: `vlab run umi_real2sim scene.method=moge` (measured geometry only).
+name: umi_real2sim
+nodes:
+  demo:                            # one demo: metric TCP poses in the table-tag frame, gripper width, keyframes
+    impl: data/umi_demo
+    params: {demo: auto, keyframe: pre_grasp}
+  masks:                           # objects to rebuild, by text prompt
+    impl: data/scene_masks
+    inputs: {bundle: demo.bundle}
+    params:
+      prompts: [cup, {text: saucer, also: [small plate, plate]}, {text: game controller, name: controller},
+                {text: candle jar, name: jar, max: 2}]
+  scene:                           # SAM 3D Objects, metric scale from the SLAM camera height above the table
+    impl: data/sam3d_scene
+    inputs: {bundle: demo.bundle, masks: masks.masks}
+    params: {method: sam3d, offload: true}
+  physics:                         # mass: one-to-one match to a database object (YCB measured, ABO listings)
+    impl: data/physics_match
+    inputs: {scene: scene.scene, bundle: demo.bundle, masks: masks.masks}
+  sim:                             # the 3D environment in Newton + Steel, an FR3 playing the demo as joint angles
+    impl: data/steel_scene
+    inputs: {scene: scene.scene, physics: physics.physics, bundle: demo.bundle}
+    params: {fps: 60, substeps: 4}

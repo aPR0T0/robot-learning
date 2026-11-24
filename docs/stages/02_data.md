@@ -21,6 +21,7 @@ colour the policy never sees in pretraining (purple), kept for post-training.*
 | `data/lerobot_hub` | any LeRobot dataset on the Hub (PushT, ALOHA, SO-100, DROID, LIBERO ...) or a local one via `root:` |
 | `data/mixture` | weighted mixture of datasets (co-training, cross-embodiment) |
 | `data/synthetic` | random data shaped like the embodiment spec, for hardware bring-up |
+| `data/umi_demo` → `data/scene_masks` → `data/sam3d_scene` → `data/physics_match` → `data/steel_scene` | real-to-sim from one UMI demo: SLAM poses, masks, metric SAM 3D objects, masses from YCB / ABO, the scene in Newton with Steel ([guide](../real2sim.md)) |
 
 | component | what it is |
 |---|---|
@@ -83,7 +84,7 @@ take one ref or a list of refs.
 | Weighted mixtures / co-training: Open X-Embodiment [[2](#ref-2)], π0 [[3](#ref-3)] | native | `data/mixture` |
 | Spec-shaped synthetic data for hardware bring-up | native | `data/synthetic` |
 | ALOHA [[6](#ref-6)] / GELLO [[8](#ref-8)] / SO-100 [[9](#ref-9)] leader-follower teleop recording | via LeRobot | `lerobot-record`, then `data/lerobot_hub` with `root:` |
-| UMI handheld-gripper demos [[12](#ref-12)] | planned | open slot |
+| UMI handheld-gripper demos [[12](#ref-12)] | native | `data/umi_demo` (one demo, UMI's SLAM pipeline); the rest of real-to-sim in [real2sim.md](../real2sim.md) |
 | MimicGen-style demo multiplication in sim [[13](#ref-13)] | planned | open slot |
 
 *native*: implemented in this repo. *via LeRobot*: runs through the LeRobot adapters. *planned*: an

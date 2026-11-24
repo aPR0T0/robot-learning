@@ -31,6 +31,9 @@ peft = ["peft>=0.18"]
 # Edge optimisation extras: ONNX export + runtime and torchao quantisation.
 edge = ["onnx>=1.16", "onnxruntime>=1.16", "torchao>=0.12"]
 dev = ["pytest>=8", "ruff>=0.6"]
+# Real-to-sim (UMI demo -> SAM 3D scene -> Steel physics library -> Newton/Steel): what the vlab side needs.
+# SAM 3D, UMI's SLAM and Newton/Steel run in their own envs: scripts/real2sim/setup_*.sh.
+real2sim = ["trimesh>=4.4", "scipy>=1.11", "opencv-python-headless>=4.9"]
 
 [project.scripts]
 vlab = "vlalab.cli:main"
