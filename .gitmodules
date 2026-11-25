@@ -1,0 +1,140 @@
+# Upstream code for every paper vlalab implements, wraps or runs, pinned to the commit it was checked
+# against. Shallow; nothing is fetched by a plain clone. See thirdparty/README.md.
+
+# 01 VLM
+[submodule "thirdparty/smollm"]
+	path = thirdparty/smollm
+	url = https://github.com/huggingface/smollm
+	shallow = true
+[submodule "thirdparty/robotics_transformer"]
+	path = thirdparty/robotics_transformer
+	url = https://github.com/google-research/robotics_transformer
+	shallow = true
+
+# 02 data
+[submodule "thirdparty/lerobot"]
+	path = thirdparty/lerobot
+	url = https://github.com/huggingface/lerobot
+	shallow = true
+[submodule "thirdparty/open_x_embodiment"]
+	path = thirdparty/open_x_embodiment
+	url = https://github.com/google-deepmind/open_x_embodiment
+	shallow = true
+
+# 03 VLA and 04 post-training
+[submodule "thirdparty/openpi"]
+	path = thirdparty/openpi
+	url = https://github.com/Physical-Intelligence/openpi
+	shallow = true
+[submodule "thirdparty/diffusion_policy"]
+	path = thirdparty/diffusion_policy
+	url = https://github.com/real-stanford/diffusion_policy
+	shallow = true
+[submodule "thirdparty/octo"]
+	path = thirdparty/octo
+	url = https://github.com/octo-models/octo
+	shallow = true
+[submodule "thirdparty/openvla"]
+	path = thirdparty/openvla
+	url = https://github.com/openvla/openvla
+	shallow = true
+[submodule "thirdparty/openvla-oft"]
+	path = thirdparty/openvla-oft
+	url = https://github.com/moojink/openvla-oft
+	shallow = true
+[submodule "thirdparty/act"]
+	path = thirdparty/act
+	url = https://github.com/tonyzhaozh/act
+	shallow = true
+[submodule "thirdparty/Isaac-GR00T"]
+	path = thirdparty/Isaac-GR00T
+	url = https://github.com/NVIDIA/Isaac-GR00T
+	shallow = true
+[submodule "thirdparty/X-VLA"]
+	path = thirdparty/X-VLA
+	url = https://github.com/2toinf/X-VLA
+	shallow = true
+[submodule "thirdparty/fourier-feature-networks"]
+	path = thirdparty/fourier-feature-networks
+	url = https://github.com/tancik/fourier-feature-networks
+	shallow = true
+
+# 05 RL
+[submodule "thirdparty/dsrl"]
+	path = thirdparty/dsrl
+	url = https://github.com/ajwagen/dsrl
+	shallow = true
+[submodule "thirdparty/hil-serl"]
+	path = thirdparty/hil-serl
+	url = https://github.com/rail-berkeley/hil-serl
+	shallow = true
+
+# 06 evaluation
+[submodule "thirdparty/gym-pusht"]
+	path = thirdparty/gym-pusht
+	url = https://github.com/huggingface/gym-pusht
+	shallow = true
+[submodule "thirdparty/gym-aloha"]
+	path = thirdparty/gym-aloha
+	url = https://github.com/huggingface/gym-aloha
+	shallow = true
+[submodule "thirdparty/LIBERO"]
+	path = thirdparty/LIBERO
+	url = https://github.com/Lifelong-Robot-Learning/LIBERO
+	shallow = true
+[submodule "thirdparty/SimplerEnv"]
+	path = thirdparty/SimplerEnv
+	url = https://github.com/simpler-env/SimplerEnv
+	shallow = true
+
+# 08 deploy
+[submodule "thirdparty/real-time-chunking-kinetix"]
+	path = thirdparty/real-time-chunking-kinetix
+	url = https://github.com/Physical-Intelligence/real-time-chunking-kinetix
+	shallow = true
+
+# real-to-sim (umi_real2sim)
+[submodule "thirdparty/universal_manipulation_interface"]
+	path = thirdparty/universal_manipulation_interface
+	url = https://github.com/real-stanford/universal_manipulation_interface
+	shallow = true
+[submodule "thirdparty/sam3"]
+	path = thirdparty/sam3
+	url = https://github.com/facebookresearch/sam3
+	shallow = true
+[submodule "thirdparty/sam2"]
+	path = thirdparty/sam2
+	url = https://github.com/facebookresearch/sam2
+	shallow = true
+[submodule "thirdparty/GroundingDINO"]
+	path = thirdparty/GroundingDINO
+	url = https://github.com/IDEA-Research/GroundingDINO
+	shallow = true
+[submodule "thirdparty/sam-3d-objects"]
+	path = thirdparty/sam-3d-objects
+	url = https://github.com/facebookresearch/sam-3d-objects
+	shallow = true
+[submodule "thirdparty/MoGe"]
+	path = thirdparty/MoGe
+	url = https://github.com/microsoft/MoGe
+	shallow = true
+[submodule "thirdparty/CLIP"]
+	path = thirdparty/CLIP
+	url = https://github.com/openai/CLIP
+	shallow = true
+[submodule "thirdparty/ycb_dataset"]
+	path = thirdparty/ycb_dataset
+	url = https://github.com/elpis-lab/ycb_dataset
+	shallow = true
+[submodule "thirdparty/newton"]
+	path = thirdparty/newton
+	url = https://github.com/skild-ai/newton
+	shallow = true
+[submodule "thirdparty/newton-assets"]
+	path = thirdparty/newton-assets
+	url = https://github.com/newton-physics/newton-assets
+	shallow = true
+[submodule "thirdparty/steel"]
+	path = thirdparty/steel
+	url = https://github.com/skild-ai/steel
+	shallow = true

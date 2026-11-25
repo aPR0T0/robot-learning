@@ -71,7 +71,7 @@ that backbone, including the fine-tuned weights ([03 VLA](03_vla.md)).
 | RT-1 FiLM CNN + tokens, from scratch [[12](#ref-12), [11](#ref-11)] | native | `backbone/tiny_cnn` |
 | Embodied-reasoning fine-tune: Gemini Robotics-ER [[2](#ref-2)], π0.5 pointing data [[3](#ref-3)] | native | `vlm/er_finetune` |
 | Prismatic fused DINOv2 + SigLIP encoder, as used by OpenVLA [[13](#ref-13), [10](#ref-10)] | planned | open slot |
-| Eagle 2 backbone of GR00T N1 [[14](#ref-14), [15](#ref-15)] | via LeRobot | `vla/lerobot_train` with `policy_type: groot` |
+| Eagle 2 backbone of GR00T N1 / N1.5 [[14](#ref-14), [15](#ref-15)]; LeRobot 0.7 runs GR00T N1.7, whose backbone is Cosmos-Reason2 | via LeRobot | `vla/lerobot_train` with `policy_type: groot` |
 
 *native*: implemented in this repo. *via LeRobot*: runs through the LeRobot [[16](#ref-16)] adapters.
 *planned*: an open slot; `vlab new vlm <name>` scaffolds it ([adding components](../adding_components.md)).

@@ -181,14 +181,34 @@ def scan_configs(comp_keys: set[str]) -> dict:
     return out
 
 
-def file_list() -> list[str]:
+def thirdparty() -> dict[str, dict]:
+    """thirdparty/<name> submodules: upstream URL and the pinned commit (from the index, so it needs git)."""
+    out: dict[str, dict] = {}
+    try:
+        cfg = subprocess.run(["git", "config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.url$"],
+                             cwd=ROOT, capture_output=True, text=True, check=True).stdout
+        pins = subprocess.run(["git", "ls-files", "-s", "thirdparty"], cwd=ROOT, capture_output=True, text=True,
+                              check=True).stdout
+    except Exception:  # noqa: BLE001
+        return out
+    rev = {line.split("\t")[1]: line.split()[1] for line in pins.splitlines() if line.startswith("160000 ")}
+    for line in cfg.splitlines():
+        key, url = line.split(maxsplit=1)
+        path = key[len("submodule."):-len(".url")]
+        if path.startswith("thirdparty/") and path in rev:
+            out[path.split("/", 1)[1]] = {"url": url.removesuffix(".git"), "rev": rev[path]}
+    return out
+
+
+def file_list(submodules: dict[str, dict]) -> list[str]:
     try:
         files = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=ROOT,
                                capture_output=True, text=True, check=True).stdout.split()
     except Exception:  # noqa: BLE001
         files = [str(p.relative_to(ROOT)) for p in ROOT.rglob("*") if p.is_file()]
     skip = (".venv", "runs/", "site/graph.json", "site/results.json", "uv.lock", ".git/")
-    return sorted(f for f in files if not f.startswith(skip) and "__pycache__" not in f)
+    subs = {f"thirdparty/{n}" for n in submodules}  # linked from the paper catalogue instead
+    return sorted(f for f in files if not f.startswith(skip) and "__pycache__" not in f and f not in subs)
 
 
 def collect_results(runs: Path) -> dict:
@@ -218,7 +238,8 @@ def main() -> None:
     comps = scan_components()
     keys = {c["key"] for c in comps}
     cfgs = scan_configs(keys)
-    files = file_list()
+    tp = thirdparty()
+    files = file_list(tp)
     stages = []
     for sid, num, title, sub, cat in STAGES:
         mine = [c for c in comps if c["stage"] == sid]
@@ -226,8 +247,16 @@ def main() -> None:
         stages.append({"id": sid, "n": num, "title": title, "sub": sub, "cat": cat,
                        "components": [c["key"] for c in mine], "files": rel})
     papers = yaml.safe_load((ROOT / "docs/papers.yaml").read_text())
+    for rows in papers.values():
+        for p in rows:
+            code = p.get("code") or []
+            code = [code] if isinstance(code, str) else code
+            missing = [c for c in code if c not in tp]
+            if missing and tp:
+                raise SystemExit(f"docs/papers.yaml: {p['name']}: no thirdparty/ submodule {missing}")
+            p["code"] = [{"name": c, **tp[c]} for c in code if c in tp]
     graph = {"repo": a.repo, "branch": a.branch, "stages": stages, "components": comps, "core": CORE,
-             "files": files, "papers": papers, **cfgs}
+             "files": files, "papers": papers, "thirdparty": tp, **cfgs}
     out = ROOT / "site/graph.json"
     out.write_text(json.dumps(graph, indent=1, default=str))
     print(f"wrote {out}: {len(comps)} components, {len(cfgs['pipelines'])} pipelines, {len(files)} files")

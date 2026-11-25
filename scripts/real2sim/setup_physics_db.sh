@@ -5,9 +5,11 @@
 #   scripts/real2sim/setup_physics_db.sh [ROOT]      (default ROOT=~/real2sim)
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
+source "$HERE/common.sh"
 ROOT=${1:-$HOME/real2sim}
+YCB_REV=${YCB_REV:-$(pinned ycb_dataset)}   # default: the thirdparty/ submodule's commit
 mkdir -p "$ROOT/data/abo" && cd "$ROOT/data"
-[ -d ycb/.git ] || git clone -q --depth 1 https://github.com/elpis-lab/ycb_dataset ycb
+clone_at ycb https://github.com/elpis-lab/ycb_dataset "$YCB_REV" --depth 1
 cd abo
 S3=https://amazon-berkeley-objects.s3.amazonaws.com/archives
 [ -d listings ] || { aria2c -q -x 8 "$S3/abo-listings.tar" && tar -xf abo-listings.tar && rm abo-listings.tar; }

@@ -145,7 +145,11 @@ scripts/real2sim/setup_sam3d.sh        # SAM 3D Objects conda env (uv for the pi
 scripts/real2sim/setup_physics_db.sh   # YCB + ABO (listings, 3 GB of images), YCB renders
 ```
 
-Everything lands in `~/real2sim`. SAM 3D's and SAM 3's weights are gated: request access to
+Everything lands in `~/real2sim`. Each repo is checked out at the commit its submodule in
+[thirdparty/](../thirdparty/README.md) pins: the one this page's results came from (UMI `d095ba9`, SAM 3D Objects
+`f91db41`, Steel `v0.2.0`, YCB `9e8c648`). `UMI_REV`, `SAM3D_REV`, `STEEL_REV` or `YCB_REV` overrides one, e.g.
+`STEEL_REV=main`. Outside a git checkout (a copy without `.git`) there is no pin to read and each repo stays at the
+commit it already has. SAM 3D's and SAM 3's weights are gated: request access to
 [facebook/sam-3d-objects](https://huggingface.co/facebook/sam-3d-objects) and
 [facebook/sam3](https://huggingface.co/facebook/sam3) and log in with a token that can read them (a fine-grained
 token needs "Read access to contents of all public gated repos you can access"); `setup_sam3d.sh` then downloads

@@ -3,12 +3,12 @@
 # (ORB-SLAM3, OpenICC for GoPro IMU) its pipeline calls.
 #   scripts/real2sim/setup_umi.sh [ROOT]        (default ROOT=~/real2sim)
 set -euo pipefail
+source "$(dirname "$0")/common.sh"
 ROOT=${1:-$HOME/real2sim}
-UMI_REV=${UMI_REV:-main}
+UMI_REV=${UMI_REV:-$(pinned universal_manipulation_interface)}   # default: the thirdparty/ submodule's commit
 mkdir -p "$ROOT" && cd "$ROOT"
 export PATH="$HOME/.local/bin:$PATH"
-[ -d umi ] || git clone -q https://github.com/real-stanford/universal_manipulation_interface umi
-git -C umi checkout -q "$UMI_REV"
+clone_at umi https://github.com/real-stanford/universal_manipulation_interface "$UMI_REV"
 cd umi
 # The UMI conda env is a full training env; the SLAM pipeline (00-07) needs only these.
 uv venv -q --python 3.10 .venv

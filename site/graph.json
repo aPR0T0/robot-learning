@@ -2469,6 +2469,8 @@
  "files": [
   ".github/workflows/ci.yml",
   ".gitignore",
+  ".gitmodules",
+  "AGENTS.md",
   "README.md",
   "configs/README.md",
   "configs/embodiment/aloha.yaml",
@@ -2533,6 +2535,7 @@
   "scripts/publish_site.sh",
   "scripts/readme_media.py",
   "scripts/real2sim/README.md",
+  "scripts/real2sim/common.sh",
   "scripts/real2sim/fetch_umi_session.sh",
   "scripts/real2sim/plot_scene.py",
   "scripts/real2sim/render_ycb.py",
@@ -2598,7 +2601,8 @@
   "src/vlalab/stages/vla.py",
   "src/vlalab/stages/vlm.py",
   "tests/README.md",
-  "tests/test_core.py"
+  "tests/test_core.py",
+  "thirdparty/README.md"
  ],
  "papers": {
   "vlm": [
@@ -2607,41 +2611,63 @@
     "year": 2025,
     "status": "native",
     "key": "backbone/hf_vlm",
-    "url": "https://arxiv.org/abs/2504.05299"
+    "url": "https://arxiv.org/abs/2504.05299",
+    "code": [
+     {
+      "name": "smollm",
+      "url": "https://github.com/huggingface/smollm",
+      "rev": "438be18dae658a638f3a6976fdf5190bb6d68619"
+     }
+    ]
    },
    {
-    "name": "Any HF image-text-to-text VLM (Qwen2.5-VL",
-    "PaliGemma 2": null,
-    "Idefics3)": null,
+    "name": "Any HF image-text-to-text VLM (Qwen2.5-VL, PaliGemma 2, Idefics3)",
     "year": 2025,
     "status": "native",
-    "key": "backbone/hf_vlm"
+    "key": "backbone/hf_vlm",
+    "code": []
    },
    {
     "name": "RT-1 FiLM CNN + tokens (from scratch)",
     "year": 2022,
     "status": "native",
     "key": "backbone/tiny_cnn",
-    "url": "https://arxiv.org/abs/2212.06817"
+    "url": "https://arxiv.org/abs/2212.06817",
+    "code": [
+     {
+      "name": "robotics_transformer",
+      "url": "https://github.com/google-research/robotics_transformer",
+      "rev": "4569641b8111f3f402c32d8e24becd2a6e952ecc"
+     }
+    ]
    },
    {
     "name": "Embodied-reasoning fine-tune (Gemini Robotics-ER / pi0.5 pointing data)",
     "year": 2025,
     "status": "native",
     "key": "vlm/er_finetune",
-    "url": "https://arxiv.org/abs/2503.20020"
+    "url": "https://arxiv.org/abs/2503.20020",
+    "code": []
    },
    {
     "name": "Prismatic fused DINOv2 + SigLIP encoder (OpenVLA)",
     "year": 2024,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2402.07865"
+    "url": "https://arxiv.org/abs/2402.07865",
+    "code": []
    },
    {
-    "name": "Eagle-2 backbone (GR00T N1)",
+    "name": "GR00T backbone: Eagle 2 (N1 / N1.5), Cosmos-Reason2 (N1.7, what LeRobot 0.7 runs)",
     "year": 2025,
     "status": "lerobot",
-    "key": "groot"
+    "key": "groot",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    }
   ],
   "vla": [
@@ -2650,161 +2676,384 @@
     "year": 2024,
     "status": "native",
     "key": "action_head/flow_matching",
-    "url": "https://arxiv.org/abs/2410.24164"
+    "url": "https://arxiv.org/abs/2410.24164",
+    "code": [
+     {
+      "name": "openpi",
+      "url": "https://github.com/Physical-Intelligence/openpi",
+      "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
+     }
+    ]
    },
    {
     "name": "Diffusion Policy / Octo diffusion head",
     "year": 2023,
     "status": "native",
     "key": "action_head/diffusion",
-    "url": "https://arxiv.org/abs/2303.04137"
+    "url": "https://arxiv.org/abs/2303.04137",
+    "code": [
+     {
+      "name": "diffusion_policy",
+      "url": "https://github.com/real-stanford/diffusion_policy",
+      "rev": "5ba07ac6661db573af695b419a7947ecb704690f"
+     },
+     {
+      "name": "octo",
+      "url": "https://github.com/octo-models/octo",
+      "rev": "241fb3514b7c40957a86d869fecb7c7fc353f540"
+     }
+    ]
    },
    {
     "name": "OpenVLA-OFT parallel decoding + L1",
     "year": 2025,
     "status": "native",
     "key": "action_head/l1_regression",
-    "url": "https://arxiv.org/abs/2502.19645"
+    "url": "https://arxiv.org/abs/2502.19645",
+    "code": [
+     {
+      "name": "openvla-oft",
+      "url": "https://github.com/moojink/openvla-oft",
+      "rev": "e4287e94541f459edc4feabc4e181f537cd569a8"
+     }
+    ]
    },
    {
     "name": "RT-2 / OpenVLA 256-bin action tokens",
     "year": 2023,
     "status": "native",
     "key": "action_head/discrete_bins",
-    "url": "https://arxiv.org/abs/2307.15818"
+    "url": "https://arxiv.org/abs/2307.15818",
+    "code": [
+     {
+      "name": "openvla",
+      "url": "https://github.com/openvla/openvla",
+      "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
+     }
+    ]
    },
    {
     "name": "SmolVLA (half-depth VLM + flow expert)",
     "year": 2025,
     "status": "native",
     "key": "presets/vla/smolvla_style",
-    "url": "https://arxiv.org/abs/2506.01844"
+    "url": "https://arxiv.org/abs/2506.01844",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
     "name": "SmolVLA (official weights)",
     "year": 2025,
     "status": "lerobot",
-    "key": "smolvla"
+    "key": "smolvla",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
     "name": "ACT (action chunking transformer)",
     "year": 2023,
     "status": "lerobot",
     "key": "act",
-    "url": "https://arxiv.org/abs/2304.13705"
+    "url": "https://arxiv.org/abs/2304.13705",
+    "code": [
+     {
+      "name": "act",
+      "url": "https://github.com/tonyzhaozh/act",
+      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
+     }
+    ]
    },
    {
     "name": "pi0 / pi0.5 (official weights)",
     "year": 2025,
     "status": "lerobot",
-    "key": "pi0 / pi05"
+    "key": "pi0 / pi05",
+    "code": [
+     {
+      "name": "openpi",
+      "url": "https://github.com/Physical-Intelligence/openpi",
+      "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
+     }
+    ]
    },
    {
-    "name": "GR00T N1.5",
+    "name": "GR00T N1.7 (LeRobot 0.7 dropped N1.5)",
     "year": 2025,
     "status": "lerobot",
     "key": "groot",
-    "url": "https://arxiv.org/abs/2503.14734"
+    "url": "https://arxiv.org/abs/2503.14734",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
     "name": "X-VLA",
     "year": 2025,
     "status": "lerobot",
-    "key": "xvla"
+    "key": "xvla",
+    "url": "https://arxiv.org/abs/2510.10274",
+    "code": [
+     {
+      "name": "X-VLA",
+      "url": "https://github.com/2toinf/X-VLA",
+      "rev": "6c4ecfb8be458ae7c0c96094e4b0add4174f4fe2"
+     }
+    ]
+   },
+   {
+    "name": "Fourier-feature state encoder",
+    "year": 2020,
+    "status": "native",
+    "key": "obs_encoder/fourier",
+    "url": "https://arxiv.org/abs/2006.10739",
+    "code": [
+     {
+      "name": "fourier-feature-networks",
+      "url": "https://github.com/tancik/fourier-feature-networks",
+      "rev": "9c110c31ce3794222fff408ac27bbf74d8fe8993"
+     }
+    ]
    },
    {
     "name": "FAST action tokenizer (DCT + BPE)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2501.09747"
+    "url": "https://arxiv.org/abs/2501.09747",
+    "code": []
    },
    {
     "name": "Knowledge insulation (stop action-expert gradients into the VLM)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2505.23705"
+    "url": "https://arxiv.org/abs/2505.23705",
+    "code": []
    },
    {
     "name": "Joint (blockwise-causal) attention prefix instead of cross-attention",
     "year": 2024,
-    "status": "planned"
+    "status": "planned",
+    "code": []
    }
   ],
   "data": [
    {
     "name": "Scripted sim demos with noise / hesitation / recovery knobs",
     "status": "native",
-    "key": "data/scripted_sim"
+    "key": "data/scripted_sim",
+    "code": []
    },
    {
-    "name": "LeRobotDataset hub sources (ALOHA",
-    "PushT": null,
-    "SO-100": null,
-    "DROID": null,
-    "LIBERO)": null,
+    "name": "LeRobotDataset hub sources (ALOHA, PushT, SO-100, DROID, LIBERO)",
     "year": 2024,
     "status": "native",
-    "key": "data/lerobot_hub"
+    "key": "data/lerobot_hub",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
-    "name": "Weighted mixtures / co-training (Open X-Embodiment",
-    "pi0)": null,
+    "name": "Weighted mixtures / co-training (Open X-Embodiment, pi0)",
     "year": 2023,
     "status": "native",
     "key": "data/mixture",
-    "url": "https://arxiv.org/abs/2310.08864"
+    "url": "https://arxiv.org/abs/2310.08864",
+    "code": [
+     {
+      "name": "open_x_embodiment",
+      "url": "https://github.com/google-deepmind/open_x_embodiment",
+      "rev": "9eeb68b989efbcf474e8fb9019e01d02b962a604"
+     }
+    ]
    },
    {
     "name": "Spec-shaped synthetic data for hardware bring-up",
     "status": "native",
-    "key": "data/synthetic"
+    "key": "data/synthetic",
+    "code": []
    },
    {
     "name": "ALOHA / GELLO / SO-100 leader-follower teleop recording",
     "year": 2023,
     "status": "lerobot",
-    "key": "lerobot-record"
+    "key": "lerobot-record",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
-    "name": "UMI handheld-gripper demos",
+    "name": "UMI handheld-gripper demos (SLAM poses of one demo)",
     "year": 2024,
-    "status": "planned",
-    "url": "https://arxiv.org/abs/2402.10329"
+    "status": "native",
+    "key": "data/umi_demo",
+    "url": "https://arxiv.org/abs/2402.10329",
+    "code": [
+     {
+      "name": "universal_manipulation_interface",
+      "url": "https://github.com/real-stanford/universal_manipulation_interface",
+      "rev": "d095ba9590df789df5189eea5ee7e431689038a6"
+     }
+    ]
+   },
+   {
+    "name": "SAM 3 text-prompted masks (Grounding DINO + SAM 2.1 fallback)",
+    "year": 2025,
+    "status": "native",
+    "key": "data/scene_masks",
+    "url": "https://arxiv.org/abs/2511.16719",
+    "code": [
+     {
+      "name": "sam3",
+      "url": "https://github.com/facebookresearch/sam3",
+      "rev": "31cb7e624e4fe95301b1be1d4e809111593d2e45"
+     },
+     {
+      "name": "GroundingDINO",
+      "url": "https://github.com/IDEA-Research/GroundingDINO",
+      "rev": "856dde20aee659246248e20734ef9ba5214f5e44"
+     },
+     {
+      "name": "sam2",
+      "url": "https://github.com/facebookresearch/sam2",
+      "rev": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
+     }
+    ]
+   },
+   {
+    "name": "SAM 3D Objects metric scene on a MoGe point map",
+    "year": 2025,
+    "status": "native",
+    "key": "data/sam3d_scene",
+    "url": "https://arxiv.org/abs/2511.16624",
+    "code": [
+     {
+      "name": "sam-3d-objects",
+      "url": "https://github.com/facebookresearch/sam-3d-objects",
+      "rev": "f91db411c50efee93d8db7aeb323885650f6f722"
+     },
+     {
+      "name": "MoGe",
+      "url": "https://github.com/microsoft/MoGe",
+      "rev": "a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"
+     }
+    ]
+   },
+   {
+    "name": "Mass from a matched YCB / ABO object (CLIP kNN + size)",
+    "year": 2025,
+    "status": "native",
+    "key": "data/physics_match",
+    "url": "https://arxiv.org/abs/1502.03143",
+    "code": [
+     {
+      "name": "ycb_dataset",
+      "url": "https://github.com/elpis-lab/ycb_dataset",
+      "rev": "9e8c6488a2ff673d9aa48a91492fb89423c1b106"
+     },
+     {
+      "name": "CLIP",
+      "url": "https://github.com/openai/CLIP",
+      "rev": "d05afc436d78f1c48dc0dbf8e5980a9d471f35f6"
+     }
+    ]
+   },
+   {
+    "name": "Steel solver in Newton (FR3 replays the demo)",
+    "year": 2025,
+    "status": "native",
+    "key": "data/steel_scene",
+    "url": "https://www.skild.ai/blogs/steel",
+    "code": [
+     {
+      "name": "steel",
+      "url": "https://github.com/skild-ai/steel",
+      "rev": "6d955a89535a384f7bf0f071ae1992b345b357a8"
+     },
+     {
+      "name": "newton",
+      "url": "https://github.com/skild-ai/newton",
+      "rev": "f6fc82a8b06d036e1e6d02a61d77a2d300476e8d"
+     },
+     {
+      "name": "newton-assets",
+      "url": "https://github.com/newton-physics/newton-assets",
+      "rev": "f8fb7abcbeba2318814a74f3eeb02780ad7925d6"
+     }
+    ]
    },
    {
     "name": "MimicGen-style demo multiplication in sim",
     "year": 2023,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2310.17596"
+    "url": "https://arxiv.org/abs/2310.17596",
+    "code": []
    }
   ],
   "post_train": [
    {
     "name": "Full fine-tune",
     "status": "native",
-    "key": "post_train/finetune"
+    "key": "post_train/finetune",
+    "code": []
    },
    {
     "name": "Frozen VLM + trained expert (GR00T N1.5)",
     "year": 2025,
     "status": "native",
-    "key": "post_train/finetune"
+    "key": "post_train/finetune",
+    "code": [
+     {
+      "name": "Isaac-GR00T",
+      "url": "https://github.com/NVIDIA/Isaac-GR00T",
+      "rev": "4af2b622892f7dcb5aae5a3fb70bcb02dc217b96"
+     }
+    ]
    },
    {
     "name": "LoRA on the VLM (OpenVLA)",
     "year": 2024,
     "status": "native",
     "key": "post_train/finetune",
-    "url": "https://arxiv.org/abs/2406.09246"
+    "url": "https://arxiv.org/abs/2406.09246",
+    "code": [
+     {
+      "name": "openvla",
+      "url": "https://github.com/openvla/openvla",
+      "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
+     }
+    ]
    },
    {
     "name": "Quantile action normalisation",
     "status": "native",
-    "key": "policy/normalize"
+    "key": "policy/normalize",
+    "code": []
    },
    {
     "name": "Data curation / filtering of hesitant demos",
-    "status": "planned"
+    "status": "planned",
+    "code": []
    }
   ],
   "rl": [
@@ -2812,109 +3061,161 @@
     "name": "Filtered self-imitation (ReST / RWR family)",
     "year": 2025,
     "status": "native",
-    "key": "rl/filtered_bc"
+    "key": "rl/filtered_bc",
+    "code": []
    },
    {
     "name": "DSRL - RL in the latent-noise space",
     "year": 2025,
     "status": "native",
     "key": "rl/dsrl",
-    "url": "https://arxiv.org/abs/2506.15799"
+    "url": "https://arxiv.org/abs/2506.15799",
+    "code": [
+     {
+      "name": "dsrl",
+      "url": "https://github.com/ajwagen/dsrl",
+      "rev": "8d21b9cf55459f022c0e769bca1343edd9d30e5a"
+     }
+    ]
    },
    {
     "name": "SimpleVLA-RL (GRPO with binary success)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2509.09674"
+    "url": "https://arxiv.org/abs/2509.09674",
+    "code": []
    },
    {
     "name": "pi*0.6 Recap (advantage-conditioned policy + value function)",
     "year": 2025,
     "status": "planned",
-    "url": "https://www.pi.website/blog/pistar06"
+    "url": "https://www.pi.website/blog/pistar06",
+    "code": []
    },
    {
     "name": "HIL-SERL (human-in-the-loop RL)",
     "year": 2024,
     "status": "lerobot",
     "key": "hilserl",
-    "url": "https://arxiv.org/abs/2410.21845"
+    "url": "https://arxiv.org/abs/2410.21845",
+    "code": [
+     {
+      "name": "hil-serl",
+      "url": "https://github.com/rail-berkeley/hil-serl",
+      "rev": "c32939bccb65f3b8c43a9f9add3d322d4ab0264a"
+     }
+    ]
    },
    {
     "name": "Residual RL on top of a frozen VLA",
-    "status": "planned"
+    "status": "planned",
+    "code": []
    }
   ],
   "eval": [
    {
     "name": "Seeded sim rollouts + 95% Wilson interval + failure triage",
     "status": "native",
-    "key": "eval/sim_rollout"
+    "key": "eval/sim_rollout",
+    "code": []
    },
    {
     "name": "Offline action error on held-out demos",
     "status": "native",
-    "key": "eval/offline"
+    "key": "eval/offline",
+    "code": []
    },
    {
     "name": "Regression gate between builds",
     "status": "native",
-    "key": "eval/gate"
+    "key": "eval/gate",
+    "code": []
    },
    {
     "name": "PushT / ALOHA / LIBERO / MetaWorld sims via gymnasium",
     "year": 2024,
     "status": "native",
     "key": "env/gym",
-    "url": "https://arxiv.org/abs/2306.03310"
+    "url": "https://arxiv.org/abs/2306.03310",
+    "code": [
+     {
+      "name": "gym-pusht",
+      "url": "https://github.com/huggingface/gym-pusht",
+      "rev": "e49cf07fd32ad6e69443af2921dd8343b0f9ad7d"
+     },
+     {
+      "name": "gym-aloha",
+      "url": "https://github.com/huggingface/gym-aloha",
+      "rev": "6203fac50be47065056b69094e44308972202258"
+     },
+     {
+      "name": "LIBERO",
+      "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
+      "rev": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
+     }
+    ]
    },
    {
     "name": "SimplerEnv (real-to-sim matched evaluation)",
     "year": 2024,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2405.05941"
+    "url": "https://arxiv.org/abs/2405.05941",
+    "code": [
+     {
+      "name": "SimplerEnv",
+      "url": "https://github.com/simpler-env/SimplerEnv",
+      "rev": "eddb5690749a1e34267807c0f7b5eede323918d7"
+     }
+    ]
    },
    {
     "name": "RoboArena-style pairwise A/B comparisons",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2506.18123"
+    "url": "https://arxiv.org/abs/2506.18123",
+    "code": []
    }
   ],
   "edge": [
    {
     "name": "bf16 / fp16 inference",
     "status": "native",
-    "key": "edge/optimize"
+    "key": "edge/optimize",
+    "code": []
    },
    {
     "name": "Fewer flow / diffusion steps",
     "status": "native",
-    "key": "edge/optimize"
+    "key": "edge/optimize",
+    "code": []
    },
    {
     "name": "torch.compile of the action expert",
     "status": "native",
-    "key": "edge/optimize"
+    "key": "edge/optimize",
+    "code": []
    },
    {
     "name": "int8 dynamic (CPU) / int8 weight-only (torchao)",
     "status": "native",
-    "key": "edge/optimize"
+    "key": "edge/optimize",
+    "code": []
    },
    {
     "name": "Prefix KV caching (re-run only the expert while denoising)",
-    "status": "planned"
+    "status": "planned",
+    "code": []
    },
    {
     "name": "ONNX / TensorRT export for Jetson",
-    "status": "planned"
+    "status": "planned",
+    "code": []
    },
    {
-    "name": "System 2 / System 1 split (GR00T N1",
-    "Helix)": null,
+    "name": "System 2 / System 1 split (GR00T N1, Helix)",
     "year": 2025,
-    "status": "planned"
+    "status": "planned",
+    "code": []
    }
   ],
   "deploy": [
@@ -2922,45 +3223,204 @@
     "name": "Receding-horizon chunk execution",
     "year": 2023,
     "status": "native",
-    "key": "chunker/sync"
+    "key": "chunker/sync",
+    "code": [
+     {
+      "name": "act",
+      "url": "https://github.com/tonyzhaozh/act",
+      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
+     }
+    ]
    },
    {
     "name": "ACT temporal ensembling",
     "year": 2023,
     "status": "native",
-    "key": "chunker/temporal_ensemble"
+    "key": "chunker/temporal_ensemble",
+    "code": [
+     {
+      "name": "act",
+      "url": "https://github.com/tonyzhaozh/act",
+      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
+     }
+    ]
    },
    {
-    "name": "Latency-aware chunk blending (RTC",
-    "output-space)": null,
+    "name": "Latency-aware chunk blending (RTC, output-space)",
     "year": 2025,
     "status": "native",
-    "key": "chunker/rtc_blend"
+    "key": "chunker/rtc_blend",
+    "code": [
+     {
+      "name": "real-time-chunking-kinetix",
+      "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
+      "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
+     }
+    ]
    },
    {
     "name": "Real-time chunking by inpainting during denoising",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2506.07339"
+    "url": "https://arxiv.org/abs/2506.07339",
+    "code": [
+     {
+      "name": "real-time-chunking-kinetix",
+      "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
+      "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
+     }
+    ]
    },
    {
     "name": "Async inference control loop + safety filters + episode logging",
     "status": "native",
-    "key": "deploy/loop"
+    "key": "deploy/loop",
+    "code": []
    },
    {
-    "name": "LeRobot robots (SO-100/101",
-    "Koch": null,
-    "ALOHA": null,
-    "LeKiwi)": null,
+    "name": "LeRobot robots (SO-100/101, Koch, ALOHA, LeKiwi)",
     "status": "native",
-    "key": "driver/lerobot_robot"
+    "key": "driver/lerobot_robot",
+    "code": [
+     {
+      "name": "lerobot",
+      "url": "https://github.com/huggingface/lerobot",
+      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+     }
+    ]
    },
    {
     "name": "ROS 2 bridge driver",
-    "status": "planned"
+    "status": "planned",
+    "code": []
    }
   ]
+ },
+ "thirdparty": {
+  "smollm": {
+   "url": "https://github.com/huggingface/smollm",
+   "rev": "438be18dae658a638f3a6976fdf5190bb6d68619"
+  },
+  "robotics_transformer": {
+   "url": "https://github.com/google-research/robotics_transformer",
+   "rev": "4569641b8111f3f402c32d8e24becd2a6e952ecc"
+  },
+  "lerobot": {
+   "url": "https://github.com/huggingface/lerobot",
+   "rev": "410c095eacc0011d998a73383eb94abed2715af0"
+  },
+  "open_x_embodiment": {
+   "url": "https://github.com/google-deepmind/open_x_embodiment",
+   "rev": "9eeb68b989efbcf474e8fb9019e01d02b962a604"
+  },
+  "openpi": {
+   "url": "https://github.com/Physical-Intelligence/openpi",
+   "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
+  },
+  "diffusion_policy": {
+   "url": "https://github.com/real-stanford/diffusion_policy",
+   "rev": "5ba07ac6661db573af695b419a7947ecb704690f"
+  },
+  "octo": {
+   "url": "https://github.com/octo-models/octo",
+   "rev": "241fb3514b7c40957a86d869fecb7c7fc353f540"
+  },
+  "openvla": {
+   "url": "https://github.com/openvla/openvla",
+   "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
+  },
+  "openvla-oft": {
+   "url": "https://github.com/moojink/openvla-oft",
+   "rev": "e4287e94541f459edc4feabc4e181f537cd569a8"
+  },
+  "act": {
+   "url": "https://github.com/tonyzhaozh/act",
+   "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
+  },
+  "Isaac-GR00T": {
+   "url": "https://github.com/NVIDIA/Isaac-GR00T",
+   "rev": "4af2b622892f7dcb5aae5a3fb70bcb02dc217b96"
+  },
+  "X-VLA": {
+   "url": "https://github.com/2toinf/X-VLA",
+   "rev": "6c4ecfb8be458ae7c0c96094e4b0add4174f4fe2"
+  },
+  "fourier-feature-networks": {
+   "url": "https://github.com/tancik/fourier-feature-networks",
+   "rev": "9c110c31ce3794222fff408ac27bbf74d8fe8993"
+  },
+  "dsrl": {
+   "url": "https://github.com/ajwagen/dsrl",
+   "rev": "8d21b9cf55459f022c0e769bca1343edd9d30e5a"
+  },
+  "hil-serl": {
+   "url": "https://github.com/rail-berkeley/hil-serl",
+   "rev": "c32939bccb65f3b8c43a9f9add3d322d4ab0264a"
+  },
+  "gym-pusht": {
+   "url": "https://github.com/huggingface/gym-pusht",
+   "rev": "e49cf07fd32ad6e69443af2921dd8343b0f9ad7d"
+  },
+  "gym-aloha": {
+   "url": "https://github.com/huggingface/gym-aloha",
+   "rev": "6203fac50be47065056b69094e44308972202258"
+  },
+  "LIBERO": {
+   "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
+   "rev": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
+  },
+  "SimplerEnv": {
+   "url": "https://github.com/simpler-env/SimplerEnv",
+   "rev": "eddb5690749a1e34267807c0f7b5eede323918d7"
+  },
+  "real-time-chunking-kinetix": {
+   "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
+   "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
+  },
+  "universal_manipulation_interface": {
+   "url": "https://github.com/real-stanford/universal_manipulation_interface",
+   "rev": "d095ba9590df789df5189eea5ee7e431689038a6"
+  },
+  "sam3": {
+   "url": "https://github.com/facebookresearch/sam3",
+   "rev": "31cb7e624e4fe95301b1be1d4e809111593d2e45"
+  },
+  "sam2": {
+   "url": "https://github.com/facebookresearch/sam2",
+   "rev": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
+  },
+  "GroundingDINO": {
+   "url": "https://github.com/IDEA-Research/GroundingDINO",
+   "rev": "856dde20aee659246248e20734ef9ba5214f5e44"
+  },
+  "sam-3d-objects": {
+   "url": "https://github.com/facebookresearch/sam-3d-objects",
+   "rev": "f91db411c50efee93d8db7aeb323885650f6f722"
+  },
+  "MoGe": {
+   "url": "https://github.com/microsoft/MoGe",
+   "rev": "a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"
+  },
+  "CLIP": {
+   "url": "https://github.com/openai/CLIP",
+   "rev": "d05afc436d78f1c48dc0dbf8e5980a9d471f35f6"
+  },
+  "ycb_dataset": {
+   "url": "https://github.com/elpis-lab/ycb_dataset",
+   "rev": "9e8c6488a2ff673d9aa48a91492fb89423c1b106"
+  },
+  "newton": {
+   "url": "https://github.com/skild-ai/newton",
+   "rev": "f6fc82a8b06d036e1e6d02a61d77a2d300476e8d"
+  },
+  "newton-assets": {
+   "url": "https://github.com/newton-physics/newton-assets",
+   "rev": "f8fb7abcbeba2318814a74f3eeb02780ad7925d6"
+  },
+  "steel": {
+   "url": "https://github.com/skild-ai/steel",
+   "rev": "6d955a89535a384f7bf0f071ae1992b345b357a8"
+  }
  },
  "pipelines": [
   {

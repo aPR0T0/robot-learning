@@ -5,7 +5,14 @@
   var NS = "http://www.w3.org/2000/svg";
   var CAT = { vlm: "train", data: "data", vla: "train", post_train: "train", rl: "train", eval: "deploy", edge: "deploy", deploy: "deploy" };
   var G = null, R = {}, S = { stage: null, comp: null, pipe: null, pnode: null, file: null, cat: "vla" };
-  var compByKey = {}, filesInfo = {};
+  var compByKey = {}, filesInfo = {}, codeByKey = {};
+  // links to the authors' code: thirdparty/ submodules at their pinned commit
+  function codeLinks(code) {
+    return (code || []).map(function (c) {
+      return el("a", { class: "code", href: c.url + "/tree/" + c.rev, target: "_blank", rel: "noopener",
+                       title: "thirdparty/" + c.name + " @ " + c.rev.slice(0, 7), text: c.name + " ↗" });
+    });
+  }
 
   // ---------------------------------------------------------------- theme
   var themeBtn = $("#themeBtn");
@@ -191,7 +198,7 @@
       var key = p.key ? (compByKey[p.key] ? el("button", { type: "button", text: p.key, onclick: function () { select({ comp: p.key }); } }) : el("span", { text: p.key })) : null;
       body.appendChild(el("div", { class: "prow" }, [
         el("span", { class: "chip " + p.status, text: p.status }),
-        el("span", { class: "nm" }, [p.url ? el("a", { href: p.url, target: "_blank", rel: "noopener", text: p.name }) : el("span", { text: p.name }), p.year ? el("span", { class: "yr", text: " " + p.year }) : null]),
+        el("span", { class: "nm" }, [p.url ? el("a", { href: p.url, target: "_blank", rel: "noopener", text: p.name }) : el("span", { text: p.name }), p.year ? el("span", { class: "yr", text: " " + p.year }) : null].concat(codeLinks(p.code))),
         el("span", { class: "key" }, [key])]));
     });
     $("#catHint").textContent = counts.native + " native · " + counts.lerobot + " via lerobot · " + counts.planned + " planned";
@@ -370,6 +377,7 @@
       var meta = el("div", { class: "meta" });
       if (cc.paper) meta.appendChild(el("span", { text: cc.paper + (cc.year ? " · " + cc.year : "") + " " }));
       if (cc.url) meta.appendChild(el("a", { href: cc.url, target: "_blank", rel: "noopener", text: "paper ↗" }));
+      codeLinks(codeByKey[S.comp]).forEach(function (a) { meta.appendChild(a); });
       d.appendChild(meta);
       d.appendChild(el("p", { text: cc.summary }));
       if (cc.doc && cc.doc.split("\n").length > 1) d.appendChild(el("div", { class: "doc", text: cc.doc }));
@@ -480,6 +488,9 @@
   load("graph.json").then(function (g) {
     G = g;
     G.components.forEach(function (c) { compByKey[c.key] = c; });
+    Object.keys(G.papers || {}).forEach(function (k) {
+      G.papers[k].forEach(function (p) { if (p.key && p.code && p.code.length && !codeByKey[p.key]) codeByKey[p.key] = p.code; });
+    });
     $("#repoLink").href = G.repo;
     TREE = buildTree();
     S.pipe = (G.pipelines.filter(function (p) { return p.name === "reach_smoke"; })[0] || G.pipelines[0]).name;

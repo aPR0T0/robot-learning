@@ -140,6 +140,7 @@ h1, h2, h3 { font-weight:600; line-height:1.25; margin:0; text-wrap:balance; }
 .prow .nm a { text-decoration:none; border-bottom:1px solid var(--line); }
 .prow .nm a:hover { border-bottom-color:var(--fg); }
 .prow .yr { color:var(--muted); font-size:11.5px; }
+.prow .nm a.code, .meta a.code { margin-left:8px; font-size:11px; color:var(--muted); border-bottom:1px dotted var(--line); white-space:nowrap; }
 .prow .key { font-size:11px; color:var(--muted); text-align:right; }
 .prow .key button { all:unset; cursor:pointer; color:var(--fg); border-bottom:1px dotted var(--muted); }
 .chip { display:inline-block; font-size:10px; letter-spacing:.8px; text-transform:uppercase; padding:0 6px; border:1px solid var(--c, var(--line)); color:var(--c, var(--muted)); background:var(--cf, transparent); white-space:nowrap; text-align:center; }

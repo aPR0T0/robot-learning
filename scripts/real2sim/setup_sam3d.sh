@@ -4,14 +4,14 @@
 # Weights are gated: request access to facebook/sam-3d-objects (and facebook/sam3) on Hugging Face and
 # log in (`huggingface-cli login`) first; the checkpoint step is skipped until a token can read them.
 set -euo pipefail
+source "$(dirname "$0")/common.sh"
 ROOT=${1:-$HOME/real2sim}
-SAM3D_REV=${SAM3D_REV:-main}
+SAM3D_REV=${SAM3D_REV:-$(pinned sam-3d-objects)}   # default: the thirdparty/ submodule's commit
 mkdir -p "$ROOT" && cd "$ROOT"
 MF=${MAMBA_ROOT:-$HOME/miniforge3}
 set +u   # conda's activate scripts read unset variables
 source "$MF/etc/profile.d/conda.sh"
-[ -d sam-3d-objects ] || git clone -q https://github.com/facebookresearch/sam-3d-objects sam-3d-objects
-git -C sam-3d-objects checkout -q "$SAM3D_REV"
+clone_at sam-3d-objects https://github.com/facebookresearch/sam-3d-objects "$SAM3D_REV"
 cd sam-3d-objects
 conda env list | grep -q '^sam3d-objects ' || "$MF/bin/mamba" env create -q -y -f environments/default.yml
 conda activate sam3d-objects

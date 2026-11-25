@@ -19,6 +19,9 @@ source .venv/bin/activate
 vlab run reach_smoke    # all eight stages, ~3 minutes on one L4
 ```
 
+The upstream code of each paper is in [thirdparty/](../thirdparty/README.md) as git submodules, which the clone
+leaves empty: `git submodule update --init --depth 1 thirdparty/<name>` fetches one. Nothing needs them to run.
+
 `./setup.sh --minimal` skips LeRobot [[1](#ref-1)]. CPU-only machines work too (`reach_smoke` takes ~23 min
 on 8 vCPUs).
 

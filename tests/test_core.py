@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import configparser
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 import pytest
 import torch
+import yaml
 
 from vlalab import EmbodimentSpec, Pipeline, StageNode, register
 from vlalab.core import registry
@@ -244,3 +247,21 @@ def test_expert_solves_reach2d():
 
     eps = run_episodes("reach2d", list(range(20)), expert=registry.build("expert", "reach2d_pd"), batch=5)
     assert np.mean([e.success for e in eps]) > 0.95
+
+
+# ------------------------------------------------------------------------------------- papers / thirdparty
+def test_paper_catalogue_rows_and_code():
+    """docs/papers.yaml rows parse whole (an unquoted comma splits a flow mapping) and every `code:` names a
+    thirdparty/ submodule in .gitmodules."""
+    root = Path(__file__).resolve().parents[1]
+    gm = configparser.ConfigParser()
+    gm.read(root / ".gitmodules")
+    subs = {gm[s]["path"].removeprefix("thirdparty/") for s in gm.sections()}
+    assert subs and all(gm[s]["path"].startswith("thirdparty/") for s in gm.sections())
+    keys = {"name", "year", "status", "key", "url", "code"}
+    for stage, rows in yaml.safe_load((root / "docs/papers.yaml").read_text()).items():
+        for row in rows:
+            assert set(row) <= keys, f"{stage}: {row['name']!r} has stray keys {set(row) - keys} (quote the name)"
+            code = row.get("code") or []
+            missing = {code} - subs if isinstance(code, str) else set(code) - subs
+            assert not missing, f"{stage}: {row['name']!r}: no submodule thirdparty/{missing}"
