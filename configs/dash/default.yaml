@@ -35,3 +35,13 @@ ui:
   recent_hours: 24       # runs updated this recently are listed by default ("all" shows the rest)
   max_points: 2000       # per series in the first load (live points always stream in full)
   sys_history_min: 120   # minutes of GPU / CPU history kept per VM
+  key_metrics:           # metric names (regex on the last part of the key) pinned to the top, in this order;
+    - ^success$          # the first match is also the headline shown next to each run
+    - ^success_rate$
+    - ^eval_success$
+    - ^rollout_success$
+    - success
+    - ^return$
+    - reward$
+    - ^loss$
+    - ^val_loss$

@@ -33,6 +33,7 @@ const S = {
   sel: hashVm() || LS("vm", "all"),
   filter: LS("filter", "recent"), smoothing: LS("smoothing", 0.6), xaxis: LS("xaxis", "step"),
   userVis: LS("vis", {}), slots: LS("slots", {}), logY: LS("logY", {}), collapsed: LS("collapsed", {}),
+  pins: LS("pins", {}), // metric key -> true (pinned to Key metrics) / false (unpinned although it matches)
   q: "", panelQ: "", drawer: null, tab: "overview", connected: false, lastMsg: 0, skew: 0,
 };
 const now = () => Date.now() / 1000 - S.skew;
@@ -73,8 +74,46 @@ function listedRuns() {
   const rank = (x) => (x.r.status === "running" ? 0 : 1);
   return out.sort((a, b) => rank(a) - rank(b) || (b.r.updated || 0) - (a.r.updated || 0));
 }
+// ------------------------------------------------------------------------------------------- key metrics
+const leafOf = (k) => k.slice(k.lastIndexOf("/") + 1);
+let keyRes = { src: null, res: [] };
+function keyRank(k) {
+  if (keyRes.src !== S.ui.key_metrics) {
+    const res = (S.ui.key_metrics || []).map((p) => {
+      try {
+        return new RegExp(p, "i");
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+    keyRes = { src: S.ui.key_metrics, res };
+  }
+  const leaf = leafOf(k);
+  return keyRes.res.findIndex((r) => r.test(leaf));
+}
+const isKey = (k) => (k in S.pins ? S.pins[k] : keyRank(k) >= 0);
+const isRate = (k) => /success|rate|acc/i.test(leafOf(k));
+function fmtMetric(k, v) {
+  return isRate(k) && v >= 0 && v <= 1 ? `${(v * 100).toFixed(1)}%` : fmtNum(v, 3);
+}
+function results(r) {
+  return Object.entries(r.summary || {}).filter(([k, v]) => k !== "seconds" && typeof v === "number");
+}
+// the run's headline number: its best-ranked key metric, latest logged value first, else its final results
+function headline(x) {
+  let best = null;
+  const consider = (k, v) => {
+    const r = keyRank(k);
+    if (r < 0 || v == null) return;
+    if (!best || r < best.r || (r === best.r && k.length < best.k.length)) best = { r, k, v };
+  };
+  for (const [k, pts] of Object.entries(vmData(x.vm).series[x.r.id] || {})) if (pts.length) consider(k, pts[pts.length - 1][1]);
+  if (!best) for (const [k, v] of results(x.r)) consider(k, v);
+  return best;
+}
+
 function visibleRuns(listed) {
-  const def = new Set(listed.filter((x) => x.nkeys > 0).slice(0, SLOTS).map((x) => x.gid));
+  const def = new Set(listed.filter((x) => x.nkeys > 0 || results(x.r).length).slice(0, SLOTS).map((x) => x.gid));
   return listed.filter((x) => (x.gid in S.userVis ? S.userVis[x.gid] : def.has(x.gid)));
 }
 // a run keeps its colour while it stays visible: colour follows the run, never its rank
@@ -199,8 +238,10 @@ function renderSide(listed, vis, colors) {
       schedule({ full: true });
     });
     const sw = h("span", { class: `swatch${on ? "" : " off"}`, style: on ? `background:${colorOf(slot)}` : "" });
-    const sub = x.r.node ? `${x.r.pipeline}${x.r.impl ? ` · ${x.r.impl}` : ""}` : x.r.pipeline === "logs" ? "log file" : "output folder";
-    const name = h("div", { class: "run-name" }, h("div", { class: "n", text: x.r.node || x.r.pipeline }), h("div", { class: "p", text: sub }));
+    const hl = headline(x);
+    const sub = x.r.node ? `${x.r.pipeline}${!hl && x.r.impl ? ` · ${x.r.impl}` : ""}` : x.r.pipeline === "logs" ? "log file" : "output folder";
+    const name = h("div", { class: "run-name", title: x.r.impl || "" }, h("div", { class: "n", text: x.r.node || x.r.pipeline }),
+      h("div", { class: "p" }, hl ? h("span", { class: "hl", title: `${hl.k} = ${hl.v}`, text: `${leafOf(hl.k)} ${fmtMetric(hl.k, hl.v)} · ` }) : null, sub));
     const right = h("div", { class: "run-right" }, h("span", { class: `chip ${x.r.status}`, text: x.r.status }),
       h("span", { class: "t", text: x.r.status === "running" ? fmtDuration(now() - (x.r.start || now())) : `${fmtDuration(now() - (x.r.updated || 0))} ago` }));
     const row = h("div", { class: `run${S.drawer === x.gid ? " open" : ""}`, title: x.r.path, onclick: () => openDrawer(x.gid) }, eye, sw, name, right);
@@ -313,9 +354,20 @@ function makePanel(id, title, { sys = false } = {}) {
   const t = h("span", { class: "panel-title", title }, i >= 0 ? h("span", { class: "pre", text: title.slice(0, i + 1) }) : null, title.slice(i + 1));
   const logBtn = h("button", { "aria-pressed": String(!!S.logY[id]), title: "Log scale", text: "log" });
   const expBtn = h("button", { title: "Expand", text: "⤢" });
+  const key = id.startsWith("m:") ? id.slice(2) : null;
+  const pinBtn = key ? h("button", { class: "pin", title: "Pin to Key metrics", text: "☆" }) : null;
   const plot = h("div", { class: "plot" });
   const legend = h("div", { class: "legend" });
-  const el = h("div", { class: "panel" }, h("div", { class: "panel-head" }, t, h("div", { class: "panel-actions" }, logBtn, expBtn)), plot, legend);
+  const el = h("div", { class: "panel" }, h("div", { class: "panel-head" }, t, h("div", { class: "panel-actions" }, pinBtn, logBtn, expBtn)), plot, legend);
+  if (pinBtn) {
+    pinBtn.addEventListener("click", () => {
+      const want = !isKey(key);
+      if (want === keyRank(key) >= 0) delete S.pins[key];
+      else S.pins[key] = want;
+      save("pins", S.pins);
+      schedule({ full: true });
+    });
+  }
   const chart = new LineChart(plot, { height: 190, onHover: syncHover });
   const p = { id, el, chart, legend, onscreen: false, sys, title };
   el.__panel = p;
@@ -329,6 +381,12 @@ function makePanel(id, title, { sys = false } = {}) {
   expBtn.addEventListener("click", () => openModal(p));
   p.update = (series, opts = {}) => {
     p.series = series;
+    if (pinBtn) {
+      const on = isKey(key);
+      pinBtn.textContent = on ? "★" : "☆";
+      pinBtn.setAttribute("aria-pressed", String(on));
+      pinBtn.title = on ? "Unpin from Key metrics" : "Pin to Key metrics";
+    }
     p.opts = { ...p.opts, ...opts };
     chart.set(series, { kind: p.opts.kind || "step", logY: !!S.logY[id], smoothing: p.opts.smoothing ?? 0, unit: p.opts.unit || "" });
     renderLegend(legend, series);
@@ -386,7 +444,8 @@ function toPts(pts, x) {
   return out;
 }
 
-const sectionRank = (n) => (n === "Charts" ? "0" : n === "System" ? "2" : n === "Processes" ? "3" : `1${n}`);
+const sectionRank = (n) => ({ "Key metrics": "0a", Results: "0b", Charts: "0c", System: "2", Processes: "3" })[n] || `1${n}`;
+const KEY_SECTION = "Key metrics";
 
 function renderCharts(listed, vis, colors, dirty) {
   const keyRuns = new Map();
@@ -404,13 +463,15 @@ function renderCharts(listed, vis, colors, dirty) {
     re = null;
   }
   const keys = [...keyRuns.keys()].filter((k) => !re || re.test(k)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const want = new Map(); // section -> [keys]
+  const want = new Map(); // section -> [keys]; key metrics (success, return, loss, pinned) go first
   for (const k of keys) {
     const i = k.lastIndexOf("/");
-    const sec = i < 0 ? "Charts" : k.slice(0, i);
+    const sec = isKey(k) ? KEY_SECTION : i < 0 ? "Charts" : k.slice(0, i);
     if (!want.has(sec)) want.set(sec, []);
     want.get(sec).push(k);
   }
+  const rank = (k) => (keyRank(k) >= 0 ? keyRank(k) : 999);
+  if (want.has(KEY_SECTION)) want.get(KEY_SECTION).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, undefined, { numeric: true }));
   const used = new Set();
   const usedSecs = new Set();
   for (const [secName, ks] of want) {
@@ -444,11 +505,12 @@ function renderCharts(listed, vis, colors, dirty) {
       panels.delete(id);
     }
   }
+  const nres = renderResults(vis, colors, usedSecs, dirty, re);
   renderSystem(usedSecs, dirty);
   const wantSecs = [...usedSecs].sort((a, b) => sectionRank(a).localeCompare(sectionRank(b)));
   const box = $("sections");
   const els = wantSecs.map((n) => sections.get(n).el);
-  if (!keys.length) {
+  if (!keys.length && !nres) {
     const msg = vis.length
       ? "The selected runs have no metric series yet. Live runs appear as soon as they log a step."
       : listed.length ? "No run is shown. Click the eye next to a run."
@@ -460,6 +522,68 @@ function renderCharts(listed, vis, colors, dirty) {
   }
   const cur = [...box.children];
   if (cur.length !== els.length || cur.some((e, i) => e !== els[i])) box.replaceChildren(...els);
+}
+
+// ------------------------------------------------------------------------------------------- results (final metrics)
+const barPanels = new Map();
+function makeBarPanel(id, leaf) {
+  const body = h("div", { class: "bars-body" });
+  const el = h("div", { class: "panel bars" }, h("div", { class: "panel-head" }, h("span", { class: "panel-title", text: leaf, title: leaf })), body);
+  const p = { id, el };
+  p.update = (rows) => {
+    const pct = isRate(leaf) && rows.every((r) => r.v >= 0 && r.v <= 1);
+    const lo = Math.min(0, ...rows.map((r) => r.v));
+    const hi = pct ? 1 : Math.max(0, ...rows.map((r) => r.v));
+    const span = hi - lo || 1;
+    const shown = rows.slice(0, 30).map((r) => h("div", { class: "bar-row", title: `${r.k} = ${r.v}  (${label(r.x)})` },
+      h("div", { class: "bar-label" }, h("span", { class: "a", text: r.pre || label(r.x) }), r.pre ? h("span", { class: "b", text: label(r.x) }) : null),
+      h("div", { class: "bar-track" }, h("i", { style: `width:${Math.max(0.5, ((r.v - lo) / span) * 100).toFixed(1)}%;background:${r.color}` })),
+      h("div", { class: "bar-val", text: pct ? `${(r.v * 100).toFixed(1)}%` : fmtNum(r.v, 4) })));
+    if (rows.length > 30) shown.push(h("div", { class: "tip-more", text: `+${rows.length - 30} more` }));
+    body.replaceChildren(...shown);
+  };
+  barPanels.set(id, p);
+  return p;
+}
+
+// one bar panel per metric name across the shown runs' final results: `graspgen/success`, `antipodal/success`,
+// ... of every run land in one "success" panel
+function renderResults(vis, colors, usedSecs, dirty, re) {
+  if (dirty !== true) { // results change only with the runs
+    if (sections.has("Results") && barPanels.size) usedSecs.add("Results");
+    return barPanels.size;
+  }
+  const groups = new Map();
+  for (const x of vis) {
+    for (const [k, v] of results(x.r)) {
+      if (re && !re.test(k)) continue;
+      const leaf = leafOf(k);
+      if (!groups.has(leaf)) groups.set(leaf, []);
+      groups.get(leaf).push({ k, v, x, pre: k.slice(0, Math.max(0, k.lastIndexOf("/"))), color: colorOf(colors.get(x.gid)) });
+    }
+  }
+  const rank = (leaf) => (keyRank(leaf) >= 0 ? keyRank(leaf) : 999);
+  const leaves = [...groups.keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b, undefined, { numeric: true })).slice(0, 24);
+  const els = [];
+  for (const leaf of leaves) {
+    const id = `r:${leaf}`;
+    const p = barPanels.get(id) || makeBarPanel(id, leaf);
+    p.update(groups.get(leaf).sort((a, b) => b.v - a.v));
+    els.push(p.el);
+  }
+  for (const [id, p] of barPanels) {
+    if (!leaves.includes(id.slice(2))) {
+      p.el.remove();
+      barPanels.delete(id);
+    }
+  }
+  if (!els.length) return 0;
+  const s = section("Results");
+  s.count.textContent = String(els.length);
+  usedSecs.add("Results");
+  const cur = [...s.grid.children];
+  if (cur.length !== els.length || cur.some((e, i) => e !== els[i])) s.grid.replaceChildren(...els);
+  return els.length;
 }
 
 const SYS = [

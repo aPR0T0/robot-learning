@@ -105,6 +105,29 @@ def test_agent_runs_and_series(tmp_path, monkeypatch):
     assert "success_rate" in drops
 
 
+def test_final_results(tmp_path, monkeypatch):
+    """A node's results: the metrics it returned (outputs.json), else report.json's top-level numbers."""
+    d = _node(tmp_path / "rl-s" / "runs" / "bench", "eval", "eval/grasp_objects", outputs=False)
+    (d / "report.json").write_text(json.dumps({"success": 0.5, "ci95": [0.4, 0.6], "methods": {"a": {"success": 0.1}}}))
+    sent = []
+    monkeypatch.setattr(A, "emit", sent.append)
+    ag = A.Agent({"roots": [str(tmp_path / "rl-*")], "markers": []})
+    ag.discover()
+    ag.scan_procs()
+    ag.refresh(full=True)
+    runs = {r["id"]: r for m in sent if m["t"] == "runs" for r in m["runs"]}
+    assert runs["rl-s/bench/eval"]["summary"] == {"success": 0.5}  # no lists, no deep nesting
+    assert [m for m in sent if m["t"] == "procs"][-1]["markers"] == []
+    time.sleep(0.02)
+    (d / "outputs.json").write_text(json.dumps({"outputs": {"metrics": {"a/success": 0.6, "b/success": 0.7,
+                                                                         "history": [0.1, 0.2]}}}))
+    sent.clear()
+    ag.refresh(full=False)  # picked up on the next poll, not only on rediscovery
+    runs = {r["id"]: r for m in sent if m["t"] == "runs" for r in m["runs"]}
+    assert runs["rl-s/bench/eval"]["status"] == "finished"
+    assert runs["rl-s/bench/eval"]["summary"] == {"a/success": 0.6, "b/success": 0.7}
+
+
 def test_series_deltas(monkeypatch):
     sent = []
     monkeypatch.setattr(A, "emit", sent.append)
@@ -136,10 +159,13 @@ def test_status_report():
          "procs": [{"pid": 7, "cmd": "/v/.venv/bin/python /v/.venv/bin/vlab run toy --only rl", "cwd": "/h/rl-x",
                     "start": t - 120, "gpu_mb": 2048.0, "vlab": True, "run": "rl-x/toy/rl"}],
          "runs": [{"id": "rl-x/toy/rl", "status": "running", "impl": "rl/filtered_bc", "start": t - 120, "updated": t,
-                   "path": "/h/rl-x/runs/toy/rl", "log": None, "latest": {"success": [4, 0.75]}}]},
+                   "path": "/h/rl-x/runs/toy/rl", "log": None, "latest": {"success": [4, 0.75]}},
+                  {"id": "rl-x/bench/eval", "status": "finished", "impl": "eval/grasp_objects", "start": t - 900,
+                   "updated": t - 600, "path": "/h/rl-x/runs/bench/eval", "log": None, "latest": {},
+                   "results": {"graspgen/success": 0.615}}]},
         {"name": "vm-b", "zone": "z", "status": "TERMINATED", "state": "stopped"}]}
     out = H.format_status(st, 3)
     for want in ("vm-a", "GPU0 97% 30.0/40 GB", "marker RUNNING-x.txt (10m old): x session",
                  "vlab run toy --only rl", "-> rl-x/toy/rl", "running  rl-x/toy/rl", "step 4: success 0.75",
-                 "vm-b  z  [terminated]"):
+                 "results: graspgen/success 0.615", "vm-b  z  [terminated]"):
         assert want in out, want

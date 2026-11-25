@@ -80,6 +80,17 @@ def flatten(row: dict, prefix: str = "", out: dict | None = None, depth: int = 0
     return out
 
 
+def scalars(d: dict, prefix: str = "", depth: int = 2) -> dict:
+    """Numbers of a results dict, nested dicts as ``a/b`` (lists such as histories and intervals are left out)."""
+    out = {}
+    for k, v in (d or {}).items():
+        if isinstance(v, dict) and depth > 0:
+            out.update(scalars(v, f"{prefix}{k}/", depth - 1))
+        elif not isinstance(v, (list, tuple)) and _num(v) is not None:
+            out[f"{prefix}{k}"] = _num(v)
+    return out
+
+
 def rows_to_series(rows: list[dict], prefix: str, start: float) -> dict[str, list]:
     """Rows of {step?, time?, metric: value} -> {prefix+metric: [[step, value, wall|None], ...]}."""
     series: dict[str, list] = {}
@@ -236,6 +247,7 @@ class Agent:
         self.sent_meta: dict[str, str] = {}
         self.procs: list[dict] = []
         self.markers: list[dict] = []
+        self.summaries: dict[str, tuple] = {}  # run folder -> (file mtimes, summary)
         self.gpu_used: dict[int, float] = {}
         self.cpu_prev = None
         self.btime = 0.0
@@ -286,7 +298,7 @@ class Agent:
                 del self.logs[lp]
         # `~/RUNNING-<what>.txt`: the note a session leaves on a shared VM while its job runs
         self.markers = []
-        for pat in self.cfg.get("markers") or ["~/RUNNING-*"]:
+        for pat in self.cfg.get("markers", ["~/RUNNING-*"]) or []:
             for mp in sorted(glob.glob(os.path.expanduser(pat))):
                 try:
                     with open(mp, errors="replace") as f:
@@ -454,26 +466,46 @@ class Agent:
         return "crashed"
 
     def summary(self, meta: dict) -> dict:
-        out: dict = {}
+        """A node's final results, like W&B's run summary: the ``metrics`` it returned (outputs.json), else what
+        summary.json recorded, else the top-level numbers of report.json / info.json. Plus ``seconds``."""
         p = meta["path"]
+        stamp = tuple(_mtime(os.path.join(p, f)) for f in ("outputs.json", "report.json", "info.json", "../summary.json"))
+        cached = self.summaries.get(p)
+        if cached and cached[0] == stamp:
+            return cached[1]
+        out: dict = {}
+        node = {}
         try:
-            s = json.load(open(os.path.join(os.path.dirname(p), "summary.json")))
-            node = s.get("nodes", {}).get(meta["node"], {})
-            if node.get("seconds") is not None:
-                out["seconds"] = node["seconds"]
-            for k, v in flatten(node.get("metrics") or {}).items():
-                out[k] = v
+            with open(os.path.join(os.path.dirname(p), "summary.json")) as f:
+                node = json.load(f).get("nodes", {}).get(meta["node"], {}) if meta["node"] else {}
         except (OSError, ValueError, AttributeError):
             pass
-        for fn in ("report.json", "info.json"):
-            try:
-                doc = json.load(open(os.path.join(p, fn)))
-            except (OSError, ValueError):
-                continue
-            if isinstance(doc, dict):
-                for k, v in flatten(doc).items():
-                    out.setdefault(k, v)
-        return dict(list(out.items())[:60])
+        try:
+            if _mtime(p + "/outputs.json") >= meta.get("start", 0):  # this execution's outputs, not a stale one
+                with open(p + "/outputs.json") as f:
+                    out.update(scalars((json.load(f).get("outputs") or {}).get("metrics") or {}))
+        except (OSError, ValueError, AttributeError):
+            pass
+        if not out:
+            out.update(scalars(node.get("metrics") or {}))
+        if not out:
+            for fn in ("report.json", "info.json"):
+                fp = os.path.join(p, fn)
+                if not os.path.isfile(fp) or os.path.getsize(fp) > (4 << 20):  # skip big trial dumps
+                    continue
+                try:
+                    with open(fp) as f:
+                        doc = json.load(f)
+                except (OSError, ValueError):
+                    continue
+                if isinstance(doc, dict):
+                    for k, v in scalars(doc, depth=1).items():
+                        out.setdefault(k, v)
+        out = dict(list(out.items())[:60])
+        if node.get("seconds") is not None:
+            out["seconds"] = node["seconds"]
+        self.summaries[p] = (stamp, out)
+        return out
 
     def media(self, path: str) -> list[dict]:
         out = []
@@ -538,8 +570,8 @@ class Agent:
                         meta["impl"] = m.group(1) if m else None
                     except OSError:
                         meta["impl"] = None
-                    meta["summary"] = self.summary(meta)
                     meta["media"] = self.media(p)
+                meta["summary"] = self.summary(meta)  # cached on file mtimes: cheap every poll
                 ends = [pts[-1][2] for pts in series.values() if pts and pts[-1][2]]
                 meta["updated"] = max([meta["start"], _mtime(p + "/outputs.json"), _mtime(p + "/error.txt"),
                                        (sec or {}).get("last") or 0, *ends])

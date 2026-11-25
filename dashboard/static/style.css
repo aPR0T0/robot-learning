@@ -218,6 +218,17 @@ button { cursor: pointer; }
 .key-line { display: inline-block; width: 14px; height: 2px; border-radius: 1px; }
 .legend { display: flex; flex-wrap: wrap; gap: 3px 12px; margin-top: 4px; font-size: 11.5px; color: var(--text-secondary); min-height: 0; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.run-name .p .hl { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.panel-actions button.pin[aria-pressed="true"] { color: var(--warning); opacity: 1; }
+.panel.bars { padding-bottom: 12px; }
+.bars-body { display: grid; gap: 7px; margin-top: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr) 56px; align-items: center; gap: 10px; font-size: 12px; }
+.bar-label { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.bar-label .a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.bar-label .b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); font-size: 11px; }
+.bar-track { height: 10px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+.bar-track i { display: block; height: 100%; border-radius: 4px; }
+.bar-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .nodata { color: var(--text-muted); background: var(--surface-1); border: 1px dashed var(--axis); border-radius: 10px; padding: 28px; text-align: center; }
 
 /* processes */

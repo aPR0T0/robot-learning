@@ -85,7 +85,7 @@ export function xLabel(v, kind) {
 }
 
 export function smooth(pts, a) {
-  if (!a || pts.length < 3) return pts;
+  if (!a || pts.length < 10) return pts; // a short curve (an eval every few iterations) would just lag behind
   let last = 0;
   let n = 0;
   const out = new Array(pts.length);

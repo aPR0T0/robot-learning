@@ -43,7 +43,9 @@ DEFAULTS: dict = {
     "host": "127.0.0.1", "port": 8765, "open_browser": True, "project": None, "filter": None, "vms": "auto",
     "local": False, "refresh_vms_s": 60, "python": "python3",
     "ssh_flags": ["-T", "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4", "-o", "ConnectTimeout=20"],
-    "agent": {}, "ui": {"recent_hours": 24, "max_points": 2000, "sys_history_min": 120},
+    "agent": {}, "ui": {"recent_hours": 24, "max_points": 2000, "sys_history_min": 120, "key_metrics": [
+        "^success$", "^success_rate$", "^eval_success$", "^rollout_success$", "success", "^return$", "reward$",
+        "^loss$", "^val_loss$"]},
 }
 
 
@@ -390,8 +392,10 @@ class Hub:
                     for r in runs[:40]:
                         ser = a.series.get(r["id"], {})
                         latest = {k: pts[-1][:2] for k, pts in sorted(ser.items()) if pts}
+                        results = {k: v for k, v in (r.get("summary") or {}).items() if k != "seconds"}
                         doc["runs"].append({**{k: r.get(k) for k in ("id", "status", "impl", "start", "updated", "path", "log")},
-                                            "latest": dict(list(latest.items())[:max_keys])})
+                                            "latest": dict(list(latest.items())[:max_keys]),
+                                            "results": dict(list(results.items())[:max_keys])})
                 out["vms"].append(doc)
         return out
 
@@ -590,6 +594,9 @@ def format_status(st: dict, hours: float) -> str:
                 step = max(s for s, _ in r["latest"].values())
                 vals = "  ".join(f"{k} {val:.4g}" for k, (_, val) in r["latest"].items())
                 lines.append(f"             step {step:g}: {vals}"[:400])
+            if r.get("results"):
+                vals = "  ".join(f"{k} {val:.4g}" for k, val in r["results"].items())
+                lines.append(f"             results: {vals}"[:400])
         if folders:
             lines.append(f"    (+{folders} output folder{'s' if folders > 1 else ''} without metrics: --json lists them)")
     return "\n".join(lines)

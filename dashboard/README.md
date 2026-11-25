@@ -15,7 +15,9 @@ scripts/dash.sh status          # GPU, processes, RUNNING-* markers, live runs w
 scripts/dash.sh status --json   # the same as JSON
 ```
 
-`vlab dash ...` takes the same arguments. Settings are in [configs/dash/default.yaml](../configs/dash/default.yaml),
+The page pins success rates, returns and losses to the top (*Key metrics*) and shows each node's final results
+(`outputs.json` metrics, e.g. a benchmark's per-method success) as bars (*Results*). `vlab dash ...` takes the same
+arguments. Settings are in [configs/dash/default.yaml](../configs/dash/default.yaml),
 and any of them can be overridden as `key=value` (`'vms=[vla-lab-a100]'`, `port=8800`, `agent.poll_s=5`).
 
 | file | what it does |

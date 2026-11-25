@@ -48,9 +48,11 @@ It runs on your laptop, where gcloud is logged in. A VM you start shows up withi
 |---|---|
 | **VM dropdown** (top bar) | *All running VMs*, or one VM. Stopped VMs are listed but greyed out. Your choice is remembered and goes in the URL (`#vm=vla-lab-a100`), so a bookmark opens your own VM |
 | **VM card** | GPU utilisation and memory, CPU, RAM, disk, live runs, for each selected VM |
-| **Runs** (left) | every run under the watched checkouts, grouped by VM and checkout, live runs first: *running*, *finished*, *failed*, *crashed* (no outputs and no process), *done* (a plain output folder). *Live / Recent / All* filters it, the eye shows or hides a run on the charts |
+| **Runs** (left) | every run under the watched checkouts, grouped by VM and checkout, live runs first: *running*, *finished*, *failed*, *crashed* (no outputs and no process), *done* (a plain output folder). Each run shows its headline number, e.g. `success 59.1%`: the latest value of its first key metric, or its final result. *Live / Recent / All* filters the list, and the eye shows or hides a run on the charts |
+| **Key metrics** | success rates, returns, rewards and losses, pinned above everything else (`ui.key_metrics`). `★` on any panel pins it here, or unpins it |
+| **Results** | the final numbers each node returned (its `metrics` in `outputs.json`), as bars across the shown runs. `graspgen/success` and `antipodal/success` of every benchmark run land in one *success* panel. This is where eval and benchmark nodes show up, since they log no curve |
 | **Charts** | one panel per metric, grouped into sections by the prefix before the last `/` (`iter3/train/loss` is in *iter3/train*). Hover for every run's value at that step: the crosshair follows on every panel. Per panel: `log` scale, `⤢` full size |
-| **Smoothing, X axis** | an exponential moving average (the raw curve stays faint behind it); step, time since the run started, or wall-clock time |
+| **Smoothing, X axis** | an exponential moving average (the raw curve stays faint behind it; curves under 10 points are drawn as logged); step, time since the run started, or wall-clock time |
 | **System** | GPU utilisation, memory, power and temperature, CPU and RAM over time, per VM |
 | **Processes** | every `vlab` process with its command, checkout, run, uptime and GPU memory, plus anything else using the GPU, and the `~/RUNNING-*.txt` notes sessions leave on a shared VM |
 | **Run drawer** (click a run) | *Overview*: folder, command, start, duration, latest values, summary. *Logs*: the live tail of its log. *Config*: `node.yaml`, `pipeline.yaml`, `error.txt`. *Media*: the run's images and videos |
@@ -64,6 +66,7 @@ On each VM the agent looks under every checkout in `agent.roots` (default `~/rob
 
 | source | written by | becomes |
 |---|---|---|
+| `runs/<pipeline>/<node>/outputs.json` (`metrics`) | every node, when it finishes | its final results (*Results*, the run's headline, `status`) |
 | `runs/<pipeline>/<node>/metrics.jsonl` | `ctx.log(...)`, see below | keys as logged |
 | `.../train_log.jsonl` | `vla/train`, `post_train/finetune`, every RL iteration's re-training | `train/loss`, `iter3/train/loss`, ... |
 | `.../history.json`, `train_log.json` | `rl/filtered_bc`, `rl/dsrl`, the style-dream stages (when the node ends) | keys as written; lists become `log_std/0`, `log_std/1`, ... |
@@ -135,6 +138,7 @@ shared VM (see [AGENTS.md](../AGENTS.md)).
 | `agent.metric_files` | `metrics.jsonl`, `train_log.jsonl`, `history.json`, ... | file names read as metric series |
 | `agent.poll_s`, `discover_s`, `sys_s` | `2`, `20`, `5` | refresh of metrics, of new runs and media, of GPU / CPU samples |
 | `ui.recent_hours` | `24` | what *Recent* means |
+| `ui.key_metrics` | `^success$`, `^success_rate$`, ..., `^return$`, `reward$`, `^loss$` | metric names pinned to *Key metrics*, in order; the first match is a run's headline |
 | `ui.max_points` | `2000` | points per series in the first load (live points always stream in full) |
 
 Every key is commented in the YAML file. Save a copy as `configs/dash/<name>.yaml` and start it with
