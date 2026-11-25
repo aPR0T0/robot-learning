@@ -55,6 +55,7 @@ configures it, what it hands to the next stage, the papers it implements, and th
 | [Editing the YAML configs](docs/configuring_yaml.md) | every key of pipeline, embodiment, env and preset files; how presets and overrides merge |
 | [Adding and registering a component](docs/adding_components.md) | the contract for every kind (node, backbone, encoder, head, env, chunker, safety filter, driver), with worked examples |
 | [New hardware, new feedback](docs/hardware.md) | the embodiment spec, new sensors, a mock robot, and an SO-100 arm from real demos to the 30 Hz loop |
+| [One demo → thousands of noisy worlds](docs/style_dream.md) | single-demo track: Newton + Steel worlds, the demo's style, a style-conserving dreamer, and a policy trained through dreams with RL grounding (maths, references, toy results) |
 
 ## Headline result
 

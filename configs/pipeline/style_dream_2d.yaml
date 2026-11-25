@@ -1,0 +1,53 @@
+# The theory test in 2D (vertical x-z plane, pure torch): the same nodes, style, dreamer and agent as the Newton/Steel
+# toy (style_dream_toy.yaml), on a planar world that keeps the physics the method must cope with (grip force from
+# finger stiffness and effort limit, Coulomb slip, taper wedge force, restitution, contact wrench noise; mass,
+# friction and grip force hidden). The demonstrator grips gently (4 mm squeeze) and the grip strength is part of the
+# style (sigma_cmd), so a policy should squeeze harder only where the hidden physics needs it. 3 seeds per variant.
+name: style_dream_2d
+description: Phase A theory test on a 2D world - dreams + RL grounding vs RL only vs dreams only vs replay, 3 seeds.
+seed: 0
+_env: &env
+  backend: planar2d
+  obj_xy: [-0.06, 0.0]
+  goal_xy: [0.12, 0.0]
+  home: [-0.18, 0.0, 0.22]
+  physics: {obj_xy: [0.04, 0.0], goal_xy: [0.04, 0.0], min_separation: 0.12, mass_scale: [0.4, 5.0],
+            mu_object: [0.2, 1.0], finger_ke: [400.0, 1500.0]}
+# the 4 mm grip leaves little room for exploration noise on the width command (the last-but-one log-std)
+_agent: &agent {iterations: 80, minibatches: 4, dream_starts: 4096, style: {sigma_cmd: 0.008},
+                init_log_std: [-2.0, -2.0, -2.0, -2.3, -3.0, -1.8]}
+_in: &in {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+nodes:
+  demo:
+    impl: data/toy_demo
+    params: {env: *env, squeeze: 0.004}
+  style:
+    impl: data/demo_style
+    inputs: {bundle: demo.bundle}
+  worlds:
+    impl: data/scenario_bank
+    params:
+      env: {<<: *env, worlds: 2048, seed: 0}
+      eval_worlds: 4096
+      ood: {mass_scale: [5.0, 8.0], mu_object: [0.15, 0.3], wrench_ratio: [0.06, 0.12], restitution: [0.2, 0.4]}
+      render_worlds: 9
+  dreamer:
+    impl: rl/dream_world_model
+    inputs: {scenarios: worlds.scenarios, style: style.style}
+    params: {episodes: 4, wm: {steps: 8000, batch: 512}}
+  dream_rl_s0: {impl: rl/style_dream, inputs: *in, params: {seed: 0, train_worlds: 1024, agent: {<<: *agent, mode: dream_rl}}}
+  dream_rl_s1: {impl: rl/style_dream, inputs: *in, params: {seed: 1, train_worlds: 1024, agent: {<<: *agent, mode: dream_rl}}}
+  dream_rl_s2: {impl: rl/style_dream, inputs: *in, params: {seed: 2, train_worlds: 1024, agent: {<<: *agent, mode: dream_rl}}}
+  rl_s0: {impl: rl/style_dream, inputs: *in, params: {seed: 0, train_worlds: 1024, agent: {<<: *agent, mode: rl}}}
+  rl_s1: {impl: rl/style_dream, inputs: *in, params: {seed: 1, train_worlds: 1024, agent: {<<: *agent, mode: rl}}}
+  rl_s2: {impl: rl/style_dream, inputs: *in, params: {seed: 2, train_worlds: 1024, agent: {<<: *agent, mode: rl}}}
+  dream_s0: {impl: rl/style_dream, inputs: *in, params: {seed: 0, train_worlds: 1024, agent: {<<: *agent, mode: dream}}}
+  dream_s1: {impl: rl/style_dream, inputs: *in, params: {seed: 1, train_worlds: 1024, agent: {<<: *agent, mode: dream}}}
+  dream_s2: {impl: rl/style_dream, inputs: *in, params: {seed: 2, train_worlds: 1024, agent: {<<: *agent, mode: dream}}}
+  eval:
+    impl: eval/style_dream
+    inputs:
+      <<: *in
+      policies: [dream_rl_s0.policy, dream_rl_s1.policy, dream_rl_s2.policy, rl_s0.policy, rl_s1.policy,
+                 rl_s2.policy, dream_s0.policy, dream_s1.policy, dream_s2.policy]
+    params: {worlds: 4096}
