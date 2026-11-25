@@ -34,11 +34,9 @@
     "data/lerobot_hub",
     "data/mixture",
     "data/synthetic",
-    "data/umi_demo",
-    "data/scene_masks",
-    "data/sam3d_scene",
-    "data/physics_match",
-    "data/steel_scene"
+    "data/toy_demo",
+    "data/demo_style",
+    "data/scenario_bank"
    ],
    "files": [
     "src/vlalab/core/spec.py",
@@ -48,7 +46,7 @@
     "src/vlalab/envs/experts.py",
     "src/vlalab/envs/reach2d.py",
     "src/vlalab/stages/data.py",
-    "src/vlalab/stages/real2sim.py"
+    "src/vlalab/stages/dream.py"
    ]
   },
   {
@@ -103,12 +101,15 @@
    "sub": "Optional, rising",
    "cat": "train",
    "components": [
+    "rl/dream_world_model",
+    "rl/style_dream",
     "rl/filtered_bc",
     "rl/dsrl"
    ],
    "files": [
     "src/vlalab/policy/dsrl.py",
     "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/dream.py",
     "src/vlalab/stages/rl.py"
    ]
   },
@@ -120,6 +121,7 @@
    "cat": "deploy",
    "components": [
     "env/gym",
+    "eval/style_dream",
     "eval/sim_rollout",
     "eval/offline",
     "eval/gate"
@@ -128,6 +130,7 @@
     "src/vlalab/envs/gym_env.py",
     "src/vlalab/policy/lerobot_runner.py",
     "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/dream.py",
     "src/vlalab/stages/evaluate.py"
    ]
   },
@@ -1359,6 +1362,345 @@
    }
   },
   {
+   "key": "data/toy_demo",
+   "kind": "stage",
+   "name": "data/toy_demo",
+   "stage": "data",
+   "paper": "UMI trajectory format",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2402.10329",
+   "summary": "The toy's one demonstration: a scripted, deliberately stylised pick-and-place in the nominal Newton/Steel world, saved as UMI's trajectory.npz + scene.",
+   "doc": "",
+   "class": "ToyDemo",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 67,
+   "config": "ToyDemoConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "EnvConfig overrides (the nominal scene)"
+    },
+    {
+     "name": "squeeze",
+     "type": "float",
+     "default": 0.012,
+     "help": "m: the demonstrator's grip command below the cup's width"
+    }
+   ],
+   "outputs": {
+    "bundle": "dir: trajectory.npz (UMI format), demo.json (scene, waypoints, final status)"
+   }
+  },
+  {
+   "key": "data/demo_style",
+   "kind": "stage",
+   "name": "data/demo_style",
+   "stage": "data",
+   "paper": "DMPs with frame-independent scaling (Koutras & Doulgeri)",
+   "year": 2020,
+   "url": "https://doi.org/10.1109/RO-MAN47096.2020.9223500",
+   "summary": "The demo's style: gripper-event phases, anchors in object / target frames, path shape, gripper profile and tempo; works on the toy demo and on a real2sim UMI demo.",
+   "doc": "",
+   "class": "DemoStyle",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 122,
+   "config": "DemoStyleConfig",
+   "params": [
+    {
+     "name": "grid",
+     "type": "int",
+     "default": 48,
+     "help": ""
+    },
+    {
+     "name": "squeeze",
+     "type": "float",
+     "default": 0.012,
+     "help": "m below the object's width while closed (UMI demos)"
+    },
+    {
+     "name": "object",
+     "type": "str",
+     "default": "cup",
+     "help": "UMI demos: the grasped object's name in scene.json"
+    },
+    {
+     "name": "target",
+     "type": "str",
+     "default": "saucer",
+     "help": "UMI demos: the target's name in scene.json"
+    },
+    {
+     "name": "plot",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "bundle": "demo bundle (toy: demo.json has the scene; UMI: pass `scene`)"
+   },
+   "optional_inputs": {
+    "scene": "real2sim scene dir with scene.json (UMI demos)"
+   },
+   "outputs": {
+    "style": "style.json"
+   }
+  },
+  {
+   "key": "data/scenario_bank",
+   "kind": "stage",
+   "name": "data/scenario_bank",
+   "stage": "data",
+   "paper": "Domain randomization (Tobin et al.; Peng et al.)",
+   "year": 2018,
+   "url": "https://arxiv.org/abs/1710.06537",
+   "summary": "Thousands of Newton/Steel worlds around the reconstruction: shape, size, mass, CoM, friction, restitution, gap, grip force, contact wrench noise; train / held-out / OOD sets.",
+   "doc": "",
+   "class": "ScenarioBank",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 202,
+   "config": "ScenarioBankConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "EnvConfig of the training worlds"
+    },
+    {
+     "name": "eval_seed",
+     "type": "int",
+     "default": 10000,
+     "help": ""
+    },
+    {
+     "name": "eval_worlds",
+     "type": "int",
+     "default": 2048,
+     "help": ""
+    },
+    {
+     "name": "ood",
+     "type": "dict[str, Any]",
+     "default": {
+      "mass_scale": [
+       2.5,
+       4.5
+      ],
+      "mu_object": [
+       0.2,
+       0.4
+      ],
+      "wrench_ratio": [
+       0.06,
+       0.12
+      ],
+      "restitution": [
+       0.2,
+       0.4
+      ]
+     },
+     "help": "PhysicsRanges overrides of the out-of-distribution set"
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 16,
+     "help": ""
+    }
+   ],
+   "outputs": {
+    "scenarios": "scenarios.json: env configs of the training, held-out and OOD worlds"
+   }
+  },
+  {
+   "key": "rl/dream_world_model",
+   "kind": "stage",
+   "name": "rl/dream_world_model",
+   "stage": "rl",
+   "paper": "DreamerV3 (Hafner et al., Nature 2025)",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2301.04104",
+   "summary": "The dreamer: an RSSM trained on the style prior with exploration in every randomised world; its recurrent state carries the belief over the unobserved physics.",
+   "doc": "",
+   "class": "DreamWorldModel",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 263,
+   "config": "DreamWorldModelConfig",
+   "params": [
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "sigma_max",
+     "type": "float",
+     "default": 0.5,
+     "help": ""
+    },
+    {
+     "name": "wm",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "WMConfig overrides"
+    },
+    {
+     "name": "eval_starts",
+     "type": "list[int]",
+     "default": [
+      20,
+      40,
+      60
+     ],
+     "help": ""
+    },
+    {
+     "name": "eval_horizon",
+     "type": "int",
+     "default": 15,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json"
+   },
+   "outputs": {
+    "world_model": "world_model.pt"
+   }
+  },
+  {
+   "key": "rl/style_dream",
+   "kind": "stage",
+   "name": "rl/style_dream",
+   "stage": "rl",
+   "paper": "Dreamer + PPO grounding (this repo; MBPO / SVG / Dyna lineage)",
+   "year": 2026,
+   "url": "https://arxiv.org/abs/1906.08253",
+   "summary": "Phase A: a residual policy on the style prior, trained on a loss through dreams started from the actual Steel states, grounded by PPO on the actual rollouts; the dreamer stays frozen.",
+   "doc": "",
+   "class": "StyleDream",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 331,
+   "config": "StyleDreamConfig",
+   "params": [
+    {
+     "name": "agent",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "AgentConfig: mode, iterations, ..."
+    },
+    {
+     "name": "seed",
+     "type": "int | None",
+     "default": null,
+     "help": "defaults to the pipeline seed"
+    },
+    {
+     "name": "train_worlds",
+     "type": "int | None",
+     "default": null,
+     "help": "override the scenario bank's world count"
+    },
+    {
+     "name": "eval_worlds",
+     "type": "int",
+     "default": 1024,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 9,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json",
+    "world_model": "world_model.pt"
+   },
+   "outputs": {
+    "policy": "policy.pt"
+   }
+  },
+  {
+   "key": "eval/style_dream",
+   "kind": "stage",
+   "name": "eval/style_dream",
+   "stage": "eval",
+   "paper": "Wilson score interval; DTW (Sakoe & Chiba)",
+   "year": 1978,
+   "url": "https://doi.org/10.1109/TASSP.1978.1163055",
+   "summary": "Retarget-and-replay vs every trained policy on held-out and OOD worlds: success with 95% CI, per-physics bins, style distance (DTW, mm) and tempo.",
+   "doc": "",
+   "class": "EvalStyleDream",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 413,
+   "config": "EvalStyleDreamConfig",
+   "params": [
+    {
+     "name": "sets",
+     "type": "list[str]",
+     "default": [
+      "held_out",
+      "ood"
+     ],
+     "help": ""
+    },
+    {
+     "name": "worlds",
+     "type": "int",
+     "default": 2048,
+     "help": ""
+    },
+    {
+     "name": "n_style",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 9,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json",
+    "world_model": "world_model.pt",
+    "policies": "policy.pt list"
+   },
+   "outputs": {
+    "report": "report.json"
+   }
+  },
+  {
    "key": "edge/optimize",
    "kind": "stage",
    "name": "edge/optimize",
@@ -1648,367 +1990,6 @@
    },
    "outputs": {
     "policy": "checkpoint dir"
-   }
-  },
-  {
-   "key": "data/umi_demo",
-   "kind": "stage",
-   "name": "data/umi_demo",
-   "stage": "data",
-   "paper": "UMI",
-   "year": 2024,
-   "url": "https://arxiv.org/abs/2402.10329",
-   "summary": "One demonstration from a UMI session: SLAM poses in the table frame, gripper width, keyframes.",
-   "doc": "",
-   "class": "UmiDemo",
-   "file": "src/vlalab/stages/real2sim.py",
-   "line": 83,
-   "config": "UmiDemoConfig",
-   "params": [
-    {
-     "name": "session",
-     "type": "str",
-     "default": "f'{HOME_R2S}/data/umi_cup_example'",
-     "help": ""
-    },
-    {
-     "name": "url",
-     "type": "str",
-     "default": "https://real.stanford.edu/umi/data/example_demo_session/",
-     "help": "where the session's GoPro MP4s are listed (used when the session is missing)"
-    },
-    {
-     "name": "umi_dir",
-     "type": "str",
-     "default": "f'{HOME_R2S}/umi'",
-     "help": ""
-    },
-    {
-     "name": "python",
-     "type": "str",
-     "default": "f'{HOME_R2S}/umi/.venv/bin/python'",
-     "help": ""
-    },
-    {
-     "name": "demo",
-     "type": "str",
-     "default": "auto",
-     "help": "episode index in dataset_plan.pkl, or auto"
-    },
-    {
-     "name": "keyframe",
-     "type": "str",
-     "default": "pre_grasp",
-     "help": "start | pre_grasp | grasp | <frame>"
-    },
-    {
-     "name": "pre_grasp_s",
-     "type": "float",
-     "default": 0.75,
-     "help": ""
-    },
-    {
-     "name": "rect_fov",
-     "type": "float",
-     "default": 100.0,
-     "help": ""
-    },
-    {
-     "name": "rect_size",
-     "type": "int",
-     "default": 1024,
-     "help": ""
-    },
-    {
-     "name": "task",
-     "type": "str",
-     "default": "Put the espresso cup on the saucer.",
-     "help": ""
-    }
-   ],
-   "outputs": {
-    "bundle": "dir: demo.json, trajectory.npz, keyframe_rect.png, preview.mp4"
-   }
-  },
-  {
-   "key": "data/scene_masks",
-   "kind": "stage",
-   "name": "data/scene_masks",
-   "stage": "data",
-   "paper": "SAM 3",
-   "year": 2025,
-   "url": "https://arxiv.org/abs/2511.16719",
-   "summary": "Text-prompted object masks on the demo keyframe (SAM 3; Grounding DINO + SAM 2.1 fallback).",
-   "doc": "",
-   "class": "SceneMasks",
-   "file": "src/vlalab/stages/real2sim.py",
-   "line": 121,
-   "config": "SceneMasksConfig",
-   "params": [
-    {
-     "name": "prompts",
-     "type": "list[Any]",
-     "default": [
-      "cup",
-      "saucer"
-     ],
-     "help": "text, or {text, name, max} per object"
-    },
-    {
-     "name": "backend",
-     "type": "str",
-     "default": "auto",
-     "help": "auto | sam3 | gdino_sam2"
-    },
-    {
-     "name": "model",
-     "type": "str",
-     "default": "facebook/sam3",
-     "help": ""
-    },
-    {
-     "name": "threshold",
-     "type": "float",
-     "default": 0.4,
-     "help": ""
-    }
-   ],
-   "inputs": {
-    "bundle": "UMI demo bundle"
-   },
-   "outputs": {
-    "masks": "dir: masks.json, one PNG per object, overlay.jpg"
-   }
-  },
-  {
-   "key": "data/sam3d_scene",
-   "kind": "stage",
-   "name": "data/sam3d_scene",
-   "stage": "data",
-   "paper": "SAM 3D Objects",
-   "year": 2025,
-   "url": "https://arxiv.org/abs/2511.16624",
-   "summary": "Metric 3D objects in the table frame from one keyframe; scale from the SLAM camera height.",
-   "doc": "",
-   "class": "Sam3dScene",
-   "file": "src/vlalab/stages/real2sim.py",
-   "line": 157,
-   "config": "Sam3dSceneConfig",
-   "params": [
-    {
-     "name": "method",
-     "type": "str",
-     "default": "sam3d",
-     "help": "sam3d | moge (the visible metric points only: measured, nothing generated)"
-    },
-    {
-     "name": "moge",
-     "type": "str",
-     "default": "Ruicheng/moge-vitl",
-     "help": ""
-    },
-    {
-     "name": "repo",
-     "type": "str",
-     "default": "f'{HOME_R2S}/sam-3d-objects'",
-     "help": ""
-    },
-    {
-     "name": "python",
-     "type": "str",
-     "default": "~/miniforge3/envs/sam3d-objects/bin/python",
-     "help": ""
-    },
-    {
-     "name": "checkpoint",
-     "type": "str",
-     "default": "checkpoints/hf/pipeline.yaml",
-     "help": ""
-    },
-    {
-     "name": "seed",
-     "type": "int",
-     "default": 42,
-     "help": ""
-    },
-    {
-     "name": "offload",
-     "type": "bool",
-     "default": true,
-     "help": "generators to CPU while decoding (GPUs under 32 GB)"
-    },
-    {
-     "name": "layout_refine",
-     "type": "bool",
-     "default": false,
-     "help": ""
-    },
-    {
-     "name": "scale_source",
-     "type": "str",
-     "default": "slam_table",
-     "help": "slam_table | moge"
-    }
-   ],
-   "inputs": {
-    "bundle": "UMI demo bundle",
-    "masks": "object masks"
-   },
-   "outputs": {
-    "scene": "dir: scene.json, objects/<name>.npz|glb, scene_points.npz"
-   }
-  },
-  {
-   "key": "data/physics_match",
-   "kind": "stage",
-   "name": "data/physics_match",
-   "stage": "data",
-   "paper": "YCB + ABO object databases",
-   "year": 2022,
-   "url": "https://amazon-berkeley-objects.s3.amazonaws.com/index.html",
-   "summary": "One-to-one match of each reconstructed object to a database object with known mass (CLIP + size).",
-   "doc": "",
-   "class": "PhysicsMatch",
-   "file": "src/vlalab/stages/real2sim.py",
-   "line": 209,
-   "config": "PhysicsMatchConfig",
-   "params": [
-    {
-     "name": "library",
-     "type": "list[dict]",
-     "default": "[{'type': 'ycb', 'root': f'{HOME_R2S}/data/ycb'}, {'type': 'abo', 'root': f'{HOME_R2S}/data/abo'}]",
-     "help": "sources: ycb {root} | abo {root, max_dim, max_mass, product_types} | steel_shelf {root} | json {path}"
-    },
-    {
-     "name": "clip_model",
-     "type": "str",
-     "default": "openai/clip-vit-large-patch14",
-     "help": ""
-    },
-    {
-     "name": "embed_cache",
-     "type": "str",
-     "default": "f'{HOME_R2S}/cache/library_clip.npy'",
-     "help": ""
-    },
-    {
-     "name": "w_appearance",
-     "type": "float",
-     "default": 0.6,
-     "help": "score = appearance^w x size^(1-w)"
-    },
-    {
-     "name": "size_sigma",
-     "type": "float",
-     "default": 0.35,
-     "help": "tolerance on log size ratios (0.35 ~ +-40%)"
-    },
-    {
-     "name": "min_score",
-     "type": "float",
-     "default": 0.5,
-     "help": "below this the match is not used for the mass"
-    },
-    {
-     "name": "fallback_density",
-     "type": "float",
-     "default": 700.0,
-     "help": ""
-    },
-    {
-     "name": "top_k",
-     "type": "int",
-     "default": 5,
-     "help": ""
-    }
-   ],
-   "inputs": {
-    "scene": "reconstructed scene",
-    "bundle": "UMI demo bundle",
-    "masks": "object masks"
-   },
-   "outputs": {
-    "physics": "physics.json",
-    "library": "dir: library.json (+ hulls/ for Steel entries)"
-   }
-  },
-  {
-   "key": "data/steel_scene",
-   "kind": "stage",
-   "name": "data/steel_scene",
-   "stage": "data",
-   "paper": "Steel / Newton",
-   "year": 2026,
-   "url": "https://www.skild.ai/blogs/steel",
-   "summary": "The reconstructed 3D environment in Newton with the Steel solver; an FR3 plays the demo as joint angles.",
-   "doc": "",
-   "class": "SteelScene",
-   "file": "src/vlalab/stages/real2sim.py",
-   "line": 276,
-   "config": "SteelSceneConfig",
-   "params": [
-    {
-     "name": "joints",
-     "type": "str | None",
-     "default": null,
-     "help": "recorded joint angles (npz: t, q [N x 9], base [x, y, z, yaw]); default: IK from the demo"
-    },
-    {
-     "name": "base",
-     "type": "str",
-     "default": "auto",
-     "help": "auto, or [x, y, yaw_deg] in the table frame"
-    },
-    {
-     "name": "steel_dir",
-     "type": "str",
-     "default": "f'{HOME_R2S}/steel/examples'",
-     "help": ""
-    },
-    {
-     "name": "python",
-     "type": "str",
-     "default": "f'{HOME_R2S}/steel/examples/.venv/bin/python'",
-     "help": ""
-    },
-    {
-     "name": "solver",
-     "type": "dict[str, Any]",
-     "default": "dict()",
-     "help": "SolverSteel arguments over the defaults"
-    },
-    {
-     "name": "fps",
-     "type": "int",
-     "default": 60,
-     "help": ""
-    },
-    {
-     "name": "substeps",
-     "type": "int",
-     "default": 4,
-     "help": ""
-    },
-    {
-     "name": "settle",
-     "type": "float",
-     "default": 0.5,
-     "help": ""
-    },
-    {
-     "name": "render",
-     "type": "bool",
-     "default": true,
-     "help": ""
-    }
-   ],
-   "inputs": {
-    "scene": "reconstructed scene",
-    "physics": "physics.json",
-    "bundle": "UMI demo bundle"
-   },
-   "outputs": {
-    "rollout": "dir: env.json, env/, joint_trajectory.npz/csv, replay.usd, replay_*.mp4, report.json"
    }
   },
   {
@@ -2467,12 +2448,11 @@
   "src/vlalab/cli.py"
  ],
  "files": [
-  ".github/workflows/ci.yml",
-  ".gitignore",
-  ".gitmodules",
-  "AGENTS.md",
+  ".pytest_cache/.gitignore",
+  ".pytest_cache/CACHEDIR.TAG",
+  ".pytest_cache/README.md",
+  ".pytest_cache/v/cache/nodeids",
   "README.md",
-  "configs/README.md",
   "configs/embodiment/aloha.yaml",
   "configs/embodiment/aloha_tactile.yaml",
   "configs/embodiment/pusht.yaml",
@@ -2488,7 +2468,8 @@
   "configs/pipeline/reach_heads.py",
   "configs/pipeline/reach_smoke.yaml",
   "configs/pipeline/so100_lerobot.yaml",
-  "configs/pipeline/umi_real2sim.yaml",
+  "configs/pipeline/style_dream_2d.yaml",
+  "configs/pipeline/style_dream_toy.yaml",
   "configs/presets/vla/bins_tiny.yaml",
   "configs/presets/vla/diffusion_tiny.yaml",
   "configs/presets/vla/flow_tiny.yaml",
@@ -2497,7 +2478,6 @@
   "configs/presets/vla/pi0_style.yaml",
   "configs/presets/vla/rt2_bins.yaml",
   "configs/presets/vla/smolvla_style.yaml",
-  "docs/README.md",
   "docs/adding_components.md",
   "docs/configuring_yaml.md",
   "docs/getting_started.md",
@@ -2507,16 +2487,37 @@
   "docs/images/edge_steps.gif",
   "docs/images/eval_sims.gif",
   "docs/images/post_purple.gif",
-  "docs/images/real2sim/replay_side.png",
-  "docs/images/real2sim/scene_moge.png",
-  "docs/images/real2sim/scene_sam3d.png",
   "docs/images/rl_purple.gif",
   "docs/images/so100_demos.jpg",
   "docs/images/so100_offline.gif",
+  "docs/images/style_dream/2d_dream_rl_s0.gif",
+  "docs/images/style_dream/2d_dream_rl_s0.mp4",
+  "docs/images/style_dream/2d_dream_s0.mp4",
+  "docs/images/style_dream/2d_retarget_and_replay.mp4",
+  "docs/images/style_dream/2d_rl_s0.mp4",
+  "docs/images/style_dream/final_success.png",
+  "docs/images/style_dream/learning_curves.png",
+  "docs/images/style_dream/mass_bins.png",
+  "docs/images/style_dream/results.json",
+  "docs/images/style_dream/results.md",
+  "docs/images/style_dream/steel_dream.mp4",
+  "docs/images/style_dream/steel_dream_carry.png",
+  "docs/images/style_dream/steel_dream_rl.gif",
+  "docs/images/style_dream/steel_dream_rl.mp4",
+  "docs/images/style_dream/steel_dream_rl_carry.png",
+  "docs/images/style_dream/steel_retarget_and_replay.gif",
+  "docs/images/style_dream/steel_retarget_and_replay.mp4",
+  "docs/images/style_dream/steel_retarget_and_replay_carry.png",
+  "docs/images/style_dream/steel_rl.mp4",
+  "docs/images/style_dream/steel_rl_carry.png",
+  "docs/images/style_dream/steel_worlds.mp4",
+  "docs/images/style_dream/steel_worlds.png",
+  "docs/images/style_dream/style_tradeoff.png",
+  "docs/images/style_dream/toy_demo_style.png",
+  "docs/images/style_dream/umi_demo_style.png",
   "docs/images/vla_eval.gif",
   "docs/images/vlm_pointing.png",
   "docs/papers.yaml",
-  "docs/real2sim.md",
   "docs/references.bib",
   "docs/results.md",
   "docs/running.md",
@@ -2528,28 +2529,41 @@
   "docs/stages/06_eval.md",
   "docs/stages/07_edge.md",
   "docs/stages/08_deploy.md",
+  "docs/style_dream.md",
+  "finalize.sh",
+  "full.log",
+  "full2d.log",
+  "full2d_b.log",
+  "launch_2d.sh",
+  "launch_2d_b.sh",
+  "launch_full.sh",
   "pyproject.toml",
-  "scripts/README.md",
+  "real_umi/demo.json",
+  "real_umi/scene/scene.json",
+  "real_umi/style/style.json",
+  "real_umi/style/style.png",
+  "real_umi/trajectory.npz",
+  "runs_dev/demo/demo.json",
+  "runs_dev/demo/style.json",
+  "runs_dev/demo/trajectory.npz",
   "scripts/build_site.py",
+  "scripts/dream/drift_env.py",
+  "scripts/dream/make_gifs.py",
+  "scripts/dream/plot_results.py",
+  "scripts/dream/render_policies.py",
+  "scripts/dream/render_worlds.py",
+  "scripts/dream/run_toy.sh",
+  "scripts/dream/setup_env.sh",
+  "scripts/dream/smoke_env.py",
   "scripts/gcp_vm.sh",
   "scripts/publish_site.sh",
   "scripts/readme_media.py",
-  "scripts/real2sim/README.md",
-  "scripts/real2sim/common.sh",
-  "scripts/real2sim/fetch_umi_session.sh",
-  "scripts/real2sim/plot_scene.py",
-  "scripts/real2sim/render_ycb.py",
-  "scripts/real2sim/setup_physics_db.sh",
-  "scripts/real2sim/setup_sam3d.sh",
-  "scripts/real2sim/setup_steel.sh",
-  "scripts/real2sim/setup_umi.sh",
   "scripts/verify_all.sh",
-  "setup.sh",
-  "site/README.md",
+  "setup.log",
+  "shakedown.log",
   "site/app.js",
   "site/index.html",
   "site/style.css",
-  "src/vlalab/README.md",
   "src/vlalab/__init__.py",
   "src/vlalab/cli.py",
   "src/vlalab/core/__init__.py",
@@ -2560,6 +2574,15 @@
   "src/vlalab/data/__init__.py",
   "src/vlalab/data/dataset.py",
   "src/vlalab/data/lerobot_source.py",
+  "src/vlalab/dream/__init__.py",
+  "src/vlalab/dream/agent.py",
+  "src/vlalab/dream/demo.py",
+  "src/vlalab/dream/planar_env.py",
+  "src/vlalab/dream/render.py",
+  "src/vlalab/dream/shapes.py",
+  "src/vlalab/dream/steel_env.py",
+  "src/vlalab/dream/style.py",
+  "src/vlalab/dream/world_model.py",
   "src/vlalab/envs/__init__.py",
   "src/vlalab/envs/base.py",
   "src/vlalab/envs/experts.py",
@@ -2576,14 +2599,6 @@
   "src/vlalab/policy/normalize.py",
   "src/vlalab/policy/train.py",
   "src/vlalab/policy/vla.py",
-  "src/vlalab/real2sim/README.md",
-  "src/vlalab/real2sim/__init__.py",
-  "src/vlalab/real2sim/library.py",
-  "src/vlalab/real2sim/masks.py",
-  "src/vlalab/real2sim/workers/metric_depth.py",
-  "src/vlalab/real2sim/workers/robot_replay.py",
-  "src/vlalab/real2sim/workers/sam3d_scene.py",
-  "src/vlalab/real2sim/workers/umi_demo.py",
   "src/vlalab/runtime/__init__.py",
   "src/vlalab/runtime/chunking.py",
   "src/vlalab/runtime/drivers.py",
@@ -2593,16 +2608,17 @@
   "src/vlalab/stages/__init__.py",
   "src/vlalab/stages/data.py",
   "src/vlalab/stages/deploy.py",
+  "src/vlalab/stages/dream.py",
   "src/vlalab/stages/edge.py",
   "src/vlalab/stages/evaluate.py",
   "src/vlalab/stages/post_train.py",
-  "src/vlalab/stages/real2sim.py",
   "src/vlalab/stages/rl.py",
   "src/vlalab/stages/vla.py",
   "src/vlalab/stages/vlm.py",
-  "tests/README.md",
+  "style_bins.log",
   "tests/test_core.py",
-  "thirdparty/README.md"
+  "tests/test_dream.py",
+  "umi_style.py"
  ],
  "papers": {
   "vlm": [
@@ -2611,63 +2627,41 @@
     "year": 2025,
     "status": "native",
     "key": "backbone/hf_vlm",
-    "url": "https://arxiv.org/abs/2504.05299",
-    "code": [
-     {
-      "name": "smollm",
-      "url": "https://github.com/huggingface/smollm",
-      "rev": "438be18dae658a638f3a6976fdf5190bb6d68619"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2504.05299"
    },
    {
-    "name": "Any HF image-text-to-text VLM (Qwen2.5-VL, PaliGemma 2, Idefics3)",
+    "name": "Any HF image-text-to-text VLM (Qwen2.5-VL",
+    "PaliGemma 2": null,
+    "Idefics3)": null,
     "year": 2025,
     "status": "native",
-    "key": "backbone/hf_vlm",
-    "code": []
+    "key": "backbone/hf_vlm"
    },
    {
     "name": "RT-1 FiLM CNN + tokens (from scratch)",
     "year": 2022,
     "status": "native",
     "key": "backbone/tiny_cnn",
-    "url": "https://arxiv.org/abs/2212.06817",
-    "code": [
-     {
-      "name": "robotics_transformer",
-      "url": "https://github.com/google-research/robotics_transformer",
-      "rev": "4569641b8111f3f402c32d8e24becd2a6e952ecc"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2212.06817"
    },
    {
     "name": "Embodied-reasoning fine-tune (Gemini Robotics-ER / pi0.5 pointing data)",
     "year": 2025,
     "status": "native",
     "key": "vlm/er_finetune",
-    "url": "https://arxiv.org/abs/2503.20020",
-    "code": []
+    "url": "https://arxiv.org/abs/2503.20020"
    },
    {
     "name": "Prismatic fused DINOv2 + SigLIP encoder (OpenVLA)",
     "year": 2024,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2402.07865",
-    "code": []
+    "url": "https://arxiv.org/abs/2402.07865"
    },
    {
-    "name": "GR00T backbone: Eagle 2 (N1 / N1.5), Cosmos-Reason2 (N1.7, what LeRobot 0.7 runs)",
+    "name": "Eagle-2 backbone (GR00T N1)",
     "year": 2025,
     "status": "lerobot",
-    "key": "groot",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "key": "groot"
    }
   ],
   "vla": [
@@ -2676,384 +2670,161 @@
     "year": 2024,
     "status": "native",
     "key": "action_head/flow_matching",
-    "url": "https://arxiv.org/abs/2410.24164",
-    "code": [
-     {
-      "name": "openpi",
-      "url": "https://github.com/Physical-Intelligence/openpi",
-      "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2410.24164"
    },
    {
     "name": "Diffusion Policy / Octo diffusion head",
     "year": 2023,
     "status": "native",
     "key": "action_head/diffusion",
-    "url": "https://arxiv.org/abs/2303.04137",
-    "code": [
-     {
-      "name": "diffusion_policy",
-      "url": "https://github.com/real-stanford/diffusion_policy",
-      "rev": "5ba07ac6661db573af695b419a7947ecb704690f"
-     },
-     {
-      "name": "octo",
-      "url": "https://github.com/octo-models/octo",
-      "rev": "241fb3514b7c40957a86d869fecb7c7fc353f540"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2303.04137"
    },
    {
     "name": "OpenVLA-OFT parallel decoding + L1",
     "year": 2025,
     "status": "native",
     "key": "action_head/l1_regression",
-    "url": "https://arxiv.org/abs/2502.19645",
-    "code": [
-     {
-      "name": "openvla-oft",
-      "url": "https://github.com/moojink/openvla-oft",
-      "rev": "e4287e94541f459edc4feabc4e181f537cd569a8"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2502.19645"
    },
    {
     "name": "RT-2 / OpenVLA 256-bin action tokens",
     "year": 2023,
     "status": "native",
     "key": "action_head/discrete_bins",
-    "url": "https://arxiv.org/abs/2307.15818",
-    "code": [
-     {
-      "name": "openvla",
-      "url": "https://github.com/openvla/openvla",
-      "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2307.15818"
    },
    {
     "name": "SmolVLA (half-depth VLM + flow expert)",
     "year": 2025,
     "status": "native",
     "key": "presets/vla/smolvla_style",
-    "url": "https://arxiv.org/abs/2506.01844",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2506.01844"
    },
    {
     "name": "SmolVLA (official weights)",
     "year": 2025,
     "status": "lerobot",
-    "key": "smolvla",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "key": "smolvla"
    },
    {
     "name": "ACT (action chunking transformer)",
     "year": 2023,
     "status": "lerobot",
     "key": "act",
-    "url": "https://arxiv.org/abs/2304.13705",
-    "code": [
-     {
-      "name": "act",
-      "url": "https://github.com/tonyzhaozh/act",
-      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2304.13705"
    },
    {
     "name": "pi0 / pi0.5 (official weights)",
     "year": 2025,
     "status": "lerobot",
-    "key": "pi0 / pi05",
-    "code": [
-     {
-      "name": "openpi",
-      "url": "https://github.com/Physical-Intelligence/openpi",
-      "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
-     }
-    ]
+    "key": "pi0 / pi05"
    },
    {
-    "name": "GR00T N1.7 (LeRobot 0.7 dropped N1.5)",
+    "name": "GR00T N1.5",
     "year": 2025,
     "status": "lerobot",
     "key": "groot",
-    "url": "https://arxiv.org/abs/2503.14734",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2503.14734"
    },
    {
     "name": "X-VLA",
     "year": 2025,
     "status": "lerobot",
-    "key": "xvla",
-    "url": "https://arxiv.org/abs/2510.10274",
-    "code": [
-     {
-      "name": "X-VLA",
-      "url": "https://github.com/2toinf/X-VLA",
-      "rev": "6c4ecfb8be458ae7c0c96094e4b0add4174f4fe2"
-     }
-    ]
-   },
-   {
-    "name": "Fourier-feature state encoder",
-    "year": 2020,
-    "status": "native",
-    "key": "obs_encoder/fourier",
-    "url": "https://arxiv.org/abs/2006.10739",
-    "code": [
-     {
-      "name": "fourier-feature-networks",
-      "url": "https://github.com/tancik/fourier-feature-networks",
-      "rev": "9c110c31ce3794222fff408ac27bbf74d8fe8993"
-     }
-    ]
+    "key": "xvla"
    },
    {
     "name": "FAST action tokenizer (DCT + BPE)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2501.09747",
-    "code": []
+    "url": "https://arxiv.org/abs/2501.09747"
    },
    {
     "name": "Knowledge insulation (stop action-expert gradients into the VLM)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2505.23705",
-    "code": []
+    "url": "https://arxiv.org/abs/2505.23705"
    },
    {
     "name": "Joint (blockwise-causal) attention prefix instead of cross-attention",
     "year": 2024,
-    "status": "planned",
-    "code": []
+    "status": "planned"
    }
   ],
   "data": [
    {
     "name": "Scripted sim demos with noise / hesitation / recovery knobs",
     "status": "native",
-    "key": "data/scripted_sim",
-    "code": []
+    "key": "data/scripted_sim"
    },
    {
-    "name": "LeRobotDataset hub sources (ALOHA, PushT, SO-100, DROID, LIBERO)",
+    "name": "LeRobotDataset hub sources (ALOHA",
+    "PushT": null,
+    "SO-100": null,
+    "DROID": null,
+    "LIBERO)": null,
     "year": 2024,
     "status": "native",
-    "key": "data/lerobot_hub",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "key": "data/lerobot_hub"
    },
    {
-    "name": "Weighted mixtures / co-training (Open X-Embodiment, pi0)",
+    "name": "Weighted mixtures / co-training (Open X-Embodiment",
+    "pi0)": null,
     "year": 2023,
     "status": "native",
     "key": "data/mixture",
-    "url": "https://arxiv.org/abs/2310.08864",
-    "code": [
-     {
-      "name": "open_x_embodiment",
-      "url": "https://github.com/google-deepmind/open_x_embodiment",
-      "rev": "9eeb68b989efbcf474e8fb9019e01d02b962a604"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2310.08864"
    },
    {
     "name": "Spec-shaped synthetic data for hardware bring-up",
     "status": "native",
-    "key": "data/synthetic",
-    "code": []
+    "key": "data/synthetic"
    },
    {
     "name": "ALOHA / GELLO / SO-100 leader-follower teleop recording",
     "year": 2023,
     "status": "lerobot",
-    "key": "lerobot-record",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "key": "lerobot-record"
    },
    {
-    "name": "UMI handheld-gripper demos (SLAM poses of one demo)",
+    "name": "UMI handheld-gripper demos",
     "year": 2024,
-    "status": "native",
-    "key": "data/umi_demo",
-    "url": "https://arxiv.org/abs/2402.10329",
-    "code": [
-     {
-      "name": "universal_manipulation_interface",
-      "url": "https://github.com/real-stanford/universal_manipulation_interface",
-      "rev": "d095ba9590df789df5189eea5ee7e431689038a6"
-     }
-    ]
-   },
-   {
-    "name": "SAM 3 text-prompted masks (Grounding DINO + SAM 2.1 fallback)",
-    "year": 2025,
-    "status": "native",
-    "key": "data/scene_masks",
-    "url": "https://arxiv.org/abs/2511.16719",
-    "code": [
-     {
-      "name": "sam3",
-      "url": "https://github.com/facebookresearch/sam3",
-      "rev": "31cb7e624e4fe95301b1be1d4e809111593d2e45"
-     },
-     {
-      "name": "GroundingDINO",
-      "url": "https://github.com/IDEA-Research/GroundingDINO",
-      "rev": "856dde20aee659246248e20734ef9ba5214f5e44"
-     },
-     {
-      "name": "sam2",
-      "url": "https://github.com/facebookresearch/sam2",
-      "rev": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
-     }
-    ]
-   },
-   {
-    "name": "SAM 3D Objects metric scene on a MoGe point map",
-    "year": 2025,
-    "status": "native",
-    "key": "data/sam3d_scene",
-    "url": "https://arxiv.org/abs/2511.16624",
-    "code": [
-     {
-      "name": "sam-3d-objects",
-      "url": "https://github.com/facebookresearch/sam-3d-objects",
-      "rev": "f91db411c50efee93d8db7aeb323885650f6f722"
-     },
-     {
-      "name": "MoGe",
-      "url": "https://github.com/microsoft/MoGe",
-      "rev": "a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"
-     }
-    ]
-   },
-   {
-    "name": "Mass from a matched YCB / ABO object (CLIP kNN + size)",
-    "year": 2025,
-    "status": "native",
-    "key": "data/physics_match",
-    "url": "https://arxiv.org/abs/1502.03143",
-    "code": [
-     {
-      "name": "ycb_dataset",
-      "url": "https://github.com/elpis-lab/ycb_dataset",
-      "rev": "9e8c6488a2ff673d9aa48a91492fb89423c1b106"
-     },
-     {
-      "name": "CLIP",
-      "url": "https://github.com/openai/CLIP",
-      "rev": "d05afc436d78f1c48dc0dbf8e5980a9d471f35f6"
-     }
-    ]
-   },
-   {
-    "name": "Steel solver in Newton (FR3 replays the demo)",
-    "year": 2025,
-    "status": "native",
-    "key": "data/steel_scene",
-    "url": "https://www.skild.ai/blogs/steel",
-    "code": [
-     {
-      "name": "steel",
-      "url": "https://github.com/skild-ai/steel",
-      "rev": "6d955a89535a384f7bf0f071ae1992b345b357a8"
-     },
-     {
-      "name": "newton",
-      "url": "https://github.com/skild-ai/newton",
-      "rev": "f6fc82a8b06d036e1e6d02a61d77a2d300476e8d"
-     },
-     {
-      "name": "newton-assets",
-      "url": "https://github.com/newton-physics/newton-assets",
-      "rev": "f8fb7abcbeba2318814a74f3eeb02780ad7925d6"
-     }
-    ]
+    "status": "planned",
+    "url": "https://arxiv.org/abs/2402.10329"
    },
    {
     "name": "MimicGen-style demo multiplication in sim",
     "year": 2023,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2310.17596",
-    "code": []
+    "url": "https://arxiv.org/abs/2310.17596"
    }
   ],
   "post_train": [
    {
     "name": "Full fine-tune",
     "status": "native",
-    "key": "post_train/finetune",
-    "code": []
+    "key": "post_train/finetune"
    },
    {
     "name": "Frozen VLM + trained expert (GR00T N1.5)",
     "year": 2025,
     "status": "native",
-    "key": "post_train/finetune",
-    "code": [
-     {
-      "name": "Isaac-GR00T",
-      "url": "https://github.com/NVIDIA/Isaac-GR00T",
-      "rev": "4af2b622892f7dcb5aae5a3fb70bcb02dc217b96"
-     }
-    ]
+    "key": "post_train/finetune"
    },
    {
     "name": "LoRA on the VLM (OpenVLA)",
     "year": 2024,
     "status": "native",
     "key": "post_train/finetune",
-    "url": "https://arxiv.org/abs/2406.09246",
-    "code": [
-     {
-      "name": "openvla",
-      "url": "https://github.com/openvla/openvla",
-      "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2406.09246"
    },
    {
     "name": "Quantile action normalisation",
     "status": "native",
-    "key": "policy/normalize",
-    "code": []
+    "key": "policy/normalize"
    },
    {
     "name": "Data curation / filtering of hesitant demos",
-    "status": "planned",
-    "code": []
+    "status": "planned"
    }
   ],
   "rl": [
@@ -3061,161 +2832,109 @@
     "name": "Filtered self-imitation (ReST / RWR family)",
     "year": 2025,
     "status": "native",
-    "key": "rl/filtered_bc",
-    "code": []
+    "key": "rl/filtered_bc"
    },
    {
     "name": "DSRL - RL in the latent-noise space",
     "year": 2025,
     "status": "native",
     "key": "rl/dsrl",
-    "url": "https://arxiv.org/abs/2506.15799",
-    "code": [
-     {
-      "name": "dsrl",
-      "url": "https://github.com/ajwagen/dsrl",
-      "rev": "8d21b9cf55459f022c0e769bca1343edd9d30e5a"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2506.15799"
    },
    {
     "name": "SimpleVLA-RL (GRPO with binary success)",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2509.09674",
-    "code": []
+    "url": "https://arxiv.org/abs/2509.09674"
    },
    {
     "name": "pi*0.6 Recap (advantage-conditioned policy + value function)",
     "year": 2025,
     "status": "planned",
-    "url": "https://www.pi.website/blog/pistar06",
-    "code": []
+    "url": "https://www.pi.website/blog/pistar06"
    },
    {
     "name": "HIL-SERL (human-in-the-loop RL)",
     "year": 2024,
     "status": "lerobot",
     "key": "hilserl",
-    "url": "https://arxiv.org/abs/2410.21845",
-    "code": [
-     {
-      "name": "hil-serl",
-      "url": "https://github.com/rail-berkeley/hil-serl",
-      "rev": "c32939bccb65f3b8c43a9f9add3d322d4ab0264a"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2410.21845"
    },
    {
     "name": "Residual RL on top of a frozen VLA",
-    "status": "planned",
-    "code": []
+    "status": "planned"
    }
   ],
   "eval": [
    {
     "name": "Seeded sim rollouts + 95% Wilson interval + failure triage",
     "status": "native",
-    "key": "eval/sim_rollout",
-    "code": []
+    "key": "eval/sim_rollout"
    },
    {
     "name": "Offline action error on held-out demos",
     "status": "native",
-    "key": "eval/offline",
-    "code": []
+    "key": "eval/offline"
    },
    {
     "name": "Regression gate between builds",
     "status": "native",
-    "key": "eval/gate",
-    "code": []
+    "key": "eval/gate"
    },
    {
     "name": "PushT / ALOHA / LIBERO / MetaWorld sims via gymnasium",
     "year": 2024,
     "status": "native",
     "key": "env/gym",
-    "url": "https://arxiv.org/abs/2306.03310",
-    "code": [
-     {
-      "name": "gym-pusht",
-      "url": "https://github.com/huggingface/gym-pusht",
-      "rev": "e49cf07fd32ad6e69443af2921dd8343b0f9ad7d"
-     },
-     {
-      "name": "gym-aloha",
-      "url": "https://github.com/huggingface/gym-aloha",
-      "rev": "6203fac50be47065056b69094e44308972202258"
-     },
-     {
-      "name": "LIBERO",
-      "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
-      "rev": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2306.03310"
    },
    {
     "name": "SimplerEnv (real-to-sim matched evaluation)",
     "year": 2024,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2405.05941",
-    "code": [
-     {
-      "name": "SimplerEnv",
-      "url": "https://github.com/simpler-env/SimplerEnv",
-      "rev": "eddb5690749a1e34267807c0f7b5eede323918d7"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2405.05941"
    },
    {
     "name": "RoboArena-style pairwise A/B comparisons",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2506.18123",
-    "code": []
+    "url": "https://arxiv.org/abs/2506.18123"
    }
   ],
   "edge": [
    {
     "name": "bf16 / fp16 inference",
     "status": "native",
-    "key": "edge/optimize",
-    "code": []
+    "key": "edge/optimize"
    },
    {
     "name": "Fewer flow / diffusion steps",
     "status": "native",
-    "key": "edge/optimize",
-    "code": []
+    "key": "edge/optimize"
    },
    {
     "name": "torch.compile of the action expert",
     "status": "native",
-    "key": "edge/optimize",
-    "code": []
+    "key": "edge/optimize"
    },
    {
     "name": "int8 dynamic (CPU) / int8 weight-only (torchao)",
     "status": "native",
-    "key": "edge/optimize",
-    "code": []
+    "key": "edge/optimize"
    },
    {
     "name": "Prefix KV caching (re-run only the expert while denoising)",
-    "status": "planned",
-    "code": []
+    "status": "planned"
    },
    {
     "name": "ONNX / TensorRT export for Jetson",
-    "status": "planned",
-    "code": []
+    "status": "planned"
    },
    {
-    "name": "System 2 / System 1 split (GR00T N1, Helix)",
+    "name": "System 2 / System 1 split (GR00T N1",
+    "Helix)": null,
     "year": 2025,
-    "status": "planned",
-    "code": []
+    "status": "planned"
    }
   ],
   "deploy": [
@@ -3223,204 +2942,45 @@
     "name": "Receding-horizon chunk execution",
     "year": 2023,
     "status": "native",
-    "key": "chunker/sync",
-    "code": [
-     {
-      "name": "act",
-      "url": "https://github.com/tonyzhaozh/act",
-      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
-     }
-    ]
+    "key": "chunker/sync"
    },
    {
     "name": "ACT temporal ensembling",
     "year": 2023,
     "status": "native",
-    "key": "chunker/temporal_ensemble",
-    "code": [
-     {
-      "name": "act",
-      "url": "https://github.com/tonyzhaozh/act",
-      "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
-     }
-    ]
+    "key": "chunker/temporal_ensemble"
    },
    {
-    "name": "Latency-aware chunk blending (RTC, output-space)",
+    "name": "Latency-aware chunk blending (RTC",
+    "output-space)": null,
     "year": 2025,
     "status": "native",
-    "key": "chunker/rtc_blend",
-    "code": [
-     {
-      "name": "real-time-chunking-kinetix",
-      "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
-      "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
-     }
-    ]
+    "key": "chunker/rtc_blend"
    },
    {
     "name": "Real-time chunking by inpainting during denoising",
     "year": 2025,
     "status": "planned",
-    "url": "https://arxiv.org/abs/2506.07339",
-    "code": [
-     {
-      "name": "real-time-chunking-kinetix",
-      "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
-      "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
-     }
-    ]
+    "url": "https://arxiv.org/abs/2506.07339"
    },
    {
     "name": "Async inference control loop + safety filters + episode logging",
     "status": "native",
-    "key": "deploy/loop",
-    "code": []
+    "key": "deploy/loop"
    },
    {
-    "name": "LeRobot robots (SO-100/101, Koch, ALOHA, LeKiwi)",
+    "name": "LeRobot robots (SO-100/101",
+    "Koch": null,
+    "ALOHA": null,
+    "LeKiwi)": null,
     "status": "native",
-    "key": "driver/lerobot_robot",
-    "code": [
-     {
-      "name": "lerobot",
-      "url": "https://github.com/huggingface/lerobot",
-      "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-     }
-    ]
+    "key": "driver/lerobot_robot"
    },
    {
     "name": "ROS 2 bridge driver",
-    "status": "planned",
-    "code": []
+    "status": "planned"
    }
   ]
- },
- "thirdparty": {
-  "smollm": {
-   "url": "https://github.com/huggingface/smollm",
-   "rev": "438be18dae658a638f3a6976fdf5190bb6d68619"
-  },
-  "robotics_transformer": {
-   "url": "https://github.com/google-research/robotics_transformer",
-   "rev": "4569641b8111f3f402c32d8e24becd2a6e952ecc"
-  },
-  "lerobot": {
-   "url": "https://github.com/huggingface/lerobot",
-   "rev": "410c095eacc0011d998a73383eb94abed2715af0"
-  },
-  "open_x_embodiment": {
-   "url": "https://github.com/google-deepmind/open_x_embodiment",
-   "rev": "9eeb68b989efbcf474e8fb9019e01d02b962a604"
-  },
-  "openpi": {
-   "url": "https://github.com/Physical-Intelligence/openpi",
-   "rev": "215abfb217dbac7d5f1273282331b9b1866c0479"
-  },
-  "diffusion_policy": {
-   "url": "https://github.com/real-stanford/diffusion_policy",
-   "rev": "5ba07ac6661db573af695b419a7947ecb704690f"
-  },
-  "octo": {
-   "url": "https://github.com/octo-models/octo",
-   "rev": "241fb3514b7c40957a86d869fecb7c7fc353f540"
-  },
-  "openvla": {
-   "url": "https://github.com/openvla/openvla",
-   "rev": "c8f03f48af692657d3060c19588038c7220e9af9"
-  },
-  "openvla-oft": {
-   "url": "https://github.com/moojink/openvla-oft",
-   "rev": "e4287e94541f459edc4feabc4e181f537cd569a8"
-  },
-  "act": {
-   "url": "https://github.com/tonyzhaozh/act",
-   "rev": "742c753c0d4a5d87076c8f69e5628c79a8cc5488"
-  },
-  "Isaac-GR00T": {
-   "url": "https://github.com/NVIDIA/Isaac-GR00T",
-   "rev": "4af2b622892f7dcb5aae5a3fb70bcb02dc217b96"
-  },
-  "X-VLA": {
-   "url": "https://github.com/2toinf/X-VLA",
-   "rev": "6c4ecfb8be458ae7c0c96094e4b0add4174f4fe2"
-  },
-  "fourier-feature-networks": {
-   "url": "https://github.com/tancik/fourier-feature-networks",
-   "rev": "9c110c31ce3794222fff408ac27bbf74d8fe8993"
-  },
-  "dsrl": {
-   "url": "https://github.com/ajwagen/dsrl",
-   "rev": "8d21b9cf55459f022c0e769bca1343edd9d30e5a"
-  },
-  "hil-serl": {
-   "url": "https://github.com/rail-berkeley/hil-serl",
-   "rev": "c32939bccb65f3b8c43a9f9add3d322d4ab0264a"
-  },
-  "gym-pusht": {
-   "url": "https://github.com/huggingface/gym-pusht",
-   "rev": "e49cf07fd32ad6e69443af2921dd8343b0f9ad7d"
-  },
-  "gym-aloha": {
-   "url": "https://github.com/huggingface/gym-aloha",
-   "rev": "6203fac50be47065056b69094e44308972202258"
-  },
-  "LIBERO": {
-   "url": "https://github.com/Lifelong-Robot-Learning/LIBERO",
-   "rev": "8f1084e3132a39270c3a13ebe37270a43ece2a01"
-  },
-  "SimplerEnv": {
-   "url": "https://github.com/simpler-env/SimplerEnv",
-   "rev": "eddb5690749a1e34267807c0f7b5eede323918d7"
-  },
-  "real-time-chunking-kinetix": {
-   "url": "https://github.com/Physical-Intelligence/real-time-chunking-kinetix",
-   "rev": "9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b"
-  },
-  "universal_manipulation_interface": {
-   "url": "https://github.com/real-stanford/universal_manipulation_interface",
-   "rev": "d095ba9590df789df5189eea5ee7e431689038a6"
-  },
-  "sam3": {
-   "url": "https://github.com/facebookresearch/sam3",
-   "rev": "31cb7e624e4fe95301b1be1d4e809111593d2e45"
-  },
-  "sam2": {
-   "url": "https://github.com/facebookresearch/sam2",
-   "rev": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
-  },
-  "GroundingDINO": {
-   "url": "https://github.com/IDEA-Research/GroundingDINO",
-   "rev": "856dde20aee659246248e20734ef9ba5214f5e44"
-  },
-  "sam-3d-objects": {
-   "url": "https://github.com/facebookresearch/sam-3d-objects",
-   "rev": "f91db411c50efee93d8db7aeb323885650f6f722"
-  },
-  "MoGe": {
-   "url": "https://github.com/microsoft/MoGe",
-   "rev": "a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"
-  },
-  "CLIP": {
-   "url": "https://github.com/openai/CLIP",
-   "rev": "d05afc436d78f1c48dc0dbf8e5980a9d471f35f6"
-  },
-  "ycb_dataset": {
-   "url": "https://github.com/elpis-lab/ycb_dataset",
-   "rev": "9e8c6488a2ff673d9aa48a91492fb89423c1b106"
-  },
-  "newton": {
-   "url": "https://github.com/skild-ai/newton",
-   "rev": "f6fc82a8b06d036e1e6d02a61d77a2d300476e8d"
-  },
-  "newton-assets": {
-   "url": "https://github.com/newton-physics/newton-assets",
-   "rev": "f8fb7abcbeba2318814a74f3eeb02780ad7925d6"
-  },
-  "steel": {
-   "url": "https://github.com/skild-ai/steel",
-   "rev": "6d955a89535a384f7bf0f071ae1992b345b357a8"
-  }
  },
  "pipelines": [
   {
@@ -4746,91 +4306,468 @@
    ]
   },
   {
-   "name": "umi_real2sim",
-   "file": "configs/pipeline/umi_real2sim.yaml",
-   "description": "",
+   "name": "style_dream_2d",
+   "file": "configs/pipeline/style_dream_2d.yaml",
+   "description": "Phase A theory test on a 2D world - dreams + RL grounding vs RL only vs dreams only vs replay, 3 seeds.",
    "embodiment": null,
    "env": null,
    "nodes": [
     {
      "id": "demo",
-     "impl": "data/umi_demo",
+     "impl": "data/toy_demo",
      "preset": null,
      "params": {
-      "demo": "auto",
-      "keyframe": "pre_grasp"
+      "env": {
+       "backend": "planar2d",
+       "obj_xy": [
+        -0.06,
+        0.0
+       ],
+       "goal_xy": [
+        0.12,
+        0.0
+       ],
+       "home": [
+        -0.18,
+        0.0,
+        0.22
+       ],
+       "physics": {
+        "obj_xy": [
+         0.04,
+         0.0
+        ],
+        "goal_xy": [
+         0.04,
+         0.0
+        ],
+        "min_separation": 0.12,
+        "mass_scale": [
+         0.4,
+         5.0
+        ],
+        "mu_object": [
+         0.2,
+         1.0
+        ],
+        "finger_ke": [
+         400.0,
+         1500.0
+        ]
+       }
+      },
+      "squeeze": 0.004
      },
      "inputs": {},
      "uses": []
     },
     {
-     "id": "masks",
-     "impl": "data/scene_masks",
-     "preset": null,
-     "params": {
-      "prompts": [
-       "cup",
-       {
-        "text": "saucer",
-        "also": [
-         "small plate",
-         "plate"
-        ]
-       },
-       {
-        "text": "game controller",
-        "name": "controller"
-       },
-       {
-        "text": "candle jar",
-        "name": "jar",
-        "max": 2
-       }
-      ]
-     },
-     "inputs": {
-      "bundle": "demo.bundle"
-     },
-     "uses": []
-    },
-    {
-     "id": "scene",
-     "impl": "data/sam3d_scene",
-     "preset": null,
-     "params": {
-      "method": "sam3d",
-      "offload": true
-     },
-     "inputs": {
-      "bundle": "demo.bundle",
-      "masks": "masks.masks"
-     },
-     "uses": []
-    },
-    {
-     "id": "physics",
-     "impl": "data/physics_match",
+     "id": "style",
+     "impl": "data/demo_style",
      "preset": null,
      "params": {},
      "inputs": {
-      "scene": "scene.scene",
-      "bundle": "demo.bundle",
-      "masks": "masks.masks"
+      "bundle": "demo.bundle"
      },
      "uses": []
     },
     {
-     "id": "sim",
-     "impl": "data/steel_scene",
+     "id": "worlds",
+     "impl": "data/scenario_bank",
      "preset": null,
      "params": {
-      "fps": 60,
-      "substeps": 4
+      "env": {
+       "backend": "planar2d",
+       "obj_xy": [
+        -0.06,
+        0.0
+       ],
+       "goal_xy": [
+        0.12,
+        0.0
+       ],
+       "home": [
+        -0.18,
+        0.0,
+        0.22
+       ],
+       "physics": {
+        "obj_xy": [
+         0.04,
+         0.0
+        ],
+        "goal_xy": [
+         0.04,
+         0.0
+        ],
+        "min_separation": 0.12,
+        "mass_scale": [
+         0.4,
+         5.0
+        ],
+        "mu_object": [
+         0.2,
+         1.0
+        ],
+        "finger_ke": [
+         400.0,
+         1500.0
+        ]
+       },
+       "worlds": 2048,
+       "seed": 0
+      },
+      "eval_worlds": 4096,
+      "ood": {
+       "mass_scale": [
+        5.0,
+        8.0
+       ],
+       "mu_object": [
+        0.15,
+        0.3
+       ],
+       "wrench_ratio": [
+        0.06,
+        0.12
+       ],
+       "restitution": [
+        0.2,
+        0.4
+       ]
+      },
+      "render_worlds": 9
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "dreamer",
+     "impl": "rl/dream_world_model",
+     "preset": null,
+     "params": {
+      "episodes": 4,
+      "wm": {
+       "steps": 8000,
+       "batch": 512
+      }
      },
      "inputs": {
-      "scene": "scene.scene",
-      "physics": "physics.physics",
-      "bundle": "demo.bundle"
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {
+      "worlds": 4096
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "dream_rl_s0.policy",
+       "dream_rl_s1.policy",
+       "dream_rl_s2.policy",
+       "rl_s0.policy",
+       "rl_s1.policy",
+       "rl_s2.policy",
+       "dream_s0.policy",
+       "dream_s1.policy",
+       "dream_s2.policy"
+      ]
      },
      "uses": []
     }
@@ -4839,56 +4776,490 @@
     {
      "from": "demo",
      "from_port": "bundle",
-     "to": "masks",
+     "to": "style",
      "to_port": "bundle"
     },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dreamer",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dreamer",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval",
+     "to_port": "world_model"
+    },
+    {
+     "from": "dream_rl_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_rl_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_rl_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    }
+   ]
+  },
+  {
+   "name": "style_dream_toy",
+   "file": "configs/pipeline/style_dream_toy.yaml",
+   "description": "Style-conserving dreamer + RL grounding on 2048 randomised Newton/Steel cup worlds.",
+   "embodiment": null,
+   "env": null,
+   "nodes": [
+    {
+     "id": "demo",
+     "impl": "data/toy_demo",
+     "preset": null,
+     "params": {},
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "style",
+     "impl": "data/demo_style",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "worlds",
+     "impl": "data/scenario_bank",
+     "preset": null,
+     "params": {
+      "env": {
+       "worlds": 2048,
+       "seed": 0
+      },
+      "eval_worlds": 2048
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "dreamer",
+     "impl": "rl/dream_world_model",
+     "preset": null,
+     "params": {
+      "episodes": 4,
+      "wm": {
+       "steps": 8000,
+       "batch": 512
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream_rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_rl",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_dream",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "policy.policy",
+       "policy_rl.policy",
+       "policy_dream.policy"
+      ]
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
     {
      "from": "demo",
      "from_port": "bundle",
-     "to": "scene",
+     "to": "style",
      "to_port": "bundle"
     },
     {
-     "from": "masks",
-     "from_port": "masks",
-     "to": "scene",
-     "to_port": "masks"
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dreamer",
+     "to_port": "scenarios"
     },
     {
-     "from": "scene",
-     "from_port": "scene",
-     "to": "physics",
-     "to_port": "scene"
+     "from": "style",
+     "from_port": "style",
+     "to": "dreamer",
+     "to_port": "style"
     },
     {
-     "from": "demo",
-     "from_port": "bundle",
-     "to": "physics",
-     "to_port": "bundle"
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy",
+     "to_port": "scenarios"
     },
     {
-     "from": "masks",
-     "from_port": "masks",
-     "to": "physics",
-     "to_port": "masks"
+     "from": "style",
+     "from_port": "style",
+     "to": "policy",
+     "to_port": "style"
     },
     {
-     "from": "scene",
-     "from_port": "scene",
-     "to": "sim",
-     "to_port": "scene"
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy",
+     "to_port": "world_model"
     },
     {
-     "from": "physics",
-     "from_port": "physics",
-     "to": "sim",
-     "to_port": "physics"
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_rl",
+     "to_port": "scenarios"
     },
     {
-     "from": "demo",
-     "from_port": "bundle",
-     "to": "sim",
-     "to_port": "bundle"
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_rl",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_rl",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_dream",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_dream",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_dream",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval",
+     "to_port": "world_model"
+    },
+    {
+     "from": "policy",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_rl",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_dream",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
     }
    ]
   }
