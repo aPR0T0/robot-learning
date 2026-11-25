@@ -10,6 +10,7 @@
     vlab compare runs/a runs/b                   # metrics side by side
     vlab new rl my_paper                         # scaffold plugins/my_paper.py
     vlab doctor                                  # GPU / CUDA / EGL / extras check
+    vlab dash                                    # live W&B-style dashboard of every running VM
 """
 
 from __future__ import annotations
@@ -230,6 +231,12 @@ def cmd_doctor(a) -> int:
     return 0 if ok else 1
 
 
+def cmd_dash(a) -> int:
+    from vlalab.dash.hub import main as dash_main
+
+    return dash_main(([a.config] if a.config else []) + list(a.overrides or []))
+
+
 def main(argv: list[str] | None = None) -> int:
     if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
         os.environ.setdefault("MUJOCO_GL", "egl")  # headless MuJoCo (ALOHA / LIBERO sims)
@@ -278,6 +285,11 @@ def main(argv: list[str] | None = None) -> int:
 
     d = sub.add_parser("doctor", help="check GPU / CUDA / EGL / optional extras")
     d.set_defaults(fn=cmd_doctor)
+
+    da = sub.add_parser("dash", help="live W&B-style dashboard of the runs on every running VM")
+    da.add_argument("config", nargs="?", help="configs/dash/<name>.yaml or a path (default: default)")
+    da.add_argument("overrides", nargs="*", help="key=value, e.g. port=8800 'vms=[vla-lab-a100]'")
+    da.set_defaults(fn=cmd_dash)
 
     a, extra = ap.parse_known_args(argv)
     if extra:  # key=value overrides may come after options (argparse stops collecting positionals there)

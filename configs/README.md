@@ -8,5 +8,6 @@ YAML (or `.py`) that `vlab` reads. Pick by name: `vlab run <pipeline>`, `embodim
 | `embodiment/` | robots: observation and action spaces, control rate |
 | `env/` | simulators a pipeline evaluates in |
 | `presets/vla/` | VLA recipes (backbone, encoders, action head) a `vla/train` node can start from |
+| `dash/` | settings of the live dashboard, `vlab dash` ([docs](../docs/dashboard.md)) |
 
 Every key is explained in [docs/configuring_yaml.md](../docs/configuring_yaml.md).

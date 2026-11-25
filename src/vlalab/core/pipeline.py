@@ -86,6 +86,7 @@ class Context:
     env: Any
     device: str
     seed: int
+    _metrics: Any = field(default=None, repr=False)
 
     def path(self, *parts: str) -> Path:
         p = self.out_dir.joinpath(*parts)
@@ -96,6 +97,18 @@ class Context:
         p = self.path(name)
         p.write_text(json.dumps(to_plain(obj), indent=2))
         return p
+
+    def log(self, step: float | None = None, **metrics: Any) -> None:
+        """Append one row to ``<node>/metrics.jsonl`` (like ``wandb.log``); ``vlab dash`` plots it live.
+
+        ``ctx.log(it, success=0.8, loss=0.12)``. Nested dicts become ``a/b`` keys in the dashboard. The file
+        is started fresh by the first call of each execution, so a re-run never mixes with the last one.
+        """
+        if self._metrics is None:
+            self._metrics = open(self.path("metrics.jsonl"), "w")
+        row = {**({"step": step} if step is not None else {}), "_timestamp": round(time.time(), 3), **to_plain(metrics)}
+        self._metrics.write(json.dumps(row) + "\n")
+        self._metrics.flush()
 
     def require_embodiment(self) -> EmbodimentSpec:
         if self.embodiment is None:

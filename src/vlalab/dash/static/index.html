@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vlab · runs</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%232a78d6'/%3E%3Cpath d='M3 11l3-4 3 2 4-5' stroke='white' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="4"/><path d="M3 11l3-4 3 2 4-5"/></svg>
+      <span>vlab</span><span class="crumb">/</span><span class="crumb-page">runs</span>
+    </div>
+    <label class="vm-pick">
+      <span class="vm-dot" id="vmDot"></span>
+      <select id="vmSel" aria-label="VM"></select>
+    </label>
+    <div class="vm-meta" id="vmMeta"></div>
+    <div class="spacer"></div>
+    <div class="conn" id="conn"><span class="pulse"></span><span id="connText">connecting</span></div>
+    <button class="icon-btn" id="themeBtn" title="Light / dark" aria-label="Toggle theme">
+      <svg viewBox="0 0 16 16"><path d="M8 1.5a6.5 6.5 0 1 0 6.5 6.5A5 5 0 0 1 8 1.5z"/></svg>
+    </button>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <div class="shell">
+    <aside class="side">
+      <div class="side-head">
+        <h2>Runs <span class="count" id="runCount"></span></h2>
+        <div class="seg" id="runFilter" role="group" aria-label="Which runs">
+          <button data-v="live">Live</button><button data-v="recent">Recent</button><button data-v="all">All</button>
+        </div>
+      </div>
+      <input class="search" id="runSearch" type="search" placeholder="Filter runs" autocomplete="off">
+      <div class="side-actions">
+        <button class="link" id="showAll">show all</button><span>·</span><button class="link" id="hideAll">hide all</button><span>·</span><button class="link" id="resetVis">reset</button>
+      </div>
+      <div class="runs" id="runs"></div>
+    </aside>
+
+    <main class="main">
+      <section class="strip" id="strip"></section>
+      <div class="toolbar">
+        <input class="search" id="panelSearch" type="search" placeholder="Search panels (regex)" autocomplete="off">
+        <label class="ctl">Smoothing
+          <input type="range" id="smooth" min="0" max="0.99" step="0.01">
+          <output id="smoothOut"></output>
+        </label>
+        <label class="ctl">X axis
+          <select id="xaxis">
+            <option value="step">Step</option>
+            <option value="rel">Relative time</option>
+            <option value="wall">Wall time</option>
+          </select>
+        </label>
+        <div class="spacer"></div>
+        <button class="link" id="collapseAll">collapse all</button><span class="sep">·</span><button class="link" id="expandAll">expand all</button>
+      </div>
+      <div id="sections"></div>
+    </main>
+  </div>
+
+  <aside class="drawer" id="drawer" hidden>
+    <div class="drawer-head">
+      <span class="swatch" id="dSwatch"></span>
+      <div class="drawer-title"><div id="dName"></div><div class="sub" id="dSub"></div></div>
+      <span class="chip" id="dStatus"></span>
+      <button class="icon-btn" id="dClose" aria-label="Close">✕</button>
+    </div>
+    <nav class="tabs" id="dTabs">
+      <button data-tab="overview">Overview</button><button data-tab="logs">Logs</button><button data-tab="config">Config</button><button data-tab="media">Media</button>
+    </nav>
+    <div class="drawer-body" id="dBody"></div>
+  </aside>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-card">
+      <div class="panel-head"><span class="panel-title" id="mTitle"></span><button class="icon-btn" id="mClose" aria-label="Close">✕</button></div>
+      <div class="plot" id="mPlot"></div>
+      <div class="legend" id="mLegend"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

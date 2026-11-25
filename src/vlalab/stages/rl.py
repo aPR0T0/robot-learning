@@ -75,6 +75,7 @@ class FilteredBC(StageNode):
             return _success_rate(eps)
 
         history.append({"iteration": 0, **evaluate(pol)})
+        self.ctx.log(0, **history[-1])
         log.info("iter 0: success %.2f", history[-1]["success_rate"])
         for it in range(1, cfg.iterations + 1):
             seeds = list(range(it * 100_000, it * 100_000 + cfg.episodes_per_iter))
@@ -95,6 +96,7 @@ class FilteredBC(StageNode):
                 pol.train()
                 train_policy(pol, train_ds, cfg.train, dev, self.ctx.out_dir / f"iter{it}", weights=weights)
             history.append({"iteration": it, "rollout_success": roll_sr, "kept": len(wins), **evaluate(pol)})
+            self.ctx.log(it, **history[-1])
             log.info("iter %d: rollouts %.2f -> eval success %.2f", it, roll_sr, history[-1]["success_rate"])
         out = save_policy(pol, self.ctx.path("policy"), {"stage": "rl", "history": history})
         self.ctx.save_json("history.json", history)
@@ -183,6 +185,7 @@ class DSRL(StageNode):
             if it % 5 == 0 or it == cfg.iterations:
                 history[-1].update(evaluate())
                 log.info("dsrl iter %d: rollouts %.2f eval %.2f", it, sr, history[-1]["success_rate"])
+            self.ctx.log(it, **history[-1])
         out = Path(save_policy(pol, self.ctx.path("policy"), {"stage": "rl/dsrl"}))
         torch.save({"state_dict": npol.state_dict(), "d_ctx": pol.cfg.d_model}, out / "dsrl.pt")
         self.ctx.save_json("history.json", history)

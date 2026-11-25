@@ -52,6 +52,7 @@ configures it, what it hands to the next stage, the papers it implements, and th
 | [Getting started](docs/getting_started.md) | install, CPU and cloud VMs, the pipelines, checking all of them |
 | [Running pipelines and single stages](docs/running.md) | what a run writes, caching, three ways to run one stage, pipelines in Python, every command |
 | [Results](docs/results.md) | the verified numbers on one L4: VLM vs scratch, four action heads, published checkpoints |
+| [Live dashboard](docs/dashboard.md) | `vlab dash`: a W&B-style page with every running VM's runs, plotted live, a VM dropdown, logs and media |
 | [Editing the YAML configs](docs/configuring_yaml.md) | every key of pipeline, embodiment, env and preset files; how presets and overrides merge |
 | [Adding and registering a component](docs/adding_components.md) | the contract for every kind (node, backbone, encoder, head, env, chunker, safety filter, driver), with worked examples |
 | [Real-to-sim from one UMI demo](docs/real2sim.md) | one UMI demonstration → metric SAM 3D scene → masses from YCB / ABO → Newton with Skild AI's Steel solver |

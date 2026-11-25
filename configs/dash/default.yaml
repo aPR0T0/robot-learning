@@ -1,0 +1,35 @@
+# vlab dash: a live, W&B-style dashboard of the vlab runs on every running VM.
+#   vlab dash                       # this file
+#   vlab dash port=8800 'vms=[vla-lab-a100]' agent.poll_s=5
+# Keys left out fall back to the defaults in src/vlalab/dash/hub.py.
+
+host: 127.0.0.1          # 0.0.0.0 to share it on your network (it has no login)
+port: 8765
+open_browser: true
+
+# which machines
+project: null            # gcloud project; null = `gcloud config get-value project`
+filter: null             # passed to `gcloud compute instances list --filter`, e.g. labels.purpose=vla-lab
+vms: auto                # auto = every VM in the project (running ones are streamed, stopped ones listed);
+                         # or a list of names: [vla-lab-a100, vla-lab-l4b]
+local: false             # also watch this machine (no ssh): handy on a GPU workstation
+refresh_vms_s: 60        # how often to re-list VMs (a VM you start shows up by itself)
+python: python3          # interpreter on the VMs; the agent needs only the standard library
+ssh_flags: [-T, -o, ServerAliveInterval=15, -o, ServerAliveCountMax=4, -o, ConnectTimeout=20]
+
+# what the agent on each VM watches (read-only; it exits when the ssh connection closes)
+agent:
+  roots: [~/robot-learning, ~/rl-*]         # checkouts whose runs/ and *.log files are watched
+  log_globs: ["*.log"]                      # logs inside each root parsed for live metric lines
+  metric_files: [metrics.jsonl, train_log.jsonl, history.json, history.jsonl, train_log.json]
+  metric_depth: 3                           # how deep below a node's folder to look for metric files
+  process_patterns: ['(^|/)vlab(\s|$)', 'vlalab\.cli']   # which processes count as runs (their stdout is a log)
+  poll_s: 2                                 # metric / process refresh
+  discover_s: 20                            # new runs, new log files, media
+  sys_s: 5                                  # GPU / CPU / RAM sample
+  media_max_mb: 24                          # largest image / video the UI may fetch
+
+ui:
+  recent_hours: 24       # runs updated this recently are listed by default ("all" shows the rest)
+  max_points: 2000       # per series in the first load (live points always stream in full)
+  sys_history_min: 120   # minutes of GPU / CPU history kept per VM
