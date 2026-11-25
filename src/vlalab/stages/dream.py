@@ -86,22 +86,57 @@ class DemoStyleConfig:
     squeeze: float = field(default=0.012, metadata={"help": "m below the object's width while closed (UMI demos)"})
     object: str = field(default="cup", metadata={"help": "UMI demos: the grasped object's name in scene.json"})
     target: str = field(default="saucer", metadata={"help": "UMI demos: the target's name in scene.json"})
+    time_scale: str = field(default="1", metadata={
+        "help": "stretch the demo's clock by this factor, or `auto`: until its peak TCP speed is under max_speed "
+                "(a human's 2 s pick-and-place is faster than the robot should move; the path's shape is kept)"})
+    max_speed: float = field(default=0.15, metadata={
+        "help": "m/s, for time_scale: auto (95th percentile of the 0.2 s moving-average speed)"})
+    tcp_depth: str = field(default="0", metadata={
+        "help": "UMI demos: move the TCP this far back along the approach axis (UMI's TCP is the fingertip; a grasp holds "
+                "the object deeper between the soft fingers). auto: the depth that puts the TCP at the grasp nearest "
+                "the object's centre at half its height"})
+    max_grasp_frac: float = field(default=1.0, metadata={
+        "help": "cap on the grasp height (fraction of the object's height): a human's soft UMI fingers wrap a dome from "
+                "near its top, rigid robot fingers must reach its widest, lower part (the original is kept in source)"})
+    clearance: float = field(default=0.0, metadata={
+        "help": "m: embodiment-aware retargeting, the reach and the retreat keep the demo's path but pass this high over "
+                "the object's top near it (a human's soft gripper slides in low; rigid fingers would sweep into it); "
+                "include how far the fingertips reach below the TCP"})
+    snap_grasp_yaw_deg: float = field(default=0.0, metadata={
+        "help": "a grasp this close (deg) to the object's narrow axis is snapped onto it: a parallel gripper holds a "
+                "mouse across it; the demo's offset is within SAM 3D's orientation error and the soft fingers' give"})
+    width_offset: str = field(default="auto", metadata={
+        "help": "UMI demos: metres subtracted from the measured width (UMI measures between the finger tags, not the "
+                "finger gap); auto: while closed, the gap equals the object's width at the grasp height"})
     plot: bool = True
 
 
+def _env_json(scene_dir: Path) -> Path | None:
+    for c in (scene_dir / "env.json", scene_dir / "rollout" / "env.json"):
+        if c.exists():
+            return c
+    return None
+
+
 def umi_scene(bundle: Path, scene_dir: Path, obj: str, target: str):
-    """A real2sim UMI demo in the table frame: TCP path, yaw, widths, and the scene description the style needs."""
+    """A real2sim UMI demo in the table frame: TCP path, yaw, widths, and the scene description the style needs.
+
+    ``scene_dir``: real2sim's Steel environment (``sim/rollout``, env.json: the object frames are the ones the
+    ``scene`` backend builds its worlds in) or its SAM 3D / MoGe scene (scene.json: axis-aligned boxes)."""
     from vlalab.dream.demo import tcp_yaw
 
     d = np.load(bundle / "trajectory.npz")
-    sc = json.loads((scene_dir / "scene.json").read_text())
-    T = np.asarray(sc.get("T_table_tag", np.eye(4)), float)
-    pose = np.asarray(d["tcp_pose"], float)
-    p = (T[:3, :3] @ pose[:, :3].T).T + T[:3, 3]
-    from scipy.spatial.transform import Rotation
+    ej = _env_json(Path(scene_dir))
+    if ej is not None:
+        from vlalab.dream.scene_assets import load_scene, scene_summary
 
-    R = T[:3, :3] @ Rotation.from_rotvec(pose[:, 3:]).as_matrix()
-    yaw = tcp_yaw(Rotation.from_matrix(R).as_rotvec())
+        full = load_scene(ej.parent, visual=False)
+        T = np.asarray(full["env"].get("T_table_tag", np.eye(4)), float)
+        scene = {**scene_summary(full, obj, target), "source": f"real2sim {ej.parent}"}
+        return (np.asarray(d["t"], float), *_tcp_in_table(d, T, tcp_yaw), np.asarray(d["gripper_width"], float),
+                scene)
+    sc = json.loads((scene_dir / "scene.json").read_text())
+    p, yaw = _tcp_in_table(d, np.asarray(sc.get("T_table_tag", np.eye(4)), float), tcp_yaw)
     objs = {o["name"]: o for o in sc["objects"]}
     o, g = objs[obj], objs[target]
     lo, hi = np.asarray(o["bbox_min"]), np.asarray(o["bbox_max"])
@@ -112,6 +147,68 @@ def umi_scene(bundle: Path, scene_dir: Path, obj: str, target: str):
              "goal_pos": [float((glo[0] + ghi[0]) / 2), float((glo[1] + ghi[1]) / 2), float((glo[2] + ghi[2]) / 2)],
              "goal_top": float(ghi[2]), "source": f"real2sim {scene_dir}"}
     return np.asarray(d["t"], float), p, yaw, np.asarray(d["gripper_width"], float), scene
+
+
+def _tcp_in_table(d, T: np.ndarray, tcp_yaw):
+    from scipy.spatial.transform import Rotation
+
+    pose = np.asarray(d["tcp_pose"], float)
+    p = (T[:3, :3] @ pose[:, :3].T).T + T[:3, 3]
+    R = T[:3, :3] @ Rotation.from_rotvec(pose[:, 3:]).as_matrix()
+    return p, tcp_yaw(Rotation.from_matrix(R).as_rotvec())
+
+
+def _approach_axes(bundle: Path, scene_dir: Path) -> np.ndarray:
+    """The TCP's z axis (towards the fingertips) over the demo, in the table frame."""
+    from scipy.spatial.transform import Rotation
+
+    d = np.load(bundle / "trajectory.npz")
+    ej = _env_json(scene_dir)
+    T = np.asarray(json.loads(ej.read_text()).get("T_table_tag", np.eye(4)) if ej else
+                   json.loads((scene_dir / "scene.json").read_text()).get("T_table_tag", np.eye(4)), float)
+    return (T[:3, :3] @ Rotation.from_rotvec(np.asarray(d["tcp_pose"], float)[:, 3:]).as_matrix())[:, :, 2]
+
+
+def tcp_depth_for(bundle: Path, scene_dir: Path, p: np.ndarray, w: np.ndarray, scene: dict,
+                  spec: str, max_depth: float = 0.12) -> tuple[float, float]:
+    """(depth, residual): ``auto`` slides the grasp TCP back along its approach axis to the point nearest the
+    object's centre at half its height (the object is between the fingers while held)."""
+    if str(spec).lower() != "auto":
+        return float(spec), float("nan")
+    from vlalab.dream.style import grasp_events
+
+    g = grasp_events(np.asarray(w, float))["grasp"]
+    z = _approach_axes(bundle, scene_dir)[g]
+    c = np.asarray(scene["obj_pos"], float) + [0.0, 0.0, 0.5 * scene["extents"][2]]
+    depth = float(np.clip((p[g] - c) @ z, 0.0, max_depth))     # minimises |p - depth z - c| over depth
+    return depth, float(np.linalg.norm(p[g] - depth * z - c))
+
+
+def width_offset_for(p: np.ndarray, w: np.ndarray, scene: dict, spec: str) -> float:
+    """UMI's width is the distance between the finger tags. ``auto``: the offset that makes the closed width (median
+    between grasp and release) equal to the object's width at the height of the grasp."""
+    if str(spec).lower() != "auto":
+        return float(spec)
+    from vlalab.dream.shapes import WIDTH_FRACTIONS
+    from vlalab.dream.style import grasp_events
+
+    ev = grasp_events(np.asarray(w, float))
+    g, r = ev["grasp"], ev["release"]
+    frac = (p[g, 2] - scene["obj_pos"][2]) / max(scene["extents"][2], 1e-6)
+    wy = float(np.interp(np.clip(frac, WIDTH_FRACTIONS[0], WIDTH_FRACTIONS[-1]), WIDTH_FRACTIONS, scene["width_y"]))
+    return float(np.median(w[g + (r - g) // 4:r - (r - g) // 4 + 1]) - wy)  # the settled middle of the hold
+
+
+def time_scale_for(t: np.ndarray, p: np.ndarray, spec: str, max_speed: float) -> tuple[float, float]:
+    """(factor, the demo's peak TCP speed in m/s, averaged over 0.2 s)."""
+    dt = float(np.median(np.diff(t)))
+    k = max(1, int(round(0.2 / max(dt, 1e-6))))
+    v = np.linalg.norm(np.diff(p, axis=0), axis=1) / np.maximum(np.diff(t), 1e-6)
+    vs = np.convolve(v, np.ones(k) / k, mode="valid") if len(v) >= k else v
+    peak, p95 = float(vs.max()), float(np.percentile(vs, 95))   # p95: robust to a SLAM jump
+    if str(spec).lower() == "auto":
+        return max(1.0, p95 / max_speed), peak
+    return float(spec), peak
 
 
 @register("stage", "data/demo_style", config=DemoStyleConfig, stage="data",
@@ -142,8 +239,25 @@ class DemoStyle(StageNode):
                 raise ValueError("a UMI demo needs the real2sim scene (input `scene`)")
             t, p, yaw, w, sc = umi_scene(b, Path(scene), self.cfg.object, self.cfg.target)
             wc = None
+            depth, resid = tcp_depth_for(b, Path(scene), p, w, sc, self.cfg.tcp_depth)
+            if depth:
+                p = p - depth * _approach_axes(b, Path(scene))
+            off = width_offset_for(p, w, sc, self.cfg.width_offset)
+            w = np.clip(w - off, 0.0, None)
+        k, peak = time_scale_for(np.asarray(t, float), np.asarray(p, float), self.cfg.time_scale, self.cfg.max_speed)
+        t = (np.asarray(t, float) - float(t[0])) * k
         st = extract_style(t, p, yaw, w, sc, width_cmd=wc, grid=self.cfg.grid, squeeze=self.cfg.squeeze)
-        st.source["scene"] = sc
+        st.clearance = float(self.cfg.clearance)
+        if 0 < abs(st.yaw_rel) < np.deg2rad(self.cfg.snap_grasp_yaw_deg):
+            st.source["grasp_yaw_rel_demo"] = st.yaw_rel
+            st.yaw_rel = 0.0
+        if st.grasp_rel[2] > self.cfg.max_grasp_frac:
+            st.source["grasp_height_frac_demo"] = st.grasp_rel[2]
+            st.release_clear += (st.grasp_rel[2] - self.cfg.max_grasp_frac) * float(sc["extents"][2])  # same TCP height
+            st.grasp_rel[2] = self.cfg.max_grasp_frac
+        st.source.update({"scene": sc, "time_scale": k, "demo_peak_speed_mps": peak,
+                          "demo_seconds": float(t[-1]) / k, "width_offset_m": float(off) if wc is None else 0.0,
+                          **({"tcp_depth_m": depth, "tcp_depth_residual_m": resid} if wc is None else {})})
         out = self.ctx.path("style.json")
         st.save(out)
         if self.cfg.plot:
@@ -152,7 +266,8 @@ class DemoStyle(StageNode):
             except Exception as e:  # noqa: BLE001
                 log.warning("style plot failed: %s", e)
         return {"style": str(out), "metrics": {"t_grasp_s": st.bounds[1], "t_release_s": st.bounds[2],
-                                               "duration_s": st.bounds[3], "grasp_height_frac": st.grasp_rel[2]}}
+                                               "duration_s": st.bounds[3], "grasp_height_frac": st.grasp_rel[2],
+                                               "time_scale": round(k, 3), "demo_peak_speed_mps": round(peak, 3)}}
 
 
 def plot_style(t, p, w, st, path):
@@ -191,8 +306,12 @@ class ScenarioBankConfig:
     ood: dict[str, Any] = field(default_factory=lambda: {
         "mass_scale": [2.5, 4.5], "mu_object": [0.2, 0.4], "wrench_ratio": [0.06, 0.12], "restitution": [0.2, 0.4]},
         metadata={"help": "PhysicsRanges overrides of the out-of-distribution set"})
+    ood_scene: dict[str, Any] = field(default_factory=dict, metadata={
+        "help": "backend scene: SceneConfig overrides of the OOD set, e.g. {mu_scale: [0.3, 0.5]}"})
     render: bool = True
     render_worlds: int = 16
+    home_from_style: bool = field(default=True, metadata={
+        "help": "with a `style` input: the gripper starts where the demo started (z clamped to [0.08, 0.4] m)"})
 
 
 @register("stage", "data/scenario_bank", config=ScenarioBankConfig, stage="data",
@@ -201,35 +320,72 @@ class ScenarioBankConfig:
                   "restitution, gap, grip force, contact wrench noise; train / held-out / OOD sets.")
 class ScenarioBank(StageNode):
     Config = ScenarioBankConfig
+    optional_inputs = {"scene": "real2sim's Steel environment (sim/rollout): the nominal world of backend `scene`",
+                       "style": "style.json: where the demo starts, how long it lasts"}
     outputs = {"scenarios": "scenarios.json: env configs of the training, held-out and OOD worlds"}
 
-    def run(self):
+    def run(self, scene=None, style=None):
         from vlalab.dream.steel_env import PhysicsRanges
 
-        train = to_plain(_env_cfg(self.cfg.env))
+        env = dict(self.cfg.env)
+        info = {}
+        if scene is not None:
+            env["backend"] = "scene"
+            env["scene"] = {**dict(env.get("scene") or {}), "path": str(scene)}
+        if style is not None:
+            st = _load_style(style)
+            if self.cfg.home_from_style and "start_tcp" in st.source:
+                x, y, z = st.source["start_tcp"]
+                env["home"] = [float(x), float(y), float(min(max(z, 0.08), 0.4))]
+            need = st.duration * 1.25 + 1.0  # room for a slower tempo and the settling at the end
+            if float(env.get("episode_s", 10.0)) < need:
+                env["episode_s"] = float(np.ceil(need))
+                info["episode_s_extended_to"] = env["episode_s"]
+        train = to_plain(_env_cfg(env))
+        if train["backend"] == "scene":
+            from vlalab.dream.scene_assets import load_scene, scene_summary
+
+            sc = train["scene"]
+            info["scene"] = scene_summary(load_scene(sc["path"], visual=False), sc["object"], sc["target"])
         held = {**train, "seed": self.cfg.eval_seed, "worlds": self.cfg.eval_worlds}
         ood_phys = {**train["physics"], **self.cfg.ood}
         to_config(PhysicsRanges, ood_phys, "ood")
         ood = {**held, "seed": self.cfg.eval_seed + 1, "physics": ood_phys}
-        doc = {"train": train, "held_out": held, "ood": ood}
+        if self.cfg.ood_scene:
+            ood["scene"] = {**train["scene"], **self.cfg.ood_scene}
+            _env_cfg(ood)  # validate
+        doc = {"train": train, "held_out": held, "ood": ood, "nominal": info}
         out = self.ctx.save_json("scenarios.json", doc)
         files = {}
         if self.cfg.render:
             try:
-                files = render_bank(_env_cfg({**train, "worlds": self.cfg.render_worlds, "seed": 7}),
+                files = render_bank(_env_cfg(_render_cfg({**train, "worlds": self.cfg.render_worlds, "seed": 7})),
                                     self.ctx.out_dir, self.ctx.device)
             except Exception as e:  # noqa: BLE001
                 log.warning("scenario render failed: %s", e)
-        return {"scenarios": str(out), "metrics": {"train_worlds": train["worlds"], "held_out_worlds": held["worlds"],
-                                                   **files}}
+        m = {"train_worlds": train["worlds"], "held_out_worlds": held["worlds"], "backend": train["backend"],
+             "episode_s": train["episode_s"], **files}
+        if "scene" in info:
+            m.update({"object": train["scene"]["object"], "target": train["scene"]["target"],
+                      "obstacles": len(info["scene"]["obstacles"]),
+                      "object_mass_g": round(info["scene"]["obj_mass"] * 1000, 1),
+                      "object_extent_mm": [round(x * 1000) for x in info["scene"]["extents"]]})
+        return {"scenarios": str(out), "metrics": m}
+
+
+def _render_cfg(d: dict) -> dict:
+    """Render worlds draw the reconstruction's own meshes (training worlds collide hulls only)."""
+    if d.get("backend") == "scene":
+        d = {**d, "scene": {**d["scene"], "visual": True}}
+    return d
 
 
 def render_bank(cfg, out_dir: Path, device: str) -> dict:
     """A short clip and USD of a grid of randomised worlds at rest (the gripper parked, open)."""
     import torch
 
-    from vlalab.dream.render import render_policy
     from vlalab.dream.planar_env import make_env
+    from vlalab.dream.render import render_policy
 
     env = make_env(cfg, device=device, capture=False)
     env.max_steps = 5
@@ -280,12 +436,12 @@ class DreamWorldModel(StageNode):
         dev = self.ctx.device
         env = make_env(_env_cfg(sc["train"]), device=dev)
         sm = StyleModel(_load_style(style), env.cfg).to(env.device)
-        O, A = collect_world_model_data(env, sm, self.cfg.episodes, self.cfg.sigma_max, seed=self.ctx.seed)
+        obs, act = collect_world_model_data(env, sm, self.cfg.episodes, self.cfg.sigma_max, seed=self.ctx.seed)
         wcfg = to_config(WMConfig, self.cfg.wm, "wm")
         wm = RSSM(OBS_DIM, ACT_DIM, wcfg).to(env.device)
-        wm.fit_norm(O)
-        hist = train_world_model(wm, O, A, wcfg, log=lambda i: log.info("dreamer %s", i))
-        del env, O, A
+        wm.fit_norm(obs)
+        hist = train_world_model(wm, obs, act, wcfg, log=lambda i: log.info("dreamer %s", i))
+        del env, obs, act
         torch.cuda.empty_cache()
         ev_env = make_env(_env_cfg({**sc["held_out"], "worlds": 512}), device=dev)
         Oe, Ae = collect_world_model_data(ev_env, sm, 1, self.cfg.sigma_max, seed=self.ctx.seed + 1)
@@ -297,7 +453,8 @@ class DreamWorldModel(StageNode):
         mean = {k: np.mean([err[s][k] for s in err], 0).tolist() for k in ("tcp_mm", "obj_mm", "width_mm")}
         return {"world_model": str(out), "metrics": {
             "final_loss": hist[-1]["loss"], "obj_err_mm_h1": mean["obj_mm"][0], "obj_err_mm_h10": mean["obj_mm"][9],
-            "tcp_err_mm_h10": mean["tcp_mm"][9], "transitions": int(self.cfg.episodes * sc["train"]["worlds"] * 100)}}
+            "tcp_err_mm_h10": mean["tcp_mm"][9], "transitions": int(
+                self.cfg.episodes * sc["train"]["worlds"] * round(sc["train"]["episode_s"] * sc["train"]["control_hz"]))}}
 
 
 def load_world_model(path: str, device):
@@ -365,8 +522,8 @@ class StyleDream(StageNode):
             try:
                 from vlalab.dream.render import AgentController, render_policy
 
-                renv = make_env(_env_cfg({**sc["held_out"], "worlds": self.cfg.render_worlds, "seed": 77}),
-                                   device=dev, capture=False)
+                renv = make_env(_env_cfg(_render_cfg({**sc["held_out"], "worlds": self.cfg.render_worlds,
+                                                      "seed": 77})), device=dev, capture=False)
                 agent.env = renv
                 files = render_policy(renv, AgentController(agent), self.ctx.out_dir, "rollout")
             except Exception as e:  # noqa: BLE001
@@ -455,8 +612,8 @@ class EvalStyleDream(StageNode):
 
             for p in pols:
                 try:
-                    renv = make_env(_env_cfg({**sc["held_out"], "worlds": self.cfg.render_worlds, "seed": 77}),
-                                       device=dev, capture=False)
+                    renv = make_env(_env_cfg(_render_cfg({**sc["held_out"], "worlds": self.cfg.render_worlds,
+                                                          "seed": 77})), device=dev, capture=False)
                     sm = StyleModel(_load_style(style), renv.cfg).to(renv.device)
                     agent, label = load_agent(p, renv, sm, load_world_model(world_model, renv.device))
                     files[label] = render_policy(renv, AgentController(agent, policy=p is not None),

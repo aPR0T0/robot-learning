@@ -13,7 +13,6 @@ on the policy's own data); phase A keeps it frozen.
 from __future__ import annotations
 
 import logging
-import math
 import time
 from dataclasses import dataclass, field
 
@@ -426,7 +425,7 @@ def collect_world_model_data(env: SteelCupEnv, style: StyleModel, episodes: int,
                              strength: float = 1.0, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """D_0: the style prior with exploration in every world (per-episode noise scale, random tempo, squeeze)."""
     g = torch.Generator(device=env.device).manual_seed(seed)
-    O, A = [], []
+    all_obs, all_act = [], []
     for ep in range(episodes):
         o = env.reset(strength=strength)
         st = style.init_state(o)
@@ -436,7 +435,7 @@ def collect_world_model_data(env: SteelCupEnv, style: StyleModel, episodes: int,
         squeeze = (torch.rand(N, device=env.device, generator=g) * 2 - 1) * 0.4      # width-command offset
         noise = torch.zeros(N, ACT_DIM, device=env.device)
         obs, act = [o], [torch.zeros(N, ACT_DIM, device=env.device)]
-        for t in range(env.max_steps):
+        for _ in range(env.max_steps):
             noise = 0.7 * noise + 0.3 * torch.randn(N, ACT_DIM, device=env.device, generator=g) * 2.0
             a = style.prior_action(st, o, kap) + sig * noise
             a[:, 4] = a[:, 4] + squeeze * (a[:, 4] < 0.5).float()
@@ -445,7 +444,7 @@ def collect_world_model_data(env: SteelCupEnv, style: StyleModel, episodes: int,
             st = style.advance(st, o, kap)
             obs.append(o)
             act.append(a)
-        O.append(torch.stack(obs, 1))
-        A.append(torch.stack(act, 1))
+        all_obs.append(torch.stack(obs, 1))
+        all_act.append(torch.stack(act, 1))
         log.info("world-model data: episode %d/%d", ep + 1, episodes)
-    return torch.cat(O, 0), torch.cat(A, 0)
+    return torch.cat(all_obs, 0), torch.cat(all_act, 0)

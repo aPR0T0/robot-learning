@@ -367,16 +367,17 @@ updates as the other two.
 The toy is a reduced version of the UMI scene. It has the same task, the same action space and the same
 demo format, so the code that runs it runs the real scene.
 
-| | toy | real (next) |
+| | toy | real: [a new UMI scene](style_dream_umi.md) (done) |
 |---|---|---|
 | physics | Newton `1.9.0.dev0` (skild-ai fork, the Steel examples' pin) + `SolverSteel`, 60 Hz × 4 substeps | same |
-| robot | UMI-style parallel gripper on a 4-DoF Cartesian base (x, y, z, yaw), position drives, finger effort limit | the same gripper, then a UR10e / Franka arm through Newton's IK |
-| object | procedural convex "cups" (§1), nominal size and mass from the real2sim cup (118 g) | the SAM 3D cup mesh, mass from `physics.json` |
-| target | a free saucer (134 × 124 × 17 mm, 498 g, from real2sim) | the reconstructed saucer |
-| demo | one scripted demo in the nominal world, saved as UMI's `trajectory.npz` | UMI demo 0 (`data/umi_demo`) |
+| robot | UMI-style parallel gripper on a 4-DoF Cartesian base (x, y, z, yaw), position drives, finger effort limit | the Franka hand from Steel's library (newton-assets URDF) on the same base (`gripper: franka_hand`) |
+| object | procedural convex "cups" (§1), nominal size and mass from the real2sim cup (118 g) | 2048 geometry variants of the SAM 3D mouse mesh, mass from `physics.json` (68 g) |
+| target | a free saucer (134 × 124 × 17 mm, 498 g, from real2sim) | the reconstructed mouse pad (flat-object rule: 2.3 mm, 86 g), 64 variants |
+| demo | one scripted demo in the nominal world, saved as UMI's `trajectory.npz` | a human's UMI demo from Data Scaling Laws (`data/umi_demo`, `backend: scene`) |
 | actions | $[\,v_x, v_y, v_z, \dot\psi, w\,]$ at 10 Hz: TCP velocity, yaw rate, gripper width | same |
 | worlds | 2048 in parallel on one GPU: a bank of 2048 cup shapes declared with Newton's `add_body_variants`, re-dealt to the worlds every episode with `select_body_variants`; mass, contact and actuation resampled every episode on the GPU | same |
 | Isaac Sim | `ViewerUSD` writes rollouts as USD (opens in Isaac Sim / usdview) | same |
+| result (held-out / OOD) | replay 72.6 / 5.5 %; dreams + RL **96.3 / 49.1 %**; PPO 95.8 / 44.5 % | replay 46.0 / 0.5 %; dreams + RL 95.8 / 39.6 %; PPO **97.6 / 52.3 %** ([results](style_dream_umi.md#5-results)) |
 
 ![Sixteen of the randomised Steel worlds](images/style_dream/steel_worlds.png)
 
@@ -496,6 +497,10 @@ Overrides work as for every pipeline, e.g. `vlab run style_dream_toy policy.agen
 worlds.env.worlds=4096`. `policy.agent.train_world_model=true` is phase B.
 `python scripts/dream/plot_results.py OUT steel=runs/style_dream_toy 2d=runs/style_dream_2d` makes the
 plots and the table below.
+
+The trained models of both runs (the dreamer and every policy, with their style and world configs) are on Google
+Drive: `python scripts/checkpoints_drive.py fetch style_dream_toy style_dream_2d` puts them in
+`checkpoints/` ([how to use them](../checkpoints/README.md)).
 
 ## Results
 

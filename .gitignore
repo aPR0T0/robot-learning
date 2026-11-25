@@ -11,3 +11,4 @@ plugins/__pycache__/
 outputs/
 wandb/
 *.log
+checkpoints/*/

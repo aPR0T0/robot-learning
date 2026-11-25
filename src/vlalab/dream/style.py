@@ -72,6 +72,7 @@ class Style:
     yaw_rel: float                         # grasp yaw relative to the object's yaw (mod pi)
     squeeze: float                         # command below the object's width while closed (prior for UMI demos)
     source: dict = field(default_factory=dict)
+    clearance: float = 0.0                 # m over the object's top while reaching / leaving (0: the path as demoed)
 
     def save(self, path: str | Path) -> None:
         Path(path).write_text(json.dumps(asdict(self), indent=1))
@@ -108,13 +109,17 @@ def extract_style(t: np.ndarray, tcp: np.ndarray, yaw: np.ndarray, width: np.nda
     c, s = math.cos(oyaw), math.sin(oyaw)
     Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
     local = Rz.T @ (tcp[g] - obj)
+    yaw_rel = float((yaw[g] - oyaw + math.pi / 2) % math.pi - math.pi / 2)
+    # a parallel gripper centres what it closes on: an offset along the closing axis is not style (on a real demo
+    # it is reconstruction error, and replayed it would land a finger on the object)
+    close = np.array([-math.sin(yaw_rel), math.cos(yaw_rel), 0.0])
+    local = local - (local @ close) * close
     grasp_rel = [local[0] / ext[0], local[1] / ext[1], local[2] / ext[2]]
     wy = float(np.interp(grasp_rel[2], WIDTH_FRACTIONS, scene["width_y"]))
     goal, top = np.asarray(scene["goal_pos"], float), float(scene["goal_top"])
     release_clear = float(tcp[r, 2] - (top + local[2]))
     release_xy = (tcp[r, :2] - goal[:2]).tolist()
     retreat = (tcp[T] - tcp[r]).tolist()
-    yaw_rel = float((yaw[g] - oyaw + math.pi / 2) % math.pi - math.pi / 2)
     if width_cmd is None:  # a UMI demo: only the measured width; assume a squeeze while closed
         closed = width < width.min() + 0.35 * (np.percentile(width, 95) - width.min())
         width_cmd = width - squeeze * closed
@@ -141,7 +146,8 @@ def extract_style(t: np.ndarray, tcp: np.ndarray, yaw: np.ndarray, width: np.nda
                  yaw_prog=out["yaw_prog"], width_meas_rel=out["wm"], width_cmd_rel=out["wc"], length=out["L"],
                  grasp_rel=grasp_rel, release_clear=release_clear, release_xy=release_xy, retreat=retreat,
                  yaw_rel=yaw_rel, squeeze=squeeze,
-                 source={"events": ev, "grasp_width": wy, "samples": int(len(t))})
+                 source={"events": ev, "grasp_width": wy, "samples": int(len(t)), "start_tcp": tcp[0].tolist(),
+                         "start_yaw": float(yaw[0])})
 
 
 # --------------------------------------------------------------------------------------- torch side
@@ -179,6 +185,8 @@ class StyleParams:
     dev_scale_clip: tuple[float, float] = (0.6, 1.6)
     gain: float = 1.0              # feedback gain of the prior on the position error
     sigma_cmd: float = 0.0         # m; > 0 makes the grip command part of the style (squeezing harder costs style)
+    min_grasp_z: float = 0.012     # m: the grasp point stays this far above the object's base (fingertips 5 mm
+    #                                below the TCP must clear the table; a real demo's SLAM is cm-accurate)
 
 
 class StyleModel(torch.nn.Module):
@@ -222,6 +230,7 @@ class StyleModel(torch.nn.Module):
         oyaw = torch.atan2(rot[..., 1], rot[..., 0])
         c, s = torch.cos(oyaw), torch.sin(oyaw)
         lx, ly, lz = self.grasp_rel[0] * ext[..., 0], self.grasp_rel[1] * ext[..., 1], self.grasp_rel[2] * ext[..., 2]
+        lz = lz.clamp_min(self.p.min_grasp_z)
         grasp = torch.stack([obj[..., 0] + c * lx - s * ly, obj[..., 1] + s * lx + c * ly, obj[..., 2] + lz], -1)
         top = goal[..., 2] + self.env_cfg.saucer_half_height
         release = torch.stack([goal[..., 0] + self.release_xy[0], goal[..., 1] + self.release_xy[1],
@@ -280,6 +289,8 @@ class StyleModel(torch.nn.Module):
         Ld = torch.minimum(torch.maximum(L, lo * self.length[k]), hi * self.length[k])
         p = a_s + (L * prog)[:, None] * e + Ld[:, None] * (dev[:, :1] * n + dev[:, 1:] * b)
         yp = self._interp(self.yaw_prog, k, u)
+        if self.style.clearance > 0 and o is not None:
+            p = self._clear(p, k, st, o, ar)
         yaw = st.yaw_s[ar, k] + yp * _wrap(st.yaw_e[ar, k] - st.yaw_s[ar, k])
         wref_c = self._interp(self.wc, k, u)
         wref_m = self._interp(self.wm, k, u)
@@ -331,6 +342,23 @@ class StyleModel(torch.nn.Module):
             cmd = o[..., OBS_SLICES["width_cmd"]][..., 0]
             rw = rw * torch.exp(-((cmd - wc) ** 2) / (2 * self.p.sigma_cmd ** 2))
         return rp * rw
+
+    def _clear(self, p, k, st: StyleState, o, ar):
+        """Embodiment-aware retargeting: a human's soft, wide gripper slides in low and straddles the object; a rigid
+        robot hand would sweep into it. While reaching (phase 0, around the grasp point) and leaving (phase 2, around
+        the object), the reference keeps its path but not below the object's top + ``clearance``, blended down to the
+        grasp height within a radius r0 -> r1 of the point (smoothstep)."""
+        obj, ext = o[..., OBS_SLICES["obj"]], o[..., OBS_SLICES["extents"]]
+        centre = torch.where((k == 0)[:, None], st.a_e[ar, 0], obj)
+        d = (p[:, :2] - centre[:, :2]).norm(dim=-1)
+        r0 = 0.015
+        r1 = r0 + 0.5 * ext[:, :2].norm(dim=-1)
+        u = ((d - r0) / (r1 - r0)).clamp(0.0, 1.0)
+        s = u * u * (3 - 2 * u)
+        base = torch.minimum(centre[:, 2], obj[:, 2] + ext[:, 2])          # the grasp height (or the object's base)
+        floor = base + s * (obj[:, 2] + ext[:, 2] + self.style.clearance - base)
+        z = torch.where((k == 1), p[:, 2], torch.maximum(p[:, 2], floor))
+        return torch.cat([p[:, :2], z[:, None]], -1)
 
     def reference_path(self, st: StyleState, n: int = 100) -> torch.Tensor:
         """The retargeted reference at the demo's tempo, (N, n, 3), for the style distance."""

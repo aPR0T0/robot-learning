@@ -104,10 +104,7 @@ def mass_properties(v: np.ndarray, f: np.ndarray) -> tuple[float, np.ndarray, np
     V = float(vol.sum())
     com = ((a + b + c) / 4.0 * vol[:, None]).sum(0) / V
     s = a + b + c  # the origin is the fourth vertex
-    second = np.zeros((3, 3))
-    for w, x in zip(vol, zip(a, b, c, s)):
-        aa, bb, cc, ss = x
-        second += w / 20.0 * (np.outer(aa, aa) + np.outer(bb, bb) + np.outer(cc, cc) + np.outer(ss, ss))
+    second = sum(np.einsum("i,ij,ik->jk", vol, x, x) for x in (a, b, c, s)) / 20.0
     cov = second / V - np.outer(com, com)
     return V, com, cov
 

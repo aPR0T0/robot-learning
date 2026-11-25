@@ -26,7 +26,8 @@ from typing import Any
 import numpy as np
 import torch
 
-from vlalab.dream.shapes import ShapeAsset, ShapeParams, ShapeRanges, build_asset, sample_shapes
+from vlalab.dream.scene_assets import SceneConfig
+from vlalab.dream.shapes import ShapeParams, ShapeRanges, build_asset, sample_shapes
 
 BODIES_PER_WORLD = 8      # carriage x, y, z, hand (TCP), finger l, finger r, cup, saucer
 HAND, FL, FR, CUP, SAUCER = 3, 4, 5, 6, 7
@@ -74,7 +75,7 @@ class PhysicsRanges:
 
 @dataclass
 class EnvConfig:
-    backend: str = "steel"                 # steel (Newton + SolverSteel, 3D) | planar2d (fast 2D theory test)
+    backend: str = "steel"                 # steel (toy cup, 3D) | scene (real2sim's reconstruction) | planar2d (2D)
     worlds: int = 2048
     seed: int = 0
     shape_bank: int = 0                    # 0: one shape per world
@@ -98,10 +99,15 @@ class EnvConfig:
     yaw_rate_max: float = 2.0              # rad/s at |a| = 1
     width_max: float = 0.09                # m, full opening
     table_mu: float = 0.6
+    gripper: str = "box"                   # box (the toy's UMI-like box fingers) | franka_hand (newton-assets' Franka
+    #                                        hand from its URDF: hand mesh, finger boxes, 2 x 40 mm; set width_max 0.08)
+    finger_patch_radius: float = 0.0       # m: Steel's contact torsion on the finger pads (0 = point contacts, the
+    #                                        toy); a pad of radius R pressing evenly resists spin as if at 2R/3
     solver: dict[str, Any] = field(default_factory=dict)
     broad_phase: str = "sap"
     contacts_per_world: int = 64
     planar_substeps: int = 12
+    scene: SceneConfig = field(default_factory=SceneConfig)   # backend: scene
 
 
 def _lerp_range(rng_t: torch.Tensor, lo_hi, centre: float, strength: float) -> torch.Tensor:
@@ -127,28 +133,26 @@ class SteelCupEnv:
         self.sim_dt = 1.0 / cfg.fps / cfg.substeps
         self.max_steps = int(round(cfg.episode_s * cfg.control_hz))
         self.nominal_only = nominal_only
+        self.ws = (0.0, 0.0)          # workspace centre (x, y): the carriage's travel is +-0.6 m around it
+        self._prepare()               # subclasses: load the scene, set ws / bodies per world
+        self.B, self.C, self.D = self._layout()
 
         # ------------------------------------------------------------------ shape bank (body variants)
-        n_shapes = 1 if nominal_only else (cfg.shape_bank or self.N)
-        if shapes is None:
-            shapes = [cfg.nominal_shape] if nominal_only else \
-                [cfg.nominal_shape] + sample_shapes(self.np_rng, n_shapes - 1, cfg.shapes, cfg.strength,
-                                                    cfg.nominal_shape)
-        self.assets: list[ShapeAsset] = [build_asset(p) for p in shapes]
+        self.assets = self._make_assets(shapes)
         self.V = len(self.assets)
 
         wp.init()
         b = newton.ModelBuilder()
         newton.solvers.SolverSteel.register_custom_attributes(b)
-        b.add_ground_plane(cfg=self._shape_cfg(newton, mu=cfg.table_mu))
+        self._add_ground(b, newton)
         tpl = self._template(newton, wp)
         b.replicate(tpl, self.N)
         with wp.ScopedDevice(self.wp_device):
             self.model = b.finalize(device=self.wp_device)
         m = self.model
-        assert m.body_count == self.N * BODIES_PER_WORLD, (m.body_count, self.N)
-        assert m.joint_coord_count == self.N * COORDS_PER_WORLD, m.joint_coord_count
-        assert m.joint_dof_count == self.N * DOFS_PER_WORLD, m.joint_dof_count
+        assert m.body_count == self.N * self.B, (m.body_count, self.N)
+        assert m.joint_coord_count == self.N * self.C, m.joint_coord_count
+        assert m.joint_dof_count == self.N * self.D, m.joint_dof_count
 
         solver_args = {"iterations": 12, "articulated_contact_response": "immediate", "enable_restitution": True,
                        "enable_joint_limits": True, "articulation_constraint_max": 96,
@@ -175,6 +179,25 @@ class SteelCupEnv:
         self.t = 0
 
     # ------------------------------------------------------------------------------------- build
+    def _prepare(self) -> None:
+        pass
+
+    def _add_ground(self, b, newton) -> None:
+        b.add_ground_plane(cfg=self._shape_cfg(newton, mu=self.cfg.table_mu))
+
+    def _layout(self) -> tuple[int, int, int]:
+        """Bodies, joint coordinates and DOFs per world."""
+        return BODIES_PER_WORLD, COORDS_PER_WORLD, DOFS_PER_WORLD
+
+    def _make_assets(self, shapes: list[ShapeParams] | None) -> list:
+        cfg = self.cfg
+        n_shapes = 1 if self.nominal_only else (cfg.shape_bank or self.N)
+        if shapes is None:
+            shapes = [cfg.nominal_shape] if self.nominal_only else \
+                [cfg.nominal_shape] + sample_shapes(self.np_rng, n_shapes - 1, cfg.shapes, cfg.strength,
+                                                    cfg.nominal_shape)
+        return [build_asset(p) for p in shapes]
+
     @staticmethod
     def _shape_cfg(newton, **kw):
         c = newton.ModelBuilder.ShapeConfig()
@@ -186,24 +209,28 @@ class SteelCupEnv:
         return c
 
     def _template(self, newton, wp):
-        cfg = self.cfg
         t = newton.ModelBuilder()
         newton.solvers.SolverSteel.register_custom_attributes(t)
-        I = lambda x: wp.mat33(x, 0.0, 0.0, 0.0, x, 0.0, 0.0, 0.0, x)  # noqa: E731
+        self._add_gripper(t, newton, wp)
+        self._add_objects(t, newton, wp)
+        assert t.body_count == self.B, (t.body_count, self.B)
+        return t
+
+    def _add_gripper(self, t, newton, wp):
+        """A UMI-style parallel gripper on a Cartesian x / y / z / yaw base (bodies 0-5)."""
+        cfg = self.cfg
+        I = lambda x: wp.mat33(x, 0.0, 0.0, 0.0, x, 0.0, 0.0, 0.0, x)  # noqa: E731, E741
         mode = int(newton.JointTargetMode.POSITION)
         hx, hy, hz = cfg.home
         cx = t.add_link(mass=1.0, inertia=I(0.01), disable_gravity=True, label="carriage_x")
         cy = t.add_link(mass=1.0, inertia=I(0.01), disable_gravity=True, label="carriage_y")
         cz = t.add_link(mass=1.0, inertia=I(0.01), disable_gravity=True, label="carriage_z")
+        if cfg.gripper == "franka_hand":
+            return self._add_franka_hand(t, newton, wp, cx, cy, cz)
         hand = t.add_link(mass=0.5, inertia=I(0.001), disable_gravity=True, label="hand")
         fl = t.add_link(mass=0.05, inertia=I(2e-5), disable_gravity=True, label="finger_l")
         fr = t.add_link(mass=0.05, inertia=I(2e-5), disable_gravity=True, label="finger_r")
-        arm = dict(target_ke=20000.0, target_kd=400.0, effort_limit=300.0, armature=0.02, actuator_mode=mode)
-        j = [t.add_joint_prismatic(-1, cx, axis=newton.Axis.X, limit_lower=-0.6, limit_upper=0.6, target_q=hx, **arm),
-             t.add_joint_prismatic(cx, cy, axis=newton.Axis.Y, limit_lower=-0.6, limit_upper=0.6, target_q=hy, **arm),
-             t.add_joint_prismatic(cy, cz, axis=newton.Axis.Z, limit_lower=0.0, limit_upper=0.6, target_q=hz, **arm),
-             t.add_joint_revolute(cz, hand, axis=newton.Axis.Z, limit_lower=-2 * math.pi, limit_upper=2 * math.pi,
-                                  target_ke=60.0, target_kd=1.2, effort_limit=20.0, armature=0.002, actuator_mode=mode),
+        j = self._base_joints(t, newton, cx, cy, cz, hand) + [
              t.add_joint_prismatic(hand, fl, axis=wp.vec3(0.0, 1.0, 0.0), limit_lower=0.0,
                                    limit_upper=cfg.width_max / 2, target_ke=1000.0, target_kd=14.0, effort_limit=30.0,
                                    armature=0.001, actuator_mode=mode, target_q=cfg.width_max / 2),
@@ -214,19 +241,105 @@ class SteelCupEnv:
         t.joint_q[:6] = [hx, hy, hz, 0.0, cfg.width_max / 2, cfg.width_max / 2]
         t.joint_target_q[:6] = list(t.joint_q[:6])
         gcfg = self._shape_cfg(newton, mu=1.0)
+        pads = {"custom_attributes": {"steel:min_torsional_patch_radius": float(cfg.finger_patch_radius)}} \
+            if cfg.finger_patch_radius > 0 else {}
         F = FINGER
         t.add_shape_box(hand, xform=wp.transform(wp.vec3(0.0, 0.0, F["length"] - 0.005 + PALM["hz"]), wp.quat_identity()),
                         hx=PALM["hx"], hy=PALM["hy"], hz=PALM["hz"], cfg=gcfg, color=wp.vec3(0.15, 0.15, 0.17))
         s_l = t.add_shape_box(fl, xform=wp.transform(wp.vec3(0.0, F["thick"] / 2, F["length"] / 2 - 0.005),
                                                      wp.quat_identity()),
                               hx=F["width"] / 2, hy=F["thick"] / 2, hz=F["length"] / 2, cfg=gcfg,
-                              color=wp.vec3(0.9, 0.45, 0.1))
+                              color=wp.vec3(0.9, 0.45, 0.1), **pads)
         s_r = t.add_shape_box(fr, xform=wp.transform(wp.vec3(0.0, -F["thick"] / 2, F["length"] / 2 - 0.005),
                                                      wp.quat_identity()),
                               hx=F["width"] / 2, hy=F["thick"] / 2, hz=F["length"] / 2, cfg=gcfg,
-                              color=wp.vec3(0.9, 0.45, 0.1))
+                              color=wp.vec3(0.9, 0.45, 0.1), **pads)
         t.add_shape_collision_filter_pair(s_l, s_r)
 
+    def _base_joints(self, t, newton, cx, cy, cz, hand):
+        (wx, wy), (hx, hy, hz) = self.ws, self.cfg.home
+        mode = int(newton.JointTargetMode.POSITION)
+        arm = dict(target_ke=20000.0, target_kd=400.0, effort_limit=300.0, armature=0.02, actuator_mode=mode)
+        return [t.add_joint_prismatic(-1, cx, axis=newton.Axis.X, limit_lower=wx - 0.6, limit_upper=wx + 0.6,
+                                      target_q=hx, **arm),
+                t.add_joint_prismatic(cx, cy, axis=newton.Axis.Y, limit_lower=wy - 0.6, limit_upper=wy + 0.6,
+                                      target_q=hy, **arm),
+                t.add_joint_prismatic(cy, cz, axis=newton.Axis.Z, limit_lower=0.0, limit_upper=0.6, target_q=hz, **arm),
+                t.add_joint_revolute(cz, hand, axis=newton.Axis.Z, limit_lower=-2 * math.pi, limit_upper=2 * math.pi,
+                                     target_ke=60.0, target_kd=1.2, effort_limit=20.0, armature=0.002,
+                                     actuator_mode=mode)]
+
+    def _add_franka_hand(self, t, newton, wp, cx, cy, cz):
+        """newton-assets' Franka hand (vlalab.dream.franka_hand) on the x / y / z / yaw base: bodies 3 (hand, origin
+        at the Franka TCP), 4 and 5 (fingers, URDF joints 1 and 2)."""
+        from vlalab.dream.franka_hand import R_BF, body_from_hand, load_franka_hand, load_mesh, mat_to_quat
+        from vlalab.dream.shapes import convex_hull
+
+        cfg = self.cfg
+        H = load_franka_hand()
+        if cfg.width_max > H.max_width + 1e-9:
+            raise ValueError(f"width_max {cfg.width_max} exceeds the Franka hand's opening {H.max_width}")
+        mode = int(newton.JointTargetMode.POSITION)
+        tf = lambda R, p: wp.transform(wp.vec3(*[float(x) for x in p]), wp.quat(*[float(x) for x in mat_to_quat(R)]))  # noqa: E731
+        M3 = lambda A: wp.mat33(*[float(x) for x in np.asarray(A).ravel()])  # noqa: E731
+        _, com_h = body_from_hand(H, np.eye(3), H.hand.com)
+        hand = t.add_link(mass=H.hand.mass, com=wp.vec3(*com_h.tolist()), inertia=M3(R_BF @ H.hand.inertia @ R_BF.T),
+                          disable_gravity=True, label="hand")
+        fingers = [t.add_link(mass=f.link.mass, com=wp.vec3(*f.link.com.tolist()), inertia=M3(f.link.inertia),
+                              disable_gravity=True, label=f.link.name) for f in H.fingers]
+        j = self._base_joints(t, newton, cx, cy, cz, hand)
+        for body, f in zip(fingers, H.fingers):
+            Rj, pj = body_from_hand(H, f.R, f.t)
+            j.append(t.add_joint_prismatic(hand, body, parent_xform=tf(Rj, pj), axis=wp.vec3(*f.axis.tolist()),
+                                           limit_lower=f.lower, limit_upper=f.upper, target_ke=1000.0, target_kd=14.0,
+                                           effort_limit=30.0, armature=0.001, actuator_mode=mode,
+                                           target_q=cfg.width_max / 2))
+        t.add_articulation(j, label="gripper")
+        hx, hy, hz = cfg.home
+        t.joint_q[:6] = [hx, hy, hz, 0.0, cfg.width_max / 2, cfg.width_max / 2]
+        t.joint_target_q[:6] = list(t.joint_q[:6])
+        visual = bool(cfg.scene.visual)
+        pads = {"custom_attributes": {"steel:min_torsional_patch_radius": float(cfg.finger_patch_radius)}} \
+            if cfg.finger_patch_radius > 0 else {}
+        white, dark = wp.vec3(0.9, 0.9, 0.88), wp.vec3(0.2, 0.2, 0.22)
+
+        def add(body, shp, in_hand: bool, colour, extra):
+            R, p = body_from_hand(H, shp.R, shp.t) if in_hand else (shp.R, shp.t)
+            if shp.kind == "box" and shp.collide:
+                return t.add_shape_box(body, xform=tf(R, p), hx=float(shp.size[0] / 2), hy=float(shp.size[1] / 2),
+                                       hz=float(shp.size[2] / 2), cfg=self._shape_cfg(newton, mu=1.0, is_visible=not visual),
+                                       color=colour, **extra)
+            if shp.kind == "mesh":
+                v, f = load_mesh(shp.mesh)
+                v = v @ R.T + p
+                if shp.collide:
+                    hv, hf = convex_hull(v)
+                    return t.add_shape_convex_hull(body, mesh=newton.Mesh(hv.astype(np.float32), hf.astype(np.int32).ravel(),
+                                                                          compute_inertia=False),
+                                                   cfg=self._shape_cfg(newton, mu=1.0, is_visible=not visual), color=colour)
+                if visual:
+                    t.add_shape_mesh(body, mesh=newton.Mesh(v.astype(np.float32), f.astype(np.int32).ravel(),
+                                                            compute_inertia=False),
+                                     cfg=self._shape_cfg(newton, has_shape_collision=False, has_particle_collision=False),
+                                     color=colour)
+            return None
+
+        for shp in H.hand.shapes:
+            add(hand, shp, True, white, {})
+        finger_shapes = []
+        for body, f in zip(fingers, H.fingers):
+            for shp in f.link.shapes:
+                sid = add(body, shp, False, dark if shp.collide else white, pads if shp.collide else {})
+                if sid is not None:
+                    finger_shapes.append((body, sid))
+        for b1, s1 in finger_shapes:
+            for b2, s2 in finger_shapes:
+                if b1 < b2:
+                    t.add_shape_collision_filter_pair(s1, s2)
+
+    def _add_objects(self, t, newton, wp):
+        """The toy's cup (body 6, one convex hull per variant) and saucer (body 7)."""
+        cfg = self.cfg
         # the cup: a free body whose shape (and unit-mass inertia) comes from a variant
         ox, oy = cfg.obj_xy
         cup = t.add_body(xform=wp.transform(wp.vec3(ox, oy, 0.002), wp.quat_identity()), mass=0.0, label="cup")
@@ -250,26 +363,26 @@ class SteelCupEnv:
                             lock_inertia=True, label="saucer")
         t.add_shape_cylinder(saucer, radius=r, half_height=hh, cfg=self._shape_cfg(newton, mu=0.7),
                              color=wp.vec3(0.55, 0.62, 0.68))
-        assert t.body_count == BODIES_PER_WORLD and (cup, saucer) == (CUP, SAUCER), (t.body_count, cup, saucer)
-        return t
+        assert (cup, saucer) == (CUP, SAUCER), (cup, saucer)
 
     def _views(self):
         wp, m, N = self._wp, self.model, self.N
+        B, C, D = self.B, self.C, self.D
         T = wp.to_torch
-        self.v_q = T(self.state_0.joint_q).view(N, COORDS_PER_WORLD)
-        self.v_q1 = T(self.state_1.joint_q).view(N, COORDS_PER_WORLD)
-        self.v_qd = T(self.state_0.joint_qd).view(N, DOFS_PER_WORLD)
-        self.v_qd1 = T(self.state_1.joint_qd).view(N, DOFS_PER_WORLD)
-        self.v_body_q = T(self.state_0.body_q).view(N, BODIES_PER_WORLD, 7)
-        self.v_body_qd = T(self.state_0.body_qd).view(N, BODIES_PER_WORLD, 6)
-        self.v_target = T(self.control.joint_target_q).view(N, COORDS_PER_WORLD)
-        self.v_mass = T(m.body_mass).view(N, BODIES_PER_WORLD)
-        self.v_inv_mass = T(m.body_inv_mass).view(N, BODIES_PER_WORLD)
-        self.v_inertia = T(m.body_inertia).view(N, BODIES_PER_WORLD, 3, 3)
-        self.v_inv_inertia = T(m.body_inv_inertia).view(N, BODIES_PER_WORLD, 3, 3)
-        self.v_com = T(m.body_com).view(N, BODIES_PER_WORLD, 3)
-        self.v_ke = T(m.joint_target_ke).view(N, DOFS_PER_WORLD)
-        self.v_effort = T(m.joint_effort_limit).view(N, DOFS_PER_WORLD)
+        self.v_q = T(self.state_0.joint_q).view(N, C)
+        self.v_q1 = T(self.state_1.joint_q).view(N, C)
+        self.v_qd = T(self.state_0.joint_qd).view(N, D)
+        self.v_qd1 = T(self.state_1.joint_qd).view(N, D)
+        self.v_body_q = T(self.state_0.body_q).view(N, B, 7)
+        self.v_body_qd = T(self.state_0.body_qd).view(N, B, 6)
+        self.v_target = T(self.control.joint_target_q).view(N, C)
+        self.v_mass = T(m.body_mass).view(N, B)
+        self.v_inv_mass = T(m.body_inv_mass).view(N, B)
+        self.v_inertia = T(m.body_inertia).view(N, B, 3, 3)
+        self.v_inv_inertia = T(m.body_inv_inertia).view(N, B, 3, 3)
+        self.v_com = T(m.body_com).view(N, B, 3)
+        self.v_ke = T(m.joint_target_ke).view(N, D)
+        self.v_effort = T(m.joint_effort_limit).view(N, D)
         self.v_mu = T(m.shape_material_mu)
         self.v_rest = T(m.shape_material_restitution)
         self.v_gap = T(m.shape_gap)
@@ -277,14 +390,16 @@ class SteelCupEnv:
         sw = T(m.shape_world).long()
         dev = self.device
 
-        body_local = torch.where(sb >= 0, sb % BODIES_PER_WORLD, torch.full_like(sb, -1))
+        self.v_mu_torsional = T(m.shape_material_mu_torsional) if m.shape_material_mu_torsional is not None else None
+        self.shape_body_local = body_local = torch.where(sb >= 0, sb % B, torch.full_like(sb, -1))
+        self.shape_world_index = sw
         self.sh_cup = torch.nonzero(body_local == CUP).squeeze(-1)
         self.sh_finger = torch.nonzero((body_local == FL) | (body_local == FR)).squeeze(-1)
         self.sh_saucer = torch.nonzero(body_local == SAUCER).squeeze(-1)
         self.sh_cup_world = sw[self.sh_cup]
         self.sh_finger_world = sw[self.sh_finger]
         self.sh_saucer_world = sw[self.sh_saucer]
-        self.cup_ids = torch.arange(N, device=dev) * BODIES_PER_WORLD + CUP
+        self.cup_ids = torch.arange(N, device=dev) * B + CUP
 
     def _defaults(self):
         self.base_ke = self.v_ke.clone()
@@ -419,7 +534,7 @@ class SteelCupEnv:
                 torch.tensor(P.goal_xy, device=dev)
         yaw = s * P.obj_yaw * (self._u(N) * 2 - 1)
         home = torch.tensor(cfg.home, device=dev)
-        q = torch.zeros(N, COORDS_PER_WORLD, device=dev)
+        q = torch.zeros(N, self.C, device=dev)
         q[:, 0:3] = home + 0.01 * s * (self._u(N, 3) * 2 - 1)
         q[:, 3] = 0.0
         q[:, 4:6] = cfg.width_max / 2
@@ -456,8 +571,10 @@ class SteelCupEnv:
         a = action.clamp(-1.0, 1.0)
         cur = self.v_q[:, :4]
         self.target[:, :3] = (self.target[:, :3] + a[:, :3] * cfg.v_max * self.dt)
-        self.target[:, :3] = cur[:, :3] + (self.target[:, :3] - cur[:, :3]).clamp(-0.04, 0.04)  # no wind-up
-        self.target[:, 0:2] = self.target[:, 0:2].clamp(-0.55, 0.55)
+        lead = max(0.04, 1.6 * cfg.v_max * self.dt)  # no wind-up: 4 cm at the toy's 0.25 m/s
+        self.target[:, :3] = cur[:, :3] + (self.target[:, :3] - cur[:, :3]).clamp(-lead, lead)
+        ws = torch.tensor(self.ws, device=self.device)
+        self.target[:, 0:2] = torch.maximum(torch.minimum(self.target[:, 0:2], ws + 0.55), ws - 0.55)
         self.target[:, 2] = self.target[:, 2].clamp(0.0, 0.5)
         self.target[:, 3] = self.target[:, 3] + a[:, 3] * cfg.yaw_rate_max * self.dt
         self.target[:, 3] = cur[:, 3] + (self.target[:, 3] - cur[:, 3]).clamp(-0.5, 0.5)

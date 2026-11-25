@@ -252,9 +252,14 @@ class Planar2DEnv:
 
 
 def make_env(cfg: EnvConfig, device: str = "cuda:0", **kw):
-    """``cfg.backend``: ``steel`` (Newton + SolverSteel, 3D) or ``planar2d`` (this file)."""
+    """``cfg.backend``: ``steel`` (the toy cup world), ``scene`` (real2sim's reconstruction), both Newton +
+    SolverSteel in 3D, or ``planar2d`` (this file)."""
     if cfg.backend == "planar2d":
         return Planar2DEnv(cfg, device=device, **kw)
+    if cfg.backend == "scene":
+        from vlalab.dream.scene_env import SteelSceneEnv
+
+        return SteelSceneEnv(cfg, device=device, **kw)
     from vlalab.dream.steel_env import SteelCupEnv
 
     return SteelCupEnv(cfg, device=device, **kw)

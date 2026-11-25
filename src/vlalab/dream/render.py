@@ -49,16 +49,27 @@ class AgentController:
 
 @torch.no_grad()
 def render_policy(env, controller, out_dir: Path, name: str, usd: bool = True, video: bool = True,
-                  size: tuple[int, int] = (960, 720), spacing: float = 0.55) -> dict:
+                  size: tuple[int, int] = (960, 720), spacing: float = 0.55, tiles: bool | None = None,
+                  tile_size: tuple[int, int] | None = None) -> dict:
     """Run ``controller`` (``reset(o)``, ``__call__(o, t) -> action``, optional ``observe(o_next)``) in ``env`` (a
     small SteelCupEnv built with ``capture=False``), recording every physics frame. Worlds sit on a grid through
-    viewer offsets only (the physics keeps every world at the origin)."""
+    viewer offsets only (the physics keeps every world at the origin).
+
+    ``tiles`` (default: on for the reconstructed scene, whose worlds hold a whole table): one close-up camera per
+    world, looking from where the gripper starts, and the views tiled into one frame."""
     from vlalab.dream.steel_env import OBS_SLICES
 
     if hasattr(env, "draw"):  # the 2D world draws itself
         return _render_planar(env, controller, Path(out_dir), name)
     import newton
 
+    tiles = (env.cfg.backend == "scene") if tiles is None else tiles
+    cols = int(math.ceil(math.sqrt(env.N)))
+    if tiles:
+        spacing = 4.0  # far apart: each camera sees its own world only
+        if tile_size is None:
+            tile_size = (size[0], size[1]) if env.N == 1 else (max(320, 1440 // cols), max(240, 1080 // cols))
+        size = tile_size
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     frames, files = [], {}
@@ -91,9 +102,20 @@ def render_policy(env, controller, out_dir: Path, name: str, usd: bool = True, v
         return viewers
 
     sim_t = [0.0]
+    cams: list = []
 
     def on_frame():
         for k, v in viewers.items():
+            if k == "gl" and cams:
+                views = []
+                for eye, c in cams:
+                    _look(v, eye, c)
+                    v.begin_frame(sim_t[0])
+                    v.log_state(env.state_0)
+                    v.end_frame()
+                    views.append(v.get_frame().numpy().copy())
+                frames.append(_tile(views, cols))
+                continue
             v.begin_frame(sim_t[0])
             v.log_state(env.state_0)
             v.end_frame()
@@ -106,7 +128,21 @@ def render_policy(env, controller, out_dir: Path, name: str, usd: bool = True, v
     try:
         o = env.reset()  # selects every world's cup variant: the viewers are built on the final geometry
         viewers.update(make_viewers())
-        if "gl" in viewers:
+        if "gl" in viewers and tiles:
+            off = viewers["gl"].world_offsets.numpy() if viewers["gl"].world_offsets is not None else \
+                np.zeros((env.N, 3))
+            oc = o.cpu().numpy()
+            home = np.asarray(env.cfg.home, float)
+            for i in range(env.N):
+                c = (oc[i, OBS_SLICES["obj"]] + oc[i, OBS_SLICES["goal"]]) / 2
+                c[2] = 0.03
+                span = float(np.linalg.norm(oc[i, OBS_SLICES["obj"]][:2] - oc[i, OBS_SLICES["goal"]][:2]))
+                dist = 1.1 * span + 0.35
+                dh = home[:2] - c[:2]
+                dh = dh / max(np.linalg.norm(dh), 1e-6)
+                eye = c + dist * np.array([0.55 * dh[0], 0.55 * dh[1], 1.0])  # from the gripper's side, high up
+                cams.append((eye + off[i], c + off[i]))
+        elif "gl" in viewers:
             off = viewers["gl"].world_offsets.numpy() if viewers["gl"].world_offsets is not None else np.zeros((1, 3))
             scene_c = (o[:, OBS_SLICES["obj"]] + o[:, OBS_SLICES["goal"]]).mean(0).cpu().numpy() / 2
             c = off.mean(0) + scene_c
@@ -140,6 +176,20 @@ def render_policy(env, controller, out_dir: Path, name: str, usd: bool = True, v
             iio.imwrite(out_dir / f"{name}_{tag}.png", frames[i])
         files["video"] = f"{name}.mp4"
     return files
+
+
+def _tile(views: list, cols: int) -> np.ndarray:
+    h, w = views[0].shape[:2]
+    rows = (len(views) + cols - 1) // cols
+    out = np.full((rows * h, cols * w, views[0].shape[2]), 255, dtype=views[0].dtype)
+    for i, im in enumerate(views):
+        r, c = divmod(i, cols)
+        out[r * h:(r + 1) * h, c * w:(c + 1) * w] = im
+    for r in range(1, rows):  # thin separators between the tiles
+        out[r * h - 1:r * h + 1] = 255
+    for c in range(1, cols):
+        out[:, c * w - 1:c * w + 1] = 255
+    return out
 
 
 @torch.no_grad()

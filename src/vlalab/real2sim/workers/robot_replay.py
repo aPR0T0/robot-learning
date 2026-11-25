@@ -193,6 +193,96 @@ def joints_from_demo(T_tcp_umi: np.ndarray, width: np.ndarray, tcp_offset: float
 
 
 # ----------------------------------------------------------------------------------------------------- scene
+def thin_object(v: np.ndarray, ph: dict, ranking: list, max_thickness: float = 0.01, min_aspect: float = 10.0):
+    """A flat object (mat, pad, sheet). One view does not measure its thickness, and a volume-based mass of a
+    reconstructed sheet is meaningless (Data Scaling Laws' mouse pad: SAM 3D made a 1 mm sheet tilted 7 deg, 35 mm
+    tall, and the density rule gave it 255 g), but its footprint is measured. When the top database candidates are
+    flat (median thickness under ``max_thickness``, footprint over ``min_aspect`` x that), return (thickness, mass,
+    why): a confident match's own thickness and mass; otherwise the candidates' median thickness (or the
+    reconstruction's, if thicker) and their median areal density (mass / face area) x the measured footprint."""
+    from scipy.spatial import ConvexHull
+
+    cands = [e for e in ranking[:5] if e.get("dims_m") and e.get("mass_kg")]
+    if not cands:
+        return None
+    t_c = float(np.median([min(e["dims_m"]) for e in cands]))
+    hull = ConvexHull(v[:, :2])
+    P = v[hull.vertices, :2]
+    width = float(min(np.ptp(P @ np.array([np.cos(a), np.sin(a)])) for a in np.linspace(0, np.pi, 36, endpoint=False)))
+    if t_c >= max_thickness or width < min_aspect * t_c:
+        return None
+    h = float(v[:, 2].max() - v[:, 2].min())
+    if ph.get("confident") and ph["match"].get("dims_m"):
+        return float(min(ph["match"]["dims_m"])), float(ph["mass_kg"]), "flat: the confident match's thickness and mass"
+    area = float(hull.volume)
+    rho = float(np.median([e["mass_kg"] / (sorted(e["dims_m"])[-1] * sorted(e["dims_m"])[-2]) for e in cands]))
+    t = max(t_c, h) if h < max_thickness else t_c
+    return t, rho * area, (f"flat: thickness {t * 1000:.1f} mm (top-5 database candidates {t_c * 1000:.1f} mm, "
+                           f"reconstruction {h * 1000:.1f} mm); mass = the candidates' median areal density "
+                           f"{rho:.2f} kg/m2 x the measured footprint {area * 1e4:.0f} cm2")
+
+
+def rest_pose(v: np.ndarray, com: np.ndarray, max_tilt_deg: float = 25.0, min_area: float = 0.02):
+    """Objects in one photo are at rest, but SAM 3D's layout leaves tall ones a few degrees off (they stand on an
+    edge and fall in the simulator). Find the convex-hull face (coplanar facets merged, at least ``min_area`` of the
+    hull's area) closest to facing down whose support polygon holds the CoM's projection, and return the rotation
+    about the CoM that lays it flat on the table, with its angle in degrees (identity if none within the cap)."""
+    from scipy.spatial import ConvexHull, Delaunay
+
+    pts = v if len(v) <= 60000 else v[np.random.default_rng(0).choice(len(v), 60000, replace=False)]
+    h = ConvexHull(pts)
+    n = h.equations[:, :3]
+    tri = pts[h.simplices]
+    area = 0.5 * np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1)
+    down = np.array([0.0, 0.0, -1.0])
+    cos_down = n @ down
+    used = np.zeros(len(n), bool)
+    for i in np.argsort(-cos_down):
+        if cos_down[i] < math.cos(math.radians(max_tilt_deg)):
+            break
+        if used[i]:
+            continue
+        grp = (n @ n[i]) > math.cos(math.radians(4.0))
+        used |= grp
+        if area[grp].sum() < min_area * area.sum():
+            continue
+        nm = (n[grp] * area[grp, None]).sum(0)
+        nm /= np.linalg.norm(nm)
+        axis = np.cross(nm, down)
+        ang = math.atan2(np.linalg.norm(axis), float(nm @ down))
+        R = Rotation.from_rotvec(axis / max(np.linalg.norm(axis), 1e-12) * ang).as_matrix() if ang > 1e-9 else np.eye(3)
+        base = (pts[np.unique(h.simplices[grp])] - com) @ R.T + com
+        try:
+            if Delaunay(base[:, :2]).find_simplex(com[:2]) >= 0:
+                return R, math.degrees(ang)
+        except Exception:  # noqa: BLE001 - degenerate (collinear) support
+            continue
+    return np.eye(3), 0.0
+
+
+def plate_mass_properties(v: np.ndarray, thickness: float, mass: float) -> tuple[np.ndarray, np.ndarray]:
+    """CoM and inertia (table axes) of a plate: the convex footprint of ``v`` extruded to ``thickness``."""
+    from scipy.spatial import ConvexHull
+
+    hull = ConvexHull(v[:, :2])
+    P = v[hull.vertices, :2]
+    c0 = P.mean(0)
+    A, first, second = 0.0, np.zeros(2), np.zeros((2, 2))
+    for i in range(len(P)):  # triangle fan from c0: int x x^T dA = A/12 (aa + bb + cc + ss), s = a + b + c
+        a_, b_ = P[i], P[(i + 1) % len(P)]
+        Ai = 0.5 * abs((a_[0] - c0[0]) * (b_[1] - c0[1]) - (a_[1] - c0[1]) * (b_[0] - c0[0]))
+        s_ = c0 + a_ + b_
+        A += Ai
+        first += Ai * s_ / 3
+        second += Ai / 12 * (np.outer(c0, c0) + np.outer(a_, a_) + np.outer(b_, b_) + np.outer(s_, s_))
+    cxy = first / A
+    S = second / A - np.outer(cxy, cxy)
+    tz = thickness ** 2 / 12
+    inertia = mass * np.array([[S[1, 1] + tz, -S[0, 1], 0.0], [-S[0, 1], S[0, 0] + tz, 0.0],
+                               [0.0, 0.0, S[0, 0] + S[1, 1]]])
+    return np.array([cxy[0], cxy[1], float(v[:, 2].min()) + thickness / 2]), inertia
+
+
 def decimate(v: np.ndarray, f: np.ndarray, faces: int, colors: np.ndarray | None = None):
     """Quadric decimation to about ``faces`` triangles (SAM 3D meshes come out with ~1M); colours follow the
     nearest original vertex."""
@@ -273,6 +363,8 @@ def main() -> None:
     ap.add_argument("--visual_faces", type=int, default=20000)
     ap.add_argument("--collision_faces", type=int, default=4000)
     ap.add_argument("--max_parts", type=int, default=16)
+    ap.add_argument("--thin", type=int, default=1, help="flatten thin objects to their database thickness")
+    ap.add_argument("--rest", type=int, default=1, help="lay each object on its nearest stable face")
     ap.add_argument("--render", type=int, default=1)
     ap.add_argument("--size", type=int, default=720)
     a = ap.parse_args()
@@ -281,7 +373,9 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     scene_dir = Path(a.scene)
     scene = json.loads((scene_dir / "scene.json").read_text())
-    phys = {o["name"]: o for o in json.loads(Path(a.physics).read_text())["objects"]}
+    phys_doc = json.loads(Path(a.physics).read_text())
+    phys = {o["name"]: o for o in phys_doc["objects"]}
+    rankings = {r["name"]: r.get("ranking", []) for r in phys_doc.get("rankings", [])}
     demo = json.loads((Path(a.bundle) / "demo.json").read_text())
     tr = np.load(Path(a.bundle) / "trajectory.npz")
     T_table_tag = np.asarray(scene.get("T_table_tag", np.eye(4)))
@@ -327,6 +421,10 @@ def main() -> None:
     hi = np.asarray(tab.get("xy_max", [0.6, 0.6]), float)
     lo = np.minimum(lo, T_base[:2, 3] - 0.15) - 0.05  # the table carries the robot base too
     hi = np.maximum(hi, T_base[:2, 3] + 0.15) + 0.05
+    for o in scene["objects"]:  # ... and every object standing on it (the plane fit cannot see behind them)
+        if "bbox_min" in o and o["name"] in phys:
+            lo = np.minimum(lo, np.asarray(o["bbox_min"][:2], float) - 0.06)
+            hi = np.maximum(hi, np.asarray(o["bbox_max"][:2], float) + 0.06)
     th = a.table_thickness
     table_cfg = cfg(mu=0.6, restitution=0.0)
     b.add_shape_box(-1, xform=tf([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, -th / 2]), hx=(hi[0] - lo[0]) / 2,
@@ -356,15 +454,29 @@ def main() -> None:
         ph = phys[name]
         mesh = np.load(scene_dir / o["mesh"])
         v, f = mesh["vertices"].astype(np.float64), mesh["faces"].astype(np.int64)
+        com0 = np.asarray(ph["com_world"], float)
+        R_rest, tilt = rest_pose(v, com0) if a.rest else (np.eye(3), 0.0)
+        if tilt > 0:  # lay it on its nearest stable face (about the CoM)
+            v = (v - com0) @ R_rest.T + com0
+            print(f"{name}: turned {tilt:.1f} deg onto a stable face", flush=True)
+        thin = thin_object(v, ph, rankings.get(name, [])) if a.thin else None
+        if thin is not None:  # squash onto its bottom: footprint kept, thickness from the database
+            z0, z1 = v[:, 2].min(), v[:, 2].max()
+            v = v.copy()
+            v[:, 2] = z0 + (v[:, 2] - z0) * thin[0] / (z1 - z0)
+            print(f"{name}: {thin[2]} = {thin[1] * 1000:.0f} g", flush=True)
         lift = 0.001 - v[:, 2].min()  # rest on the table (reconstruction noise is mm-scale)
         v = v + [0, 0, lift]
-        com = np.asarray(ph["com_world"]) + [0, 0, lift]
+        mass = float(ph["mass_kg"]) if thin is None else thin[1]
+        com = com0 + [0, 0, lift]
+        inertia = R_rest @ np.asarray(ph["inertia_world_axes"]) @ R_rest.T
+        if thin is not None:
+            com, inertia = plate_mass_properties(v, thin[0], mass)
         cols = mesh["colors"] if "colors" in mesh.files else None
         vv, fv, cv = decimate(v, f, a.visual_faces, cols)       # what is drawn
         vc_, fc_, _ = decimate(v, f, a.collision_faces)          # what CoACD splits into convex parts
         parts, how = convex_parts(vc_, fc_, a.coacd_threshold, a.max_parts)
-        inertia = np.asarray(ph["inertia_world_axes"])
-        body = b.add_body(xform=tf(com), mass=float(ph["mass_kg"]), com=wp.vec3(0.0, 0.0, 0.0),
+        body = b.add_body(xform=tf(com), mass=mass, com=wp.vec3(0.0, 0.0, 0.0),
                           inertia=wp.mat33(*inertia.ravel().tolist()), lock_inertia=True, label=name)
         c = ph["contact"]
         colour = (cols.mean(0) / 255.0).tolist() if cols is not None else [0.7, 0.7, 0.7]
@@ -384,11 +496,16 @@ def main() -> None:
         trimesh.Trimesh(vv - com, fv, vertex_colors=cv, process=False).export(out / "env" / f"{name}_visual.obj")
         trimesh.util.concatenate([trimesh.Trimesh(pv - com, pf, process=False) for pv, pf in parts]).export(
             out / "env" / f"{name}_collision.obj")
+        np.savez(out / "env" / f"{name}_parts.npz", n=len(parts),  # the same parts, one array each
+                 **{f"v{i}": (pv - com).astype(np.float32) for i, (pv, _) in enumerate(parts)},
+                 **{f"f{i}": np.asarray(pf, np.int32) for i, (_, pf) in enumerate(parts)})
         objects.append({"name": name, "label": o.get("label", name), "mesh": str(scene_dir / o["mesh"]),
                         "visual": f"env/{name}_visual.obj", "collision": f"env/{name}_collision.obj",
                         "pose_table_frame": {"position": com.tolist(), "quat_xyzw": [0, 0, 0, 1]},
-                        "collider": f"{how}, {len(parts)} parts", "mass_kg": ph["mass_kg"],
-                        "mass_rule": ph.get("mass_rule", ""), "match": ph["match"]["name"],
+                        "collider": f"{how}, {len(parts)} parts", "mass_kg": mass,
+                        "mass_rule": ph.get("mass_rule", "") if thin is None else thin[2], "match": ph["match"]["name"],
+                        **({"thin": {"thickness_m": thin[0], "sam3d_height_m": float(np.ptp(mesh["vertices"][:, 2]))}}
+                           if thin is not None else {}), "rest_tilt_deg": tilt,
                         "com_table_frame": com.tolist(), "inertia_about_com": inertia.tolist(),
                         "contact": c, "extent_m": o["extent_m"]})
     model = b.finalize()

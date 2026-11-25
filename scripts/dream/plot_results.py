@@ -1,6 +1,8 @@
-"""Plots, a comparison table and a JSON summary from style-dream runs (the Steel toy and the 2D theory test).
+"""Plots, a comparison table and a JSON summary from style-dream runs (the Steel toy, the 2D theory test, the UMI
+mouse scene).
 
     python scripts/dream/plot_results.py OUT_DIR steel=runs/style_dream_toy 2d=runs/style_dream_2d
+    python scripts/dream/plot_results.py OUT_DIR mouse=runs/umi_style_dream
 
 Writes learning_curves.png, final_success.png, mass_bins.png, style_tradeoff.png, results.md and results.json.
 Colours: the reference categorical palette's first three slots (validated all-pairs), neutral gray for the baseline.
@@ -19,7 +21,7 @@ SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 COLORS = {"dream_rl": "#2a78d6", "rl": "#eb6834", "dream": "#1baf7a", "prior": "#8f8e89"}
 NAMES = {"dream_rl": "dreams + RL (ours)", "rl": "RL only (PPO)", "dream": "dreams only", "prior": "retarget + replay"}
 ORDER = ["prior", "rl", "dream", "dream_rl"]
-WORLD_NAMES = {"steel": "Newton + Steel (3D)", "2d": "2D world"}
+WORLD_NAMES = {"steel": "Newton + Steel (3D)", "2d": "2D world", "mouse": "Steel, rebuilt UMI scene (mouse to pad)"}
 
 
 def mode_of(label: str) -> str:
@@ -107,6 +109,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     runs = {k: load_run(Path(v)) for k, v in (a.split("=", 1) for a in sys.argv[2:])}
     summ = {k: summarise(r["report"]) for k, r in runs.items()}
+    wide = len(runs) > 1
+
+    def width(per: float) -> float:  # one panel alone is widened so titles and legends fit
+        return per * len(runs) if wide else 7.8
 
     # ---- learning curves: rollout success (training worlds, with exploration) vs simulated steps
     from matplotlib.lines import Line2D
@@ -115,7 +121,7 @@ def main():
         out = np.convolve(y, np.ones(k) / k, mode="valid")
         return np.r_[np.cumsum(y[:k - 1]) / np.arange(1, k), out]
 
-    fig, axes = plt.subplots(1, len(runs), figsize=(5.8 * len(runs), 4.1), squeeze=False)
+    fig, axes = plt.subplots(1, len(runs), figsize=(width(5.8), 4.1), squeeze=False)
     for ax, (w, r) in zip(axes[0], runs.items()):
         style_axes(ax)
         base = summ[w].get("held_out", {}).get("prior", {}).get("success")
@@ -150,14 +156,14 @@ def main():
                + (f", mean of {seeds} seeds (band = range)" if seeds > 1 else ""))
     handles = [Line2D([], [], color=COLORS[m], lw=2, label=NAMES[m]) for m in ("dream_rl", "rl", "dream")]
     handles.append(Line2D([], [], color=COLORS["prior"], lw=1.5, ls=(0, (4, 3)), label="retarget + replay (held-out)"))
-    fig.legend(handles=handles, loc="upper center", ncol=4, frameon=False, fontsize=9)
-    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    fig.legend(handles=handles, loc="upper center", ncol=4 if wide else 2, frameon=False, fontsize=9)
+    fig.tight_layout(rect=(0, 0, 1, 0.9 if wide else 0.86))
     fig.savefig(out / "learning_curves.png", dpi=150)
     plt.close(fig)
 
     # ---- final success on held-out and OOD worlds (95% Wilson interval; dots = seeds)
     sets = ["held_out", "ood"]
-    fig, axes = plt.subplots(1, len(runs), figsize=(5.6 * len(runs), 3.9), squeeze=False)
+    fig, axes = plt.subplots(1, len(runs), figsize=(width(5.6), 3.9), squeeze=False)
     for ax, (w, sm) in zip(axes[0], summ.items()):
         style_axes(ax)
         modes = [m for m in ORDER if any(m in sm.get(s, {}) for s in sets)]
@@ -181,14 +187,15 @@ def main():
                + (f" ({seeds} seeds; dots = seeds)" if seeds > 1 else ""))
     from matplotlib.patches import Patch
 
-    fig.legend(handles=[Patch(color=COLORS[m], label=NAMES[m]) for m in ORDER], loc="upper center", ncol=4,
-               frameon=False, fontsize=9, title="bars: success, whiskers: 95% Wilson interval", title_fontsize=8)
-    fig.tight_layout(rect=(0, 0, 1, 0.86))
+    fig.legend(handles=[Patch(color=COLORS[m], label=NAMES[m]) for m in ORDER], loc="upper center",
+               ncol=4 if wide else 2, frameon=False, fontsize=9, title="bars: success, whiskers: 95% Wilson interval",
+               title_fontsize=8)
+    fig.tight_layout(rect=(0, 0, 1, 0.86 if wide else 0.8))
     fig.savefig(out / "final_success.png", dpi=150)
     plt.close(fig)
 
     # ---- success by cup-mass tercile (held-out)
-    fig, axes = plt.subplots(1, len(runs), figsize=(5.6 * len(runs), 3.6), squeeze=False)
+    fig, axes = plt.subplots(1, len(runs), figsize=(width(5.6), 3.6), squeeze=False)
     for ax, (w, sm) in zip(axes[0], summ.items()):
         style_axes(ax)
         for m in ORDER:
@@ -197,7 +204,8 @@ def main():
             b = sm["held_out"][m]["mass_bins"]
             ax.plot(["light", "middle", "heavy"], b, color=COLORS[m], lw=2, marker="o", ms=5,
                     markeredgecolor=SURFACE, markeredgewidth=1.5, label=NAMES[m])
-        ax.set(ylim=(0, 1.02), ylabel="success", xlabel="cup mass (thirds of the held-out worlds)",
+        thing = "mouse" if w == "mouse" else "cup"
+        ax.set(ylim=(0, 1.02), ylabel="success", xlabel=f"{thing} mass (thirds of the held-out worlds)",
                title=f"{WORLD_NAMES.get(w, w)}: where the demo's grip fails")
         ax.legend(frameon=False, fontsize=8, loc="lower left")
     fig.tight_layout()
@@ -206,7 +214,7 @@ def main():
 
     # ---- success vs style distance, one panel per world
     side = {"prior": (8, "left"), "dream_rl": (8, "left"), "rl": (-8, "right"), "dream": (-8, "right")}
-    fig, axes = plt.subplots(1, len(runs), figsize=(5.2 * len(runs), 3.8), squeeze=False)
+    fig, axes = plt.subplots(1, len(runs), figsize=(width(5.2), 3.8), squeeze=False)
     for ax, (w, sm) in zip(axes[0], summ.items()):
         style_axes(ax)
         xs = []

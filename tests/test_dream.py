@@ -144,14 +144,14 @@ def test_agent_end_to_end_on_fake_env():
     st = extract_style(t, p, yaw, w, scene)
     env = FakeEnv(n=16)
     sm = StyleModel(st, env.cfg)
-    O, A = collect_world_model_data(env, sm, episodes=2)
-    assert O.shape == (32, env.max_steps + 1, OBS_DIM) and A.shape == (32, env.max_steps + 1, ACT_DIM)
+    obs, act = collect_world_model_data(env, sm, episodes=2)
+    assert obs.shape == (32, env.max_steps + 1, OBS_DIM) and act.shape == (32, env.max_steps + 1, ACT_DIM)
     wcfg = WMConfig(deter=64, stoch=8, hidden=64, steps=20, batch=8, seq_len=10)
     wm = RSSM(OBS_DIM, ACT_DIM, wcfg)
-    wm.fit_norm(O)
-    hist = train_world_model(wm, O, A, wcfg)
+    wm.fit_norm(obs)
+    hist = train_world_model(wm, obs, act, wcfg)
     assert np.isfinite(hist[-1]["loss"])
-    err = wm.open_loop_error(O[:4], A[:4], start=5, horizon=3)
+    err = wm.open_loop_error(obs[:4], act[:4], start=5, horizon=3)
     assert len(err["obj_mm"]) == 3
     for mode in ("dream_rl", "rl", "dream"):
         cfg = AgentConfig(mode=mode, iterations=1, hidden=32, minibatches=2, ppo_epochs=1, dream_horizon=3,
@@ -162,3 +162,67 @@ def test_agent_end_to_end_on_fake_env():
         assert 0.0 <= rows[-1]["eval_success"] <= 1.0
     ev = evaluate(agent, FakeEnv(n=8, seed=2), policy=False)
     assert ev["tempo"] == 1.0 and ev["residual_rms"] == 0.0
+
+
+# ------------------------------------------------------------------------------------- reconstructed scene
+def _box_body(name, centre, half, yaw=0.0, mass=0.1):
+    """A SceneBody like real2sim writes one: a box's hull in its CoM frame (table axes), turned by ``yaw``."""
+    from vlalab.dream.scene_assets import SceneBody
+    from vlalab.dream.shapes import convex_hull
+
+    corners = np.array([[sx, sy, sz] for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)], float) * half
+    c, s = math.cos(yaw), math.sin(yaw)
+    R = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
+    v, f = convex_hull(corners @ R.T)
+    return SceneBody(name=name, mass=mass, contact={"mu": 0.5}, com_table=np.asarray(centre, float),
+                     parts=[(v, f)], visual=None, color=np.array([0.5, 0.5, 0.5]), inertia=np.eye(3) * 1e-4)
+
+
+def test_object_frame_principal_axes_and_base():
+    from vlalab.dream.scene_assets import build_mesh_asset, object_frame
+
+    body = _box_body("mouse", [0.2, -0.1, 0.02], np.array([0.05, 0.03, 0.02]), yaw=0.4)
+    fr = object_frame(body, "base")
+    assert abs(fr.yaw - 0.4) < 1e-6                                   # x = the long side
+    np.testing.assert_allclose(fr.position, [0.2, -0.1, 0.0], atol=1e-9)  # footprint centre, on the table
+    a = build_mesh_asset(body, fr)
+    np.testing.assert_allclose(a.extents, [0.10, 0.06, 0.04], atol=1e-6)
+    np.testing.assert_allclose(a.com, [0, 0, 0.02], atol=1e-6)
+    np.testing.assert_allclose(a.width_y, [0.06] * 3, atol=1e-6)      # the gripper closes across the short side
+    ixx = (0.06 ** 2 + 0.04 ** 2) / 12                                 # 1 kg box about its long axis
+    assert abs(a.inertia1[0, 0] - ixx) / ixx < 1e-3
+    fc = object_frame(body, "centre")
+    np.testing.assert_allclose(fc.position, [0.2, -0.1, 0.02], atol=1e-9)
+
+
+def test_geometry_variants_keep_the_base_and_follow_the_ranges():
+    from vlalab.dream.scene_assets import GeometryRanges, TargetRanges, object_bank, object_frame, target_bank
+
+    body = _box_body("mouse", [0, 0, 0.02], np.array([0.05, 0.03, 0.02]))
+    fr = object_frame(body, "base")
+    r = GeometryRanges()
+    bank = object_bank(body, fr, 64, r, seed=0)
+    ext = np.stack([a.extents for a in bank])
+    np.testing.assert_allclose(ext[0], [0.10, 0.06, 0.04], atol=1e-6)            # variant 0 = the reconstruction
+    assert ext[1:, 0].std() > 0.003                                              # sizes vary ...
+    lo = r.size[0] * (1 - r.aspect) * (1 - 2 * r.bump) * (1 - abs(r.taper[0]) / 2)
+    assert (ext[:, :2] / ext[0, :2] > lo).all() and (ext[:, 2] / ext[0, 2] > lo * r.height[0]).all()  # ... in range
+    for a in bank:
+        assert abs(min(p[:, 2].min() for p, _ in a.parts)) < 1e-4                # every variant rests on its base
+        assert a.volume > 0 and np.all(np.linalg.eigvalsh(a.inertia1) > 0)
+    tb = target_bank(_box_body("pad", [0, 0, 0.0015], np.array([0.12, 0.1, 0.0015])), object_frame(
+        _box_body("pad", [0, 0, 0.0015], np.array([0.12, 0.1, 0.0015])), "centre"), 16, TargetRanges(), seed=0)
+    t = np.stack([a.extents for a in tb])
+    assert (t[:, 0] / t[:, 1]).std() < 1e-6                                     # footprint scales uniformly
+
+
+def test_obb_overlap():
+    from vlalab.dream.scene_env import obb_overlap
+
+    c1 = torch.tensor([[0.0, 0.0]] * 4)
+    c2 = torch.tensor([[0.15, 0.0], [0.09, 0.0], [0.12, 0.12], [0.11, 0.0]])
+    h = torch.tensor([[0.05, 0.03]] * 4)
+    y1 = torch.zeros(4)
+    y2 = torch.tensor([0.0, 0.0, math.pi / 4, math.pi / 2])
+    got = obb_overlap(c1, y1, h, c2, y2, h)
+    assert got.tolist() == [False, True, False, False]  # apart; overlapping; diagonal gap; turned 90 deg (0.05 + 0.03 < 0.11)

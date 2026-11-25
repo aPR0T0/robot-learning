@@ -36,8 +36,10 @@ at frame 279 and opening at 393. The scene is rebuilt from **frame 234** (`keyfr
 the fingers close), where the cup and saucer are close up and not yet touched. The fisheye frame is rectified to a
 1024 px pinhole image with a 100° field of view using UMI's own Kannala-Brandt calibration.
 
-Other UMI-format sessions plug in through `session:` / `url:` (any session that has been through UMI's SLAM
-pipeline, e.g. [Data Scaling Laws](https://github.com/Fanqi-Lin/Data-Scaling-Laws)' raw videos).
+Other UMI-format sessions plug in through `session:` / `url:`: a web listing of the GoPro MP4s, or a Hugging Face
+folder, `url: hf://datasets/<repo>/<folder>` (`max_demos:` caps the download), such as
+[Data Scaling Laws](https://github.com/Fanqi-Lin/Data-Scaling-Laws)' raw videos. Their "arrange mouse" environment 17
+goes through the whole chain, and on into the style-dream pipeline, in [style_dream_umi.md](style_dream_umi.md).
 
 ## Metric scale, and the table frame
 
@@ -159,6 +161,23 @@ and it uses flash-attn's prebuilt wheel.
 
 Headless rendering: Newton's GL viewer needs `PYGLET_HEADLESS=true` (and NVIDIA's EGL, which `setup.sh` installs
 on GCP's driver images), e.g. `PYGLET_HEADLESS=true uv run python -m shelf thumbs jenga` in `steel/examples`.
+
+## Rules that keep the rebuilt scene physical
+
+`data/steel_scene` applies three rules to SAM 3D's objects before building the environment (all on by default; found
+on the [mouse scene](style_dream_umi.md#2-the-steel-scene), where the cup scene had not needed them):
+
+* **rest pose** (`--rest`): objects in one photo are at rest, but SAM 3D's layout leaves them a few degrees off; each
+  is turned about its CoM by the smallest rotation that lays a stable convex-hull face (CoM over its support
+  polygon, ≤ 25°) flat on the table. Otherwise tall objects stand on an edge and fall while the scene settles;
+* **flat objects** (`--thin`): when the top-5 database candidates are flat (median thickness < 1 cm, footprint
+  > 10 × that), the object is its measured footprint extruded to their median thickness, and its mass their median
+  areal density × the footprint (the mouse pad: 86 g instead of 255 g from a density × SAM 3D's sheet volume);
+* **the table carries everything**: it extends under every object's footprint (+ 6 cm), since the plane fit cannot
+  see the table behind the objects at its back edge.
+
+`env.json` records each object's `rest_tilt_deg` and, for flat ones, `thin: {thickness_m, sam3d_height_m}`;
+`env/<name>_parts.npz` holds the CoACD parts as arrays (the style-dream worlds load them).
 
 ## Run
 

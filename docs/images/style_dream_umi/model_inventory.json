@@ -1,0 +1,862 @@
+{
+ "models": [
+  {
+   "name": "facebook/sam3",
+   "role": "text-prompted masks on the keyframe",
+   "stage": "data/scene_masks",
+   "config": {
+    "detector_config.detr_decoder_config.cross_attention_hidden_size": null,
+    "detector_config.detr_decoder_config.decoder_start_token_id": null,
+    "detector_config.detr_decoder_config.hidden_act": "relu",
+    "detector_config.detr_decoder_config.hidden_size": 256,
+    "detector_config.detr_decoder_config.intermediate_size": 2048,
+    "detector_config.detr_decoder_config.num_attention_heads": 8,
+    "detector_config.detr_decoder_config.num_layers": 6,
+    "detector_config.detr_decoder_config.num_queries": 200,
+    "detector_config.detr_encoder_config.cross_attention_hidden_size": null,
+    "detector_config.detr_encoder_config.decoder_start_token_id": null,
+    "detector_config.detr_encoder_config.hidden_act": "relu",
+    "detector_config.detr_encoder_config.hidden_size": 256,
+    "detector_config.detr_encoder_config.intermediate_size": 2048,
+    "detector_config.detr_encoder_config.num_attention_heads": 8,
+    "detector_config.detr_encoder_config.num_layers": 6,
+    "detector_config.geometry_encoder_config.cross_attention_hidden_size": null,
+    "detector_config.geometry_encoder_config.decoder_start_token_id": null,
+    "detector_config.geometry_encoder_config.hidden_act": "relu",
+    "detector_config.geometry_encoder_config.hidden_size": 256,
+    "detector_config.geometry_encoder_config.intermediate_size": 2048,
+    "detector_config.geometry_encoder_config.num_attention_heads": 8,
+    "detector_config.geometry_encoder_config.num_layers": 3,
+    "detector_config.mask_decoder_config.cross_attention_hidden_size": null,
+    "detector_config.mask_decoder_config.decoder_start_token_id": null,
+    "detector_config.mask_decoder_config.hidden_size": 256,
+    "detector_config.mask_decoder_config.num_attention_heads": 8,
+    "detector_config.text_config.cross_attention_hidden_size": null,
+    "detector_config.text_config.decoder_start_token_id": null,
+    "detector_config.text_config.hidden_act": "gelu",
+    "detector_config.text_config.hidden_size": 1024,
+    "detector_config.text_config.intermediate_size": 4096,
+    "detector_config.text_config.max_position_embeddings": 32,
+    "detector_config.text_config.num_attention_heads": 16,
+    "detector_config.text_config.num_hidden_layers": 24,
+    "detector_config.text_config.projection_dim": 512,
+    "detector_config.text_config.vocab_size": 49408,
+    "detector_config.vision_config.backbone_config.cross_attention_hidden_size": null,
+    "detector_config.vision_config.backbone_config.decoder_start_token_id": null,
+    "detector_config.vision_config.backbone_config.hidden_act": "gelu",
+    "detector_config.vision_config.backbone_config.hidden_size": 1024,
+    "detector_config.vision_config.backbone_config.image_size": 1008,
+    "detector_config.vision_config.backbone_config.intermediate_size": 4736,
+    "detector_config.vision_config.backbone_config.num_attention_heads": 16,
+    "detector_config.vision_config.backbone_config.num_channels": 3,
+    "detector_config.vision_config.backbone_config.num_hidden_layers": 32,
+    "detector_config.vision_config.backbone_config.patch_size": 14,
+    "detector_config.vision_config.backbone_config.pretrain_image_size": 336,
+    "detector_config.vision_config.backbone_config.window_size": 24,
+    "detector_config.vision_config.backbone_feature_sizes": [
+     [
+      288,
+      288
+     ],
+     [
+      144,
+      144
+     ],
+     [
+      72,
+      72
+     ]
+    ],
+    "detector_config.vision_config.cross_attention_hidden_size": null,
+    "detector_config.vision_config.decoder_start_token_id": null,
+    "detector_config.vision_config.fpn_hidden_size": 256,
+    "detector_config.vision_config.fpn_kernel_size": 2,
+    "detector_config.vision_config.fpn_stride": 2,
+    "detector_config.vision_config.hidden_act": "gelu",
+    "detector_config.vision_config.num_feature_levels": 3,
+    "low_res_mask_size": 288,
+    "tracker_config.image_size": 1008,
+    "tracker_config.mask_decoder_config.cross_attention_hidden_size": null,
+    "tracker_config.mask_decoder_config.decoder_start_token_id": null,
+    "tracker_config.mask_decoder_config.dynamic_multimask_stability_delta": 0.05,
+    "tracker_config.mask_decoder_config.dynamic_multimask_stability_thresh": 0.98,
+    "tracker_config.mask_decoder_config.dynamic_multimask_via_stability": true,
+    "tracker_config.mask_decoder_config.hidden_act": "gelu",
+    "tracker_config.mask_decoder_config.hidden_size": 256,
+    "tracker_config.mask_decoder_config.iou_head_depth": 3,
+    "tracker_config.mask_decoder_config.num_attention_heads": 8,
+    "tracker_config.mask_decoder_config.num_hidden_layers": 2,
+    "tracker_config.mask_decoder_config.num_multimask_outputs": 3,
+    "tracker_config.mask_downsampler_embed_dim": 256,
+    "tracker_config.mask_downsampler_hidden_act": "gelu",
+    "tracker_config.mask_downsampler_kernel_size": 3,
+    "tracker_config.mask_downsampler_padding": 1,
+    "tracker_config.mask_downsampler_stride": 2,
+    "tracker_config.mask_downsampler_total_stride": 16,
+    "tracker_config.memory_attention_feed_forward_hidden_act": "relu",
+    "tracker_config.memory_attention_feed_forward_hidden_size": 2048,
+    "tracker_config.memory_attention_hidden_size": 256,
+    "tracker_config.memory_attention_num_attention_heads": 1,
+    "tracker_config.memory_attention_num_layers": 4,
+    "tracker_config.memory_encoder_hidden_size": 256,
+    "tracker_config.memory_encoder_output_channels": 64,
+    "tracker_config.memory_fuser_embed_dim": 256,
+    "tracker_config.memory_fuser_hidden_act": "gelu",
+    "tracker_config.memory_fuser_num_layers": 2,
+    "tracker_config.multimask_max_pt_num": 1,
+    "tracker_config.multimask_min_pt_num": 0,
+    "tracker_config.multimask_output_for_tracking": true,
+    "tracker_config.multimask_output_in_sam": true,
+    "tracker_config.prompt_encoder_config.cross_attention_hidden_size": null,
+    "tracker_config.prompt_encoder_config.decoder_start_token_id": null,
+    "tracker_config.prompt_encoder_config.hidden_act": "gelu",
+    "tracker_config.prompt_encoder_config.hidden_size": 256,
+    "tracker_config.prompt_encoder_config.image_size": 1008,
+    "tracker_config.prompt_encoder_config.mask_input_channels": 16,
+    "tracker_config.prompt_encoder_config.patch_size": 14,
+    "tracker_config.vision_config.backbone_config.cross_attention_hidden_size": null,
+    "tracker_config.vision_config.backbone_config.decoder_start_token_id": null,
+    "tracker_config.vision_config.backbone_config.hidden_act": "gelu",
+    "tracker_config.vision_config.backbone_config.hidden_size": 1024,
+    "tracker_config.vision_config.backbone_config.image_size": 1008,
+    "tracker_config.vision_config.backbone_config.intermediate_size": 4736,
+    "tracker_config.vision_config.backbone_config.num_attention_heads": 16,
+    "tracker_config.vision_config.backbone_config.num_channels": 3,
+    "tracker_config.vision_config.backbone_config.num_hidden_layers": 32,
+    "tracker_config.vision_config.backbone_config.patch_size": 14,
+    "tracker_config.vision_config.backbone_config.pretrain_image_size": 336,
+    "tracker_config.vision_config.backbone_config.window_size": 24,
+    "tracker_config.vision_config.backbone_feature_sizes": [
+     [
+      288,
+      288
+     ],
+     [
+      144,
+      144
+     ],
+     [
+      72,
+      72
+     ]
+    ],
+    "tracker_config.vision_config.cross_attention_hidden_size": null,
+    "tracker_config.vision_config.decoder_start_token_id": null,
+    "tracker_config.vision_config.fpn_hidden_size": 256,
+    "tracker_config.vision_config.fpn_kernel_size": 2,
+    "tracker_config.vision_config.fpn_stride": 2,
+    "tracker_config.vision_config.hidden_act": "gelu",
+    "tracker_config.vision_config.num_feature_levels": 3
+   },
+   "model_type": "sam3_video",
+   "params": 859922360,
+   "groups": {
+    "detector_model.vision_encoder": 454038784,
+    "detector_model.text_encoder": 353462272,
+    "detector_model.detr_decoder": 11575093,
+    "detector_model.detr_encoder": 9472512,
+    "detector_model.geometry_encoder": 8083456,
+    "tracker_neck.fpn_layers": 7802112,
+    "tracker_model.memory_attention": 5922304,
+    "tracker_model.mask_decoder": 4215109,
+    "detector_model.mask_decoder": 2298881,
+    "tracker_model.memory_encoder": 1384608,
+    "detector_model.dot_product_scoring": 1182976,
+    "detector_model.text_projection": 262400,
+    "tracker_model.object_pointer_proj": 197376,
+    "tracker_model.temporal_positional_encoding_projection_layer": 16448,
+    "tracker_model.prompt_encoder": 6476,
+    "tracker_model.memory_temporal_positional_encoding": 448,
+    "tracker_model.no_memory_embedding": 256,
+    "tracker_model.no_memory_positional_encoding": 256,
+    "tracker_model.no_object_pointer": 256,
+    "tracker_model.shared_image_embedding": 256,
+    "tracker_model.occlusion_spatial_embedding_parameter": 64,
+    "tracker_model.mask_downsample": 17
+   },
+   "repeated_blocks": {
+    "detector_model.detr_decoder.layers": 6,
+    "detector_model.detr_encoder.layers": 6,
+    "detector_model.geometry_encoder.layers": 3,
+    "detector_model.mask_decoder.mask_embedder.layers": 3,
+    "detector_model.mask_decoder.pixel_decoder.conv_layers": 3,
+    "detector_model.mask_decoder.pixel_decoder.norms": 3,
+    "detector_model.text_encoder.text_model.encoder.layers": 24,
+    "detector_model.vision_encoder.backbone.layers": 32,
+    "detector_model.vision_encoder.neck.fpn_layers": 4,
+    "detector_model.vision_encoder.neck.fpn_layers.0.scale_layers": 3,
+    "tracker_model.mask_decoder.output_hypernetworks_mlps": 4,
+    "tracker_model.mask_decoder.transformer.layers": 2,
+    "tracker_model.memory_attention.layers": 4,
+    "tracker_model.memory_encoder.mask_downsampler.layers": 4,
+    "tracker_model.memory_encoder.memory_fuser.layers": 2,
+    "tracker_neck.fpn_layers": 4,
+    "tracker_neck.fpn_layers.0.scale_layers": 3
+   }
+  },
+  {
+   "name": "Ruicheng/moge-vitl",
+   "role": "metric point map of the keyframe (SAM 3D's depth model)",
+   "stage": "data/sam3d_scene",
+   "config": {
+    "model_config.num_res_blocks": 2,
+    "model_config.last_conv_channels": 32
+   },
+   "model_type": "",
+   "params": 314174026,
+   "groups": {
+    "backbone.blocks": 302358528,
+    "head.upsample_blocks": 7667968,
+    "head.projects": 2099200,
+    "backbone.pos_embed": 1402880,
+    "backbone.patch_embed": 603136,
+    "head.output_block": 38212,
+    "backbone.norm": 2048,
+    "backbone.cls_token": 1024,
+    "backbone.mask_token": 1024,
+    "image_mean": 3,
+    "image_std": 3
+   },
+   "repeated_blocks": {
+    "backbone.blocks": 24,
+    "head.output_block": 2,
+    "head.output_block.0": 3,
+    "head.output_block.1": 3,
+    "head.projects": 4,
+    "head.upsample_blocks": 3,
+    "head.upsample_blocks.0": 3,
+    "head.upsample_blocks.0.0": 2,
+    "head.upsample_blocks.0.1.layers": 6,
+    "head.upsample_blocks.0.2.layers": 6,
+    "head.upsample_blocks.1": 3,
+    "head.upsample_blocks.1.0": 2,
+    "head.upsample_blocks.1.1.layers": 6,
+    "head.upsample_blocks.1.2.layers": 6,
+    "head.upsample_blocks.2": 3,
+    "head.upsample_blocks.2.0": 2,
+    "head.upsample_blocks.2.1.layers": 6,
+    "head.upsample_blocks.2.2.layers": 6
+   }
+  },
+  {
+   "name": "SAM 3D Objects / ss_generator",
+   "role": "stage 1: sparse-structure flow (coarse 16^3 occupancy + pose: rotation, translation, scale)",
+   "stage": "data/sam3d_scene",
+   "classes": {
+    "module.condition_embedder.backbone.": "EmbedderFuser",
+    "module.condition_embedder.backbone.embedder_list.[0].[0].": "Dino",
+    "module.condition_embedder.backbone.embedder_list.[1].[0].": "Dino",
+    "module.condition_embedder.backbone.embedder_list.[2].[0].": "PointPatchEmbed",
+    "module.generator.backbone.": "ShortCut",
+    "module.generator.backbone.loss_weights.": "make_dict",
+    "module.generator.backbone.reverse_fn.": "ClassifierFreeGuidanceWithExternalUnconditionalProbability",
+    "module.generator.backbone.reverse_fn.backbone.": "SparseStructureFlowTdfyWrapper",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.": "Latent",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.pos_embedder.": "LearntPositionEmbedder",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.": "Latent",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.pos_embedder.": "LearntPositionEmbedder",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.": "Latent",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.pos_embedder.": "ShapePositionEmbedder",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.": "Latent",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.pos_embedder.": "LearntPositionEmbedder",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.": "Latent",
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.pos_embedder.": "LearntPositionEmbedder",
+    "module.generator.backbone.training_time_sampler_fn.": "lognorm_sampler"
+   },
+   "config": {
+    "module.generator.backbone.inference_steps": 2,
+    "module.generator.backbone.reverse_fn.backbone.cond_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.in_channels": 8,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.in_channels": 6,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.pos_embedder.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.6drotation_normalized.pos_embedder.token_len": 1,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.in_channels": 3,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.pos_embedder.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.scale.pos_embedder.token_len": 1,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.in_channels": 8,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.pos_embedder.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.pos_embedder.patch_size": 1,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.shape.pos_embedder.resolution": 16,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.in_channels": 3,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.pos_embedder.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation.pos_embedder.token_len": 1,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.in_channels": 1,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.pos_embedder.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.latent_mapping.translation_scale.pos_embedder.token_len": 1,
+    "module.generator.backbone.reverse_fn.backbone.mlp_ratio": 4,
+    "module.generator.backbone.reverse_fn.backbone.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.num_blocks": 24,
+    "module.generator.backbone.reverse_fn.backbone.num_heads": 16,
+    "module.generator.backbone.reverse_fn.backbone.out_channels": 8,
+    "module.generator.backbone.reverse_fn.backbone.patch_size": 1,
+    "module.generator.backbone.reverse_fn.backbone.resolution": 16
+   },
+   "params": 1672313398,
+   "groups": {
+    "_base_models.generator.reverse_fn": 964156437,
+    "_base_models.condition_embedder.module_list": 611408896,
+    "_base_models.decoder.blocks": 45241472,
+    "_base_models.decoder.middle_block": 28317696,
+    "_base_models.condition_embedder.projection_nets": 23073792,
+    "_base_models.decoder.input_layer": 111104,
+    "_base_models.condition_embedder.idx_emb": 3072,
+    "_base_models.decoder.out_layer": 929
+   },
+   "repeated_blocks": {
+    "_base_models.condition_embedder.module_list": 3,
+    "_base_models.condition_embedder.module_list.0.backbone.blocks": 24,
+    "_base_models.condition_embedder.module_list.1.backbone.blocks": 24,
+    "_base_models.condition_embedder.projection_nets": 3,
+    "_base_models.condition_embedder.projection_nets.0": 2,
+    "_base_models.condition_embedder.projection_nets.1": 2,
+    "_base_models.condition_embedder.projection_nets.2": 2,
+    "_base_models.decoder.blocks": 8,
+    "_base_models.decoder.middle_block": 2,
+    "_base_models.decoder.out_layer": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks": 24,
+    "_base_models.generator.reverse_fn.backbone.blocks.0.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.0.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.1.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.1.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.10.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.10.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.11.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.11.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.12.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.12.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.13.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.13.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.14.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.14.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.15.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.15.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.16.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.16.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.17.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.17.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.18.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.18.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.19.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.19.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.2.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.2.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.20.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.20.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.21.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.21.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.22.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.22.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.23.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.23.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.3.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.3.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.4.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.4.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.5.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.5.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.6.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.6.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.7.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.7.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.8.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.8.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.9.mlp.6drotation_normalized.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.9.mlp.shape.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.d_embedder.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.t_embedder.mlp": 3
+   }
+  },
+  {
+   "name": "SAM 3D Objects / ss_decoder",
+   "role": "stage 1 decoder: latent 16^3 x 8 -> 64^3 occupancy",
+   "stage": "data/sam3d_scene",
+   "classes": {
+    ".": "SparseStructureDecoderTdfyWrapper"
+   },
+   "config": {
+    "out_channels": 1,
+    "latent_channels": 8,
+    "num_res_blocks": 2,
+    "num_res_blocks_middle": 2,
+    "channels": [
+     512,
+     128,
+     32
+    ]
+   },
+   "params": 73671201,
+   "groups": {
+    "blocks.#.conv1.weight": 15095808,
+    "blocks.#.conv2.weight": 15095808,
+    "blocks.#.conv.weight": 15040512,
+    "middle_block.#.conv1.weight": 14155776,
+    "middle_block.#.conv2.weight": 14155776,
+    "input_layer.weight": 110592,
+    "blocks.#.norm1.weight": 1344,
+    "blocks.#.norm1.bias": 1344,
+    "blocks.#.norm2.weight": 1344,
+    "blocks.#.norm2.bias": 1344,
+    "blocks.#.conv1.bias": 1344,
+    "blocks.#.conv2.bias": 1344,
+    "blocks.#.conv.bias": 1280,
+    "middle_block.#.norm1.weight": 1024,
+    "middle_block.#.norm1.bias": 1024,
+    "middle_block.#.norm2.weight": 1024,
+    "middle_block.#.norm2.bias": 1024,
+    "middle_block.#.conv1.bias": 1024,
+    "middle_block.#.conv2.bias": 1024,
+    "out_layer.#.weight": 896,
+    "input_layer.bias": 512,
+    "out_layer.#.bias": 33
+   },
+   "repeated_blocks": {
+    "blocks": 8,
+    "middle_block": 2,
+    "out_layer": 3
+   }
+  },
+  {
+   "name": "SAM 3D Objects / slat_generator",
+   "role": "stage 2: structured-latent flow on the occupied voxels",
+   "stage": "data/sam3d_scene",
+   "classes": {
+    "module.condition_embedder.backbone.": "EmbedderFuser",
+    "module.condition_embedder.backbone.embedder_list.[0].[0].": "Dino",
+    "module.condition_embedder.backbone.embedder_list.[1].[0].": "Dino",
+    "module.generator.backbone.": "FlowMatching",
+    "module.generator.backbone.reverse_fn.": "ClassifierFreeGuidance",
+    "module.generator.backbone.reverse_fn.backbone.": "SLatFlowModelTdfyWrapper",
+    "module.generator.backbone.training_time_sampler_fn.": "lognorm_sampler"
+   },
+   "config": {
+    "module.generator.backbone.inference_steps": 12,
+    "module.generator.backbone.reverse_fn.backbone.cond_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.in_channels": 8,
+    "module.generator.backbone.reverse_fn.backbone.io_block_channels": [
+     128
+    ],
+    "module.generator.backbone.reverse_fn.backbone.mlp_ratio": 4,
+    "module.generator.backbone.reverse_fn.backbone.model_channels": 1024,
+    "module.generator.backbone.reverse_fn.backbone.num_blocks": 24,
+    "module.generator.backbone.reverse_fn.backbone.num_heads": 16,
+    "module.generator.backbone.reverse_fn.backbone.out_channels": 8,
+    "module.generator.backbone.reverse_fn.backbone.patch_size": 2,
+    "module.generator.backbone.reverse_fn.backbone.resolution": 64
+   },
+   "params": 1226486664,
+   "groups": {
+    "_base_models.condition_embedder.module_list": 608745472,
+    "_base_models.generator.reverse_fn": 600432520,
+    "_base_models.condition_embedder.projection_nets": 17305600,
+    "_base_models.condition_embedder.idx_emb": 3072
+   },
+   "repeated_blocks": {
+    "_base_models.condition_embedder.module_list": 2,
+    "_base_models.condition_embedder.module_list.0.backbone.blocks": 24,
+    "_base_models.condition_embedder.module_list.1.backbone.blocks": 24,
+    "_base_models.condition_embedder.projection_nets": 2,
+    "_base_models.condition_embedder.projection_nets.0": 2,
+    "_base_models.condition_embedder.projection_nets.1": 2,
+    "_base_models.generator.reverse_fn.backbone.blocks": 24,
+    "_base_models.generator.reverse_fn.backbone.blocks.0.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.1.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.10.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.11.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.12.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.13.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.14.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.15.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.16.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.17.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.18.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.19.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.2.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.20.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.21.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.22.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.23.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.3.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.4.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.5.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.6.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.7.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.8.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.blocks.9.mlp.mlp": 3,
+    "_base_models.generator.reverse_fn.backbone.input_blocks": 2,
+    "_base_models.generator.reverse_fn.backbone.out_blocks": 2,
+    "_base_models.generator.reverse_fn.backbone.t_embedder.mlp": 3
+   }
+  },
+  {
+   "name": "SAM 3D Objects / slat_decoder_mesh",
+   "role": "stage 2 decoder: structured latent -> FlexiCubes mesh with colour",
+   "stage": "data/sam3d_scene",
+   "classes": {
+    ".": "SLatMeshDecoderTdfyWrapper"
+   },
+   "config": {
+    "resolution": 64,
+    "model_channels": 768,
+    "latent_channels": 8,
+    "num_blocks": 12,
+    "num_heads": 12,
+    "mlp_ratio": 4,
+    "attn_mode": "swin",
+    "window_size": 8
+   },
+   "params": 90926693,
+   "groups": {
+    "blocks.#.mlp.mlp": 56669184,
+    "blocks.#.attn.to_qkv": 21261312,
+    "blocks.#.attn.to_out": 7087104,
+    "upsample.#.out_layers.#": 5724288,
+    "upsample.#.skip_connection.conv": 166176,
+    "out_layer.weight": 9696,
+    "input_layer.weight": 6144,
+    "upsample.#.act_layers.#": 1920,
+    "input_layer.bias": 768,
+    "out_layer.bias": 101
+   },
+   "repeated_blocks": {
+    "blocks": 12,
+    "blocks.0.mlp.mlp": 3,
+    "blocks.1.mlp.mlp": 3,
+    "blocks.10.mlp.mlp": 3,
+    "blocks.11.mlp.mlp": 3,
+    "blocks.2.mlp.mlp": 3,
+    "blocks.3.mlp.mlp": 3,
+    "blocks.4.mlp.mlp": 3,
+    "blocks.5.mlp.mlp": 3,
+    "blocks.6.mlp.mlp": 3,
+    "blocks.7.mlp.mlp": 3,
+    "blocks.8.mlp.mlp": 3,
+    "blocks.9.mlp.mlp": 3,
+    "upsample": 2,
+    "upsample.0.out_layers": 4,
+    "upsample.1.out_layers": 4
+   }
+  },
+  {
+   "name": "SAM 3D Objects / slat_decoder_gs",
+   "role": "stage 2 decoder: structured latent -> 3D Gaussians (32 per voxel)",
+   "stage": "data/sam3d_scene",
+   "classes": {
+    ".": "SLatGaussianDecoderTdfyWrapper"
+   },
+   "config": {
+    "resolution": 64,
+    "model_channels": 768,
+    "latent_channels": 8,
+    "num_blocks": 12,
+    "num_heads": 12,
+    "mlp_ratio": 4,
+    "attn_mode": "swin",
+    "window_size": 8,
+    "representation_config.num_gaussians": 32
+   },
+   "params": 85369120,
+   "groups": {
+    "blocks.#.mlp.mlp": 56669184,
+    "blocks.#.attn.to_qkv": 21261312,
+    "blocks.#.attn.to_out": 7087104,
+    "out_layer.weight": 344064,
+    "input_layer.weight": 6144,
+    "input_layer.bias": 768,
+    "out_layer.bias": 448,
+    "offset_perturbation": 96
+   },
+   "repeated_blocks": {
+    "blocks": 12,
+    "blocks.0.mlp.mlp": 3,
+    "blocks.1.mlp.mlp": 3,
+    "blocks.10.mlp.mlp": 3,
+    "blocks.11.mlp.mlp": 3,
+    "blocks.2.mlp.mlp": 3,
+    "blocks.3.mlp.mlp": 3,
+    "blocks.4.mlp.mlp": 3,
+    "blocks.5.mlp.mlp": 3,
+    "blocks.6.mlp.mlp": 3,
+    "blocks.7.mlp.mlp": 3,
+    "blocks.8.mlp.mlp": 3,
+    "blocks.9.mlp.mlp": 3
+   }
+  },
+  {
+   "name": "openai/clip-vit-large-patch14",
+   "role": "frozen features for the one-to-one mass match",
+   "stage": "data/physics_match",
+   "config": {
+    "projection_dim": 768,
+    "text_config.cross_attention_hidden_size": null,
+    "text_config.decoder_start_token_id": null,
+    "text_config.hidden_act": "quick_gelu",
+    "text_config.hidden_size": 768,
+    "text_config.intermediate_size": 3072,
+    "text_config.max_position_embeddings": 77,
+    "text_config.num_attention_heads": 12,
+    "text_config.num_hidden_layers": 12,
+    "text_config.projection_dim": 768,
+    "text_config.vocab_size": 49408,
+    "text_config_dict.hidden_size": 768,
+    "text_config_dict.intermediate_size": 3072,
+    "text_config_dict.num_attention_heads": 12,
+    "text_config_dict.num_hidden_layers": 12,
+    "text_config_dict.projection_dim": 768,
+    "vision_config.cross_attention_hidden_size": null,
+    "vision_config.decoder_start_token_id": null,
+    "vision_config.hidden_act": "quick_gelu",
+    "vision_config.hidden_size": 1024,
+    "vision_config.image_size": 224,
+    "vision_config.intermediate_size": 4096,
+    "vision_config.num_attention_heads": 16,
+    "vision_config.num_hidden_layers": 24,
+    "vision_config.patch_size": 14,
+    "vision_config.projection_dim": 768,
+    "vision_config_dict.hidden_size": 1024,
+    "vision_config_dict.intermediate_size": 4096,
+    "vision_config_dict.num_attention_heads": 16,
+    "vision_config_dict.num_hidden_layers": 24,
+    "vision_config_dict.patch_size": 14,
+    "vision_config_dict.projection_dim": 768
+   },
+   "model_type": "clip",
+   "params": 427616847,
+   "groups": {
+    "vision_model.encoder": 302309376,
+    "text_model.encoder": 85054464,
+    "text_model.embeddings": 38004557,
+    "vision_model.embeddings": 866561,
+    "visual_projection.weight": 786432,
+    "text_projection.weight": 589824,
+    "vision_model.post_layernorm": 2048,
+    "vision_model.pre_layrnorm": 2048,
+    "text_model.final_layer_norm": 1536,
+    "logit_scale": 1
+   },
+   "repeated_blocks": {
+    "text_model.encoder.layers": 12,
+    "vision_model.encoder.layers": 24
+   }
+  },
+  {
+   "name": "dreamer RSSM / encoder e(o)",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "0: Linear(in_features=40, out_features=512, bias=True) (20,992 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=512, bias=True) (262,656 params)"
+   ],
+   "params": 284672
+  },
+  {
+   "name": "dreamer RSSM / img_in [z, a]",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "0: Linear(in_features=37, out_features=512, bias=True) (19,456 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)"
+   ],
+   "params": 20480
+  },
+  {
+   "name": "dreamer RSSM / GRU h",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "GRUCell: GRUCell(512, 512) (1,575,936 params)"
+   ],
+   "params": 1575936
+  },
+  {
+   "name": "dreamer RSSM / prior p(z|h)",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "0: Linear(in_features=512, out_features=512, bias=True) (262,656 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=64, bias=True) (32,832 params)"
+   ],
+   "params": 296512
+  },
+  {
+   "name": "dreamer RSSM / posterior q(z|h, e)",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "0: Linear(in_features=1024, out_features=512, bias=True) (524,800 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=64, bias=True) (32,832 params)"
+   ],
+   "params": 558656
+  },
+  {
+   "name": "dreamer RSSM / decoder d(h, z)",
+   "role": "world model (frozen in phase A)",
+   "stage": "rl/dream_world_model",
+   "layers": [
+    "0: Linear(in_features=544, out_features=512, bias=True) (279,040 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=512, bias=True) (262,656 params)",
+    "4: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "5: SiLU() (0 params)",
+    "6: Linear(in_features=512, out_features=40, bias=True) (20,520 params)"
+   ],
+   "params": 564264
+  },
+  {
+   "name": "policy / actor pi(da, kappa | x)",
+   "role": "residual on the style prior + tempo",
+   "stage": "rl/style_dream",
+   "layers": [
+    "0: Linear(in_features=598, out_features=512, bias=True) (306,688 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=512, bias=True) (262,656 params)",
+    "4: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "5: SiLU() (0 params)",
+    "6: Linear(in_features=512, out_features=6, bias=True) (3,078 params)",
+    "log_std: (6,)"
+   ],
+   "params": 574476
+  },
+  {
+   "name": "policy / critic v(x)",
+   "role": "value",
+   "stage": "rl/style_dream",
+   "layers": [
+    "0: Linear(in_features=598, out_features=512, bias=True) (306,688 params)",
+    "1: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "2: SiLU() (0 params)",
+    "3: Linear(in_features=512, out_features=512, bias=True) (262,656 params)",
+    "4: LayerNorm((512,), eps=1e-05, elementwise_affine=True) (1,024 params)",
+    "5: SiLU() (0 params)",
+    "6: Linear(in_features=512, out_features=1, bias=True) (513 params)"
+   ],
+   "params": 571905
+  }
+ ],
+ "meta": {
+  "obs_dim": 40,
+  "obs_layout": [
+   [
+    "tcp",
+    3
+   ],
+   [
+    "yaw",
+    2
+   ],
+   [
+    "tcp_vel",
+    3
+   ],
+   [
+    "width",
+    1
+   ],
+   [
+    "width_cmd",
+    1
+   ],
+   [
+    "obj",
+    3
+   ],
+   [
+    "obj_rot",
+    6
+   ],
+   [
+    "obj_vel",
+    3
+   ],
+   [
+    "obj_angvel",
+    3
+   ],
+   [
+    "obj_rel",
+    3
+   ],
+   [
+    "goal",
+    3
+   ],
+   [
+    "goal_rel",
+    3
+   ],
+   [
+    "extents",
+    3
+   ],
+   [
+    "width_y",
+    3
+   ]
+  ],
+  "act_dim": 5,
+  "x_dim": 598,
+  "x_layout": [
+   [
+    "h (GRU state)",
+    512
+   ],
+   [
+    "z (latent)",
+    32
+   ],
+   [
+    "norm(o)",
+    40
+   ],
+   [
+    "phi / T, t / T",
+    2
+   ],
+   [
+    "phase one-hot",
+    3
+   ],
+   [
+    "(p_ref - p) / 5 cm",
+    3
+   ],
+   [
+    "(w_ref - w) / 2 cm",
+    1
+   ],
+   [
+    "a_style (prior action)",
+    5
+   ]
+  ],
+  "wm_config": {
+   "deter": 512,
+   "stoch": 32,
+   "hidden": 512,
+   "min_std": 0.1,
+   "beta_dyn": 0.5,
+   "beta_rep": 0.1,
+   "free_bits": 1.0,
+   "lr": 0.0003,
+   "steps": 8000,
+   "batch": 512,
+   "seq_len": 32,
+   "grad_clip": 100.0
+  },
+  "agent_config": {},
+  "policies_found": []
+ }
+}
