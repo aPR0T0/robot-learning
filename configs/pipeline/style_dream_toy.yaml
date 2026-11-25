@@ -1,0 +1,50 @@
+# One demo -> thousands of noisy Newton/Steel worlds -> a style-conserving dreamer -> a policy with RL grounding.
+# The toy version of the UMI cup-onto-saucer scene (docs/style_dream.md): phase A, the dreamer frozen.
+#   demo (scripted, nominal world, UMI format) -> style -> worlds (train / held-out / OOD)
+#   -> dreamer (RSSM on the style prior + exploration) -> three policies: dreams + RL, RL only, dreams only
+#   -> eval against retarget-and-replay on held-out and OOD worlds.
+# Needs Newton (skild-ai fork) + SolverSteel + torch in one env: scripts/dream/setup_env.sh. One GPU.
+name: style_dream_toy
+description: Style-conserving dreamer + RL grounding on 2048 randomised Newton/Steel cup worlds.
+seed: 0
+nodes:
+  demo:                              # the one demonstration (toy); real: data/umi_demo -> style with `scene`
+    impl: data/toy_demo
+
+  style:
+    impl: data/demo_style
+    inputs: {bundle: demo.bundle}
+
+  worlds:                            # shape, size, mass, CoM, friction, restitution, gap, grip force, wrench noise
+    impl: data/scenario_bank
+    params:
+      env: {worlds: 2048, seed: 0}
+      eval_worlds: 2048
+
+  dreamer:                           # frozen after this node in phase A
+    impl: rl/dream_world_model
+    inputs: {scenarios: worlds.scenarios, style: style.style}
+    params: {episodes: 4, wm: {steps: 8000, batch: 512}}
+
+  policy:                            # phase A: loss through dreams from actual states + PPO on actual rollouts
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: dream_rl, iterations: 120}}
+
+  policy_rl:                         # ablation: PPO only (same features, same budget)
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: rl, iterations: 120}}
+
+  policy_dream:                      # ablation: dreams only (Dreamer-style actor-critic, no PPO term)
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: dream, iterations: 120}}
+
+  eval:                              # + retarget-and-replay (the style prior alone) as the baseline
+    impl: eval/style_dream
+    inputs:
+      scenarios: worlds.scenarios
+      style: style.style
+      world_model: dreamer.world_model
+      policies: [policy.policy, policy_rl.policy, policy_dream.policy]
