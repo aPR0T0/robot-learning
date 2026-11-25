@@ -228,6 +228,10 @@ table.procs tr:last-child td { border-bottom: 0; }
 table.procs td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 table.procs th.num { text-align: right; }
 code, .mono { font-family: var(--mono); font-size: 11.5px; }
+.markers { margin-top: 10px; }
+.marker { display: grid; grid-template-columns: auto auto 1fr; gap: 4px 12px; align-items: baseline; padding: 6px 2px; font-size: 12px; border-bottom: 1px solid var(--grid); }
+.marker > div { grid-column: 1 / -1; color: var(--text-secondary); white-space: pre-wrap; }
+.marker .t { color: var(--text-muted); font-size: 11px; }
 .tag { display: inline-block; font-size: 10.5px; padding: 0 6px; border-radius: 4px; background: var(--surface-2); color: var(--text-secondary); margin-left: 4px; }
 
 /* ---------------------------------------------------------------- drawer */

@@ -11,6 +11,5 @@ The package behind `vlab`. A pipeline is a graph of nodes; every swappable part 
 | `envs/` | Lang-Reach 2D, the gymnasium wrapper, scripted experts |
 | `data/` | dataset reader/writer and the LeRobot adapter |
 | `real2sim/` | masks and the mass database for real-to-sim ([README](real2sim/README.md)) |
-| `dash/` | `vlab dash`, the live dashboard of every VM's runs ([README](dash/README.md)) |
 
 `cli.py` is the `vlab` command. Adding a part: [docs/adding_components.md](../../docs/adding_components.md).

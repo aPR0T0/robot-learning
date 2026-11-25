@@ -11,6 +11,7 @@
     vlab new rl my_paper                         # scaffold plugins/my_paper.py
     vlab doctor                                  # GPU / CUDA / EGL / extras check
     vlab dash                                    # live W&B-style dashboard of every running VM
+    vlab dash status                             # the same as a one-shot text report (for agents)
 """
 
 from __future__ import annotations
@@ -232,9 +233,20 @@ def cmd_doctor(a) -> int:
 
 
 def cmd_dash(a) -> int:
-    from vlalab.dash.hub import main as dash_main
+    """dashboard/hub.py of this checkout: the live dashboard, or `vlab dash status` for a one-shot report."""
+    import importlib.util
 
-    return dash_main(([a.config] if a.config else []) + list(a.overrides or []))
+    for base in (Path.cwd(), *Path.cwd().parents, Path(__file__).resolve().parents[2]):
+        hub = base / "dashboard" / "hub.py"
+        if hub.is_file():
+            break
+    else:
+        print("vlab dash needs a robot-learning checkout (dashboard/hub.py)", file=sys.stderr)
+        return 1
+    spec = importlib.util.spec_from_file_location("vlab_dash_hub", hub)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.main(list(a.args))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -286,9 +298,9 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("doctor", help="check GPU / CUDA / EGL / optional extras")
     d.set_defaults(fn=cmd_doctor)
 
-    da = sub.add_parser("dash", help="live W&B-style dashboard of the runs on every running VM")
-    da.add_argument("config", nargs="?", help="configs/dash/<name>.yaml or a path (default: default)")
-    da.add_argument("overrides", nargs="*", help="key=value, e.g. port=8800 'vms=[vla-lab-a100]'")
+    da = sub.add_parser("dash", help="live W&B-style dashboard of every running VM (dashboard/README.md)",
+                        description="vlab dash [status [--json] [--hours H]] [config] [key=value ...]")
+    da.add_argument("args", nargs=argparse.REMAINDER, help="status | config name | key=value overrides")
     da.set_defaults(fn=cmd_dash)
 
     a, extra = ap.parse_known_args(argv)

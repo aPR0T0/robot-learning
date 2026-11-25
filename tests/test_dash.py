@@ -1,13 +1,25 @@
-"""The dashboard's VM agent (stdlib only): log parsing, metric files, run status, and the hub's config."""
+"""dashboard/: the VM agent (log parsing, metric files, run status, markers) and the hub (config, status report)."""
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import time
+from pathlib import Path
 
-from vlalab.dash import agent as A
-from vlalab.dash.hub import downsample, load_config
+DASH = Path(__file__).resolve().parents[1] / "dashboard"
+
+
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(f"vlab_dash_{name}", DASH / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+A = _load("agent")
+H = _load("hub")
 
 
 def test_metric_lines():
@@ -63,10 +75,11 @@ def test_agent_runs_and_series(tmp_path, monkeypatch):
     (root / "runs" / "renders").mkdir(parents=True)  # a plain output folder
     (root / "runs" / "renders" / "a.png").write_bytes(b"\x89PNG")
     (root / "train.log").write_text("step 1 loss 2.0\nstep 2 loss 1.0\n")  # metric lines outside `vlab run`
+    (tmp_path / "RUNNING-toy.txt").write_text("toy session: runs/toy in ~/rl-test\n")
 
     sent = []
     monkeypatch.setattr(A, "emit", sent.append)
-    ag = A.Agent({"roots": [str(tmp_path / "rl-*")], "log_globs": ["*.log"]})
+    ag = A.Agent({"roots": [str(tmp_path / "rl-*")], "log_globs": ["*.log"], "markers": [str(tmp_path / "RUNNING-*")]})
     ag.discover()
     ag.scan_procs()
     ag.refresh(full=True)
@@ -80,6 +93,8 @@ def test_agent_runs_and_series(tmp_path, monkeypatch):
     assert [p[1] for p in series[("rl-test/toy/rl", "success_rate")]] == [0.2, 0.5]
     assert series[("rl-test/toy/rl", "log_std/1")] == [[1.0, -2.0, None]]
     assert [p[1] for p in series[("rl-test/logs/train", "loss")]] == [2.0, 1.0]
+    procs = [m for m in sent if m["t"] == "procs"][-1]
+    assert procs["markers"][0]["name"] == "RUNNING-toy.txt" and procs["markers"][0]["text"].startswith("toy session")
 
     # a re-run of the node: its old history.json is ignored until the new execution writes one
     sent.clear()
@@ -103,9 +118,28 @@ def test_series_deltas(monkeypatch):
 
 
 def test_hub_config_and_downsample():
-    cfg = load_config(None, ["port=9000", "agent.poll_s=5", "vms=[a, b]"])
+    cfg = H.load_config(None, ["port=9000", "agent.poll_s=5", "vms=[a, b]"])
     assert cfg["port"] == 9000 and cfg["agent"]["poll_s"] == 5 and cfg["vms"] == ["a", "b"]
     assert cfg["agent"]["roots"]  # the rest of configs/dash/default.yaml is kept
     pts = [[i, i, None] for i in range(10_000)]
-    small = downsample(pts, 100)
+    small = H.downsample(pts, 100)
     assert len(small) <= 101 and small[0] == pts[0] and small[-1] == pts[-1]
+
+
+def test_status_report():
+    t = 1_000_000.0
+    st = {"time": t, "error": None, "vms": [
+        {"name": "vm-a", "zone": "z", "status": "RUNNING", "state": "live", "machine": "a2", "gpu": "1x a100",
+         "gpus": [{"i": 0, "util": 97.0, "mem_gb": 30.0, "mem_total_gb": 40.0}], "cpu": 40.0, "load": 3.1,
+         "ram_gb": 20.0, "ram_total_gb": 80.0, "disk_gb": 100.0, "disk_total_gb": 290.0,
+         "markers": [{"name": "RUNNING-x.txt", "text": "x session", "mtime": t - 600}],
+         "procs": [{"pid": 7, "cmd": "/v/.venv/bin/python /v/.venv/bin/vlab run toy --only rl", "cwd": "/h/rl-x",
+                    "start": t - 120, "gpu_mb": 2048.0, "vlab": True, "run": "rl-x/toy/rl"}],
+         "runs": [{"id": "rl-x/toy/rl", "status": "running", "impl": "rl/filtered_bc", "start": t - 120, "updated": t,
+                   "path": "/h/rl-x/runs/toy/rl", "log": None, "latest": {"success": [4, 0.75]}}]},
+        {"name": "vm-b", "zone": "z", "status": "TERMINATED", "state": "stopped"}]}
+    out = H.format_status(st, 3)
+    for want in ("vm-a", "GPU0 97% 30.0/40 GB", "marker RUNNING-x.txt (10m old): x session",
+                 "vlab run toy --only rl", "-> rl-x/toy/rl", "running  rl-x/toy/rl", "step 4: success 0.75",
+                 "vm-b  z  [terminated]"):
+        assert want in out, want

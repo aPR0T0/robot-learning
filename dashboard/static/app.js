@@ -543,8 +543,15 @@ function renderProcs(vms, usedSecs) {
   const head = h("tr", {}, S.sel === "all" ? h("th", { text: "VM" }) : null, h("th", { class: "num", text: "PID" }), h("th", { text: "Command" }),
     h("th", { text: "Run" }), h("th", { class: "num", text: "Running for" }), h("th", { class: "num", text: "GPU memory" }));
   const table = rows.length ? h("table", { class: "procs" }, h("thead", {}, head), h("tbody", {}, rows)) : h("div", { class: "empty", text: "No vlab process is running." });
+  // ~/RUNNING-*.txt: the notes sessions leave on a shared VM while their jobs run
+  const marks = vms.flatMap((v) => (vmData(v.name).markers || []).map((m) => ({ vm: v.name, ...m })));
+  const markers = marks.length
+    ? h("div", { class: "markers" }, h("h3", { text: "Session markers" }), ...marks.map((m) => h("div", { class: "marker" },
+      h("code", { text: `${S.sel === "all" ? `${m.vm}:` : ""}~/${m.name}` }), h("span", { class: "t", text: `${fmtDuration(now() - m.mtime)} old` }),
+      h("div", { text: m.text || "(empty)" }))))
+    : null;
   s.grid.classList.add("list");
-  s.grid.replaceChildren(table);
+  s.grid.replaceChildren(table, ...(markers ? [markers] : []));
 }
 
 // ------------------------------------------------------------------------------------------- modal
@@ -698,10 +705,18 @@ function schedule(what) {
   for (const [k, v] of Object.entries(what)) if (v) pend[k] = true;
   if (timer) return;
   const wait = Math.max(0, 300 - (performance.now() - lastFlush));
-  timer = setTimeout(() => requestAnimationFrame(flush), wait);
+  // a plain timer, not requestAnimationFrame: rAF pauses in a hidden tab and would stall every later update
+  timer = setTimeout(flush, wait);
 }
 function flush() {
   timer = null;
+  try {
+    render();
+  } catch (err) {
+    console.error("render failed", err);
+  }
+}
+function render() {
   lastFlush = performance.now();
   const p = pend;
   pend = {};
@@ -729,7 +744,7 @@ function apply(m) {
       S.error = m.error;
       S.ui = { ...S.ui, ...m.ui };
       S.data = {};
-      for (const [vm, d] of Object.entries(m.data)) S.data[vm] = { runs: d.runs, series: d.series, sys: d.sys, procs: d.procs };
+      for (const [vm, d] of Object.entries(m.data)) S.data[vm] = { runs: d.runs, series: d.series, sys: d.sys, procs: d.procs, markers: d.markers || [] };
       S.skew = Date.now() / 1000 - m.now;
       schedule({ full: true });
       break;
@@ -773,6 +788,7 @@ function apply(m) {
     }
     case "procs":
       vmData(m.vm).procs = m.procs;
+      vmData(m.vm).markers = m.markers || [];
       break;
     default:
   }

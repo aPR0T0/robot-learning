@@ -3,7 +3,7 @@
 | script | what it does |
 |---|---|
 | `gcp_vm.sh` | create, push to, run on, pull from, stop a GCP GPU VM |
-| `dash.sh` | the live dashboard of every running VM ([docs](../docs/dashboard.md)), without the vlab venv |
+| `dash.sh` | the live dashboard of every running VM, or `dash.sh status` ([dashboard/](../dashboard/README.md)), without the vlab venv |
 | `verify_all.sh` | run every pipeline in turn and print a pass/fail table |
 | `build_site.py` | generate `site/graph.json` (the node map) from the code |
 | `publish_site.sh` | build the node map and copy it into the apr0t0.github.io checkout |

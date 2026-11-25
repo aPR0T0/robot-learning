@@ -1,7 +1,8 @@
 # vlab dash: a live, W&B-style dashboard of the vlab runs on every running VM.
 #   vlab dash                       # this file
 #   vlab dash port=8800 'vms=[vla-lab-a100]' agent.poll_s=5
-# Keys left out fall back to the defaults in src/vlalab/dash/hub.py.
+#   vlab dash status --json         # one report, no browser (for agents)
+# Keys left out fall back to the defaults in dashboard/hub.py. Code and README: dashboard/.
 
 host: 127.0.0.1          # 0.0.0.0 to share it on your network (it has no login)
 port: 8765
@@ -24,6 +25,7 @@ agent:
   metric_files: [metrics.jsonl, train_log.jsonl, history.json, history.jsonl, train_log.json]
   metric_depth: 3                           # how deep below a node's folder to look for metric files
   process_patterns: ['(^|/)vlab(\s|$)', 'vlalab\.cli']   # which processes count as runs (their stdout is a log)
+  markers: [~/RUNNING-*]                    # notes sessions leave on a shared VM while their jobs run
   poll_s: 2                                 # metric / process refresh
   discover_s: 20                            # new runs, new log files, media
   sys_s: 5                                  # GPU / CPU / RAM sample

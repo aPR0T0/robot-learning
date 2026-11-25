@@ -1,12 +1,13 @@
 """The dashboard hub: finds the GCP VMs, streams each running one's runs over ssh, serves the web UI.
 
-    vlab dash                         # configs/dash/default.yaml: every RUNNING VM in the gcloud project
-    vlab dash port=8800 vms=[vla-lab-a100]
-    scripts/dash.sh                   # the same without the vlab venv (python3 + pyyaml + gcloud only)
+    scripts/dash.sh                       # configs/dash/default.yaml: every RUNNING VM, page on :8765
+    scripts/dash.sh port=8800 'vms=[vla-lab-a100]'
+    scripts/dash.sh status [--json] [--hours 3]   # one text (or JSON) report and exit: for agents and shells
+    vlab dash ...                         # the same from the vlab venv
 
 One ``agent.py`` per running VM runs over ``gcloud compute ssh`` (stdlib only, read-only, gone when the ssh
 connection closes). The hub keeps every run's metric series in memory and pushes changes to the browser
-over server-sent events; nothing is written on the VMs or here.
+over server-sent events; nothing is written on the VMs or here. Needs only python3 + pyyaml + gcloud.
 """
 
 from __future__ import annotations
@@ -51,7 +52,7 @@ def config_path(ref: str | None) -> Path:
     if ref and Path(ref).is_file():
         return Path(ref)
     name = ref or "default"
-    for base in (Path.cwd(), *Path.cwd().parents, HERE.parents[2]):
+    for base in (Path.cwd(), *Path.cwd().parents, HERE.parent):
         p = base / "configs" / "dash" / f"{name.removesuffix('.yaml')}.yaml"
         if p.is_file():
             return p
@@ -133,7 +134,9 @@ class Agent:
         self.series: dict[str, dict[str, list]] = {}
         self.sys: deque = deque(maxlen=int(hub.cfg["ui"]["sys_history_min"] * 60 / max(1, hub.agent_cfg.get("sys_s", 5))))
         self.procs: list[dict] = []
+        self.markers: list[dict] = []
         self.roots: list[str] = []
+        self.runs_seen = self.procs_seen = False
         self.proc: subprocess.Popen | None = None
         self.stopped = False
         self.pending: dict[int, tuple[threading.Event, dict]] = {}
@@ -225,6 +228,7 @@ class Agent:
                 self.hub.publish({"t": "vm", "vm": self.public()}, locked=True)
                 return
             if t == "runs":
+                self.runs_seen = True
                 ids = set(msg["ids"])
                 for r in msg["runs"]:
                     self.runs[r["id"]] = r
@@ -248,6 +252,8 @@ class Agent:
             elif t == "procs":
                 self.procs = msg["procs"]
                 self.roots = msg.get("roots", self.roots)
+                self.markers = msg.get("markers", self.markers)
+                self.procs_seen = True
             elif t == "warn":
                 log.warning("%s: %s", self.name, msg.get("msg"))
                 return
@@ -270,7 +276,7 @@ class Agent:
         return box
 
     def snapshot(self, max_points: int) -> dict:
-        return {"runs": self.runs, "procs": self.procs, "sys": list(self.sys),
+        return {"runs": self.runs, "procs": self.procs, "sys": list(self.sys), "markers": self.markers,
                 "series": {rid: {k: downsample(v, max_points) for k, v in ser.items()} for rid, ser in self.series.items()}}
 
     def stop(self) -> None:
@@ -298,7 +304,7 @@ class Hub:
     def refresh_vms(self) -> None:
         vms, err = list_instances(self.cfg) if self.cfg.get("vms") not in (None, [], "none") else ([], None)
         if self.cfg.get("local"):
-            vms.insert(0, {"name": os.uname().nodename.split(".")[0] + " (local)", "zone": "local",
+            vms.insert(0, {"name": os.uname().nodename.split(".")[0], "zone": "local",
                            "status": "RUNNING", "machine": "this machine", "gpu": None, "local": True})
         with self.lock:
             self.error = err
@@ -361,6 +367,34 @@ class Hub:
             if q in self.clients:
                 self.clients.remove(q)
 
+    def status(self, hours: float = 3.0, max_keys: int = 16) -> dict:
+        """Every VM with its GPU / CPU / RAM, processes, RUNNING-* markers, and its live or recent runs with
+        their latest metric values: what ``status`` prints and ``/api/status`` returns."""
+        out = {"time": time.time(), "error": self.error, "vms": []}
+        with self.lock:
+            for v in self.public_vms():
+                a = self.agents.get(v["name"])
+                doc = {k: v.get(k) for k in ("name", "zone", "status", "state", "error", "machine", "gpu")}
+                if a is not None:
+                    last = a.sys[-1] if a.sys else {}
+                    doc.update({k: last.get(k) for k in ("cpu", "load", "ram_gb", "ram_total_gb", "disk_gb", "disk_total_gb")})
+                    doc["gpus"] = last.get("gpus", [])
+                    doc["markers"] = a.markers
+                    by_pid = {r.get("pid"): rid for rid, r in a.runs.items() if r.get("pid")}
+                    doc["procs"] = [{**{k: p[k] for k in ("pid", "cmd", "cwd", "start", "gpu_mb", "vlab")},
+                                     "run": by_pid.get(p["pid"])} for p in a.procs]
+                    runs = [r for r in a.runs.values()
+                            if r["status"] == "running" or (time.time() - (r.get("updated") or 0) < hours * 3600)]
+                    runs.sort(key=lambda r: (r["status"] != "running", -(r.get("updated") or 0)))
+                    doc["runs"] = []
+                    for r in runs[:40]:
+                        ser = a.series.get(r["id"], {})
+                        latest = {k: pts[-1][:2] for k, pts in sorted(ser.items()) if pts}
+                        doc["runs"].append({**{k: r.get(k) for k in ("id", "status", "impl", "start", "updated", "path", "log")},
+                                            "latest": dict(list(latest.items())[:max_keys])})
+                out["vms"].append(doc)
+        return out
+
     def fetch_file(self, vm: str, run: str, path: str) -> dict:
         a = self.agents.get(vm)
         if a is None:
@@ -412,6 +446,8 @@ def make_handler(hub: Hub):
                     return self._events()
                 if u.path == "/api/vms":
                     return self._json({"vms": hub.public_vms(), "error": hub.error})
+                if u.path == "/api/status":
+                    return self._json(hub.status(float(q.get("hours", 3))))
                 if u.path in ("/api/log", "/api/config"):
                     a = hub.agents.get(q.get("vm", ""))
                     if a is None:
@@ -498,14 +534,117 @@ def serve(cfg: dict) -> None:
         srv.server_close()
 
 
+def _short_cmd(cmd: str) -> str:
+    t = cmd.split()
+    for i, x in enumerate(t):
+        if x == "vlab" or x.endswith("/vlab") or x == "vlalab.cli":
+            return " ".join(["vlab", *t[i + 1:]])
+    return " ".join([t[0].rsplit("/", 1)[-1], *t[1:]]) if t else ""
+
+
+def _age(s: float | None) -> str:
+    if s is None:
+        return "-"
+    s = max(0.0, s)
+    return f"{s:.0f}s" if s < 60 else f"{s / 60:.0f}m" if s < 3600 else f"{s / 3600:.1f}h"
+
+
+def format_status(st: dict, hours: float) -> str:
+    """The plain-text report: one block per VM."""
+    now = st["time"]
+    lines = []
+    if st.get("error"):
+        lines.append(f"gcloud: {st['error']}")
+    for v in st["vms"]:
+        head = f"{v['name']}  {v['zone']}  {v.get('machine') or ''}  {v.get('gpu') or ''}".rstrip()
+        if v["status"] != "RUNNING":
+            lines.append(f"{head}  [{v['status'].lower()}]")
+            continue
+        lines.append(f"{head}  [{v['state']}{': ' + v['error'] if v.get('state') == 'error' and v.get('error') else ''}]")
+        if "gpus" not in v:
+            continue
+        res = [f"GPU{g['i']} {g['util']:.0f}% {g['mem_gb']:.1f}/{g['mem_total_gb']:.0f} GB" for g in v["gpus"] if g.get("util") is not None]
+        if v.get("cpu") is not None:
+            res.append(f"CPU {v['cpu']:.0f}% (load {v.get('load')})")
+        if v.get("ram_gb") is not None:
+            res.append(f"RAM {v['ram_gb']:.0f}/{v['ram_total_gb']:.0f} GB")
+        if v.get("disk_gb") is not None:
+            res.append(f"disk {v['disk_gb']:.0f}/{v['disk_total_gb']:.0f} GB")
+        lines.append("  " + " · ".join(res))
+        for m in v.get("markers") or []:
+            lines.append(f"  marker {m['name']} ({_age(now - m['mtime'])} old): {m['text'].splitlines()[0][:120] if m['text'] else ''}")
+        procs = v.get("procs") or []
+        lines.append(f"  processes ({len(procs)}):" if procs else "  processes: no vlab process, nothing else on the GPU")
+        for p in procs:
+            gpu = f"{p['gpu_mb'] / 1024:.1f} GB" if p.get("gpu_mb") is not None else "-"
+            where = p["cwd"].replace(os.path.expanduser("~"), "~") if p.get("cwd") else ""
+            lines.append(f"    {p['pid']:>7}  {_age(now - p['start']):>5}  {gpu:>7}  {_short_cmd(p['cmd'])[:90]}  ({where})"
+                         + (f" -> {p['run']}" if p.get("run") else "" if p.get("vlab") else "  [GPU]"))
+        runs = [r for r in v.get("runs") or [] if r["status"] != "done"]
+        folders = len(v.get("runs") or []) - len(runs)  # plain output folders (renders, ...), not pipeline nodes
+        lines.append(f"  runs live or updated in the last {hours:g} h ({len(runs)}):" if runs else f"  runs: none live or updated in the last {hours:g} h")
+        for r in runs:
+            age = _age(now - r["start"]) if r["status"] == "running" and r.get("start") else f"{_age(now - (r.get('updated') or now))} ago"
+            lines.append(f"    {r['status']:<8} {r['id']:<48} {age:>8}  {r.get('impl') or ''}")
+            if r["latest"]:
+                step = max(s for s, _ in r["latest"].values())
+                vals = "  ".join(f"{k} {val:.4g}" for k, (_, val) in r["latest"].items())
+                lines.append(f"             step {step:g}: {vals}"[:400])
+        if folders:
+            lines.append(f"    (+{folders} output folder{'s' if folders > 1 else ''} without metrics: --json lists them)")
+    return "\n".join(lines)
+
+
+def status_main(cfg: dict, as_json: bool, hours: float, wait: float) -> int:
+    """Ask a running hub (``/api/status``); without one, connect to the VMs, wait for their first report, print."""
+    from urllib.error import URLError
+    from urllib.request import urlopen
+
+    host = "127.0.0.1" if cfg["host"] in ("0.0.0.0", "") else cfg["host"]
+    try:
+        with urlopen(f"http://{host}:{cfg['port']}/api/status?hours={hours}", timeout=5) as r:
+            st = json.load(r)
+    except (URLError, OSError, ValueError):
+        hub = Hub(cfg)
+        hub.refresh_vms()
+        deadline = time.time() + wait
+        while time.time() < deadline:
+            agents = list(hub.agents.values())
+            # a full report: runs, processes and two system samples (CPU % needs a second one)
+            if all(a.state == "error" or (a.runs_seen and a.procs_seen and len(a.sys) >= 2) for a in agents):
+                break
+            time.sleep(1)
+        st = hub.status(hours)
+        for a in list(hub.agents.values()):
+            a.stop()
+    print(json.dumps(st, indent=1) if as_json else format_status(st, hours))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if any(a in ("-h", "--help") for a in argv):
         print(__doc__)
         return 0
-    ref = argv.pop(0) if argv and "=" not in argv[0] else None
+    cmd = argv.pop(0) if argv and argv[0] == "status" else "serve"
+    as_json = "--json" in argv
+    hours, wait = 3.0, 90.0
+    rest = []
+    it = iter(argv)
+    for a in it:
+        if a == "--json":
+            continue
+        if a in ("--hours", "--wait"):
+            val = float(next(it))
+            hours, wait = (val, wait) if a == "--hours" else (hours, val)
+            continue
+        rest.append(a)
+    ref = rest.pop(0) if rest and "=" not in rest[0] else None
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname).1s %(message)s", datefmt="%H:%M:%S")
-    cfg = load_config(ref, argv)
+    log.setLevel(logging.WARNING if cmd == "status" else logging.INFO)  # status prints only its report
+    cfg = load_config(ref, rest)
+    if cmd == "status":
+        return status_main(cfg, as_json, hours, wait)
     serve(cfg)
     return 0
 

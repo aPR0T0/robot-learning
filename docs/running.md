@@ -135,10 +135,11 @@ vlab compare runs/a runs/b    metrics side by side
 vlab new <stage> <name>       scaffold a plugin for a new paper
 vlab doctor                   GPU / CUDA / EGL / extras check
 vlab dash [config] [k=v ...]  live W&B-style dashboard of every running VM's runs (docs/dashboard.md)
+vlab dash status [--json]     the same as one text / JSON report: GPU, processes, markers, live runs
 
 scripts/verify_all.sh [pipelines...]   run pipelines in sequence, pass/fail table
 scripts/readme_media.py                rebuild the doc pictures in docs/images/ from runs/
 scripts/publish_site.sh [--results runs/]   rebuild the node map into the apr0t0.github.io checkout
 scripts/gcp_vm.sh create|setup|push|run|pull|stop   GPU VM helper
-scripts/dash.sh [k=v ...]              `vlab dash` without the vlab venv (python3 + pyyaml + gcloud)
+scripts/dash.sh [status] [k=v ...]     `vlab dash` without the vlab venv (python3 + pyyaml + gcloud)
 ```

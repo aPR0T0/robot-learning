@@ -35,3 +35,15 @@ Steps I've asked agents to take differently from the README or their defaults, c
 15. **Inline /plan** — If '/plan' appears inside a prompt but the session is not in plan mode, still do the work and write the repo files
    _Instead of:_ Treat the text as plan mode and stop before writing anything · _Why:_ The agent once stopped early because of a typed /plan — “/plan I want relevant research papers in the direction of these questions” (2026-11-17)
 <!-- memgraph:your-way:end -->
+
+## Watching the VMs
+
+`scripts/dash.sh status` (or `vlab dash status`) reports every GCP VM in one call: GPU, CPU and RAM; the
+`vlab` processes and the run each one is on; the other sessions' `~/RUNNING-*` markers; and every run that is
+live or was updated in the last 3 h, with its latest metrics. Add `--json` to parse it. It is read-only.
+
+- Use it to poll long VM jobs and report their progress or stalls.
+- Use it as the separate check before stopping a shared VM.
+- When the user wants to watch, start `scripts/dash.sh`, the live page on http://127.0.0.1:8765.
+
+Details: [dashboard/README.md](dashboard/README.md).

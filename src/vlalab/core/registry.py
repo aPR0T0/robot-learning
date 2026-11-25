@@ -128,8 +128,7 @@ def import_all() -> None:
     import vlalab
 
     # real2sim workers run in other envs (SAM 3D, UMI, Newton) and are executed as scripts, never imported
-    # the dashboard (vlalab.dash) registers nothing and its __main__ would start a server
-    skip = ("vlalab.cli", "vlalab.real2sim.workers", "vlalab.dash")
+    skip = ("vlalab.cli", "vlalab.real2sim.workers")
     for mod in pkgutil.walk_packages(vlalab.__path__, prefix="vlalab."):
         if mod.name.startswith(skip):
             continue

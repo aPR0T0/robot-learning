@@ -13,6 +13,7 @@ the VMs.
 - [What you see](#what-you-see)
 - [Where the numbers come from](#where-the-numbers-come-from)
 - [Logging your own metrics](#logging-your-own-metrics)
+- [For agents and scripts: status](#for-agents-and-scripts-status)
 - [Settings](#settings)
 - [How it works](#how-it-works)
 
@@ -34,6 +35,10 @@ vlab dash 'vms=[vla-lab-a100]' port=8800   # only one VM, another port
 vlab dash local=true 'vms=[]'              # this machine only (a GPU workstation), no gcloud
 ```
 
+```bash
+vlab dash status                           # no browser: one text report of every VM, then exit (--json to parse)
+```
+
 It runs on your laptop, where gcloud is logged in. A VM you start shows up within a minute
 (`refresh_vms_s`), and a VM you stop drops to "stopped" in the dropdown.
 
@@ -47,7 +52,7 @@ It runs on your laptop, where gcloud is logged in. A VM you start shows up withi
 | **Charts** | one panel per metric, grouped into sections by the prefix before the last `/` (`iter3/train/loss` is in *iter3/train*). Hover for every run's value at that step: the crosshair follows on every panel. Per panel: `log` scale, `⤢` full size |
 | **Smoothing, X axis** | an exponential moving average (the raw curve stays faint behind it); step, time since the run started, or wall-clock time |
 | **System** | GPU utilisation, memory, power and temperature, CPU and RAM over time, per VM |
-| **Processes** | every `vlab` process with its command, checkout, run, uptime and GPU memory, plus anything else using the GPU |
+| **Processes** | every `vlab` process with its command, checkout, run, uptime and GPU memory, plus anything else using the GPU, and the `~/RUNNING-*.txt` notes sessions leave on a shared VM |
 | **Run drawer** (click a run) | *Overview*: folder, command, start, duration, latest values, summary. *Logs*: the live tail of its log. *Config*: `node.yaml`, `pipeline.yaml`, `error.txt`. *Media*: the run's images and videos |
 
 The first eight visible runs get the eight palette colours in a fixed order. A run keeps its colour while it
@@ -92,6 +97,29 @@ Each call appends one row to `runs/<pipeline>/<node>/metrics.jsonl`, with a wall
 use time as the x axis. Nested dicts become `a/b` keys. The RL nodes (`rl/filtered_bc`, `rl/dsrl`) log every
 iteration this way.
 
+## For agents and scripts: status
+
+`vlab dash status` (or `scripts/dash.sh status`) prints the same information as text and exits: for every VM
+its GPU, CPU, RAM and disk, the `~/RUNNING-*` markers, the processes (with the run each one is on), and every
+run that is live or was updated in the last `--hours` (3), with its latest metric values:
+
+```
+vla-lab-a100  us-central1-f  a2-highgpu-1g  1x nvidia-tesla-a100  [live]
+  GPU0 100% 38.6/40 GB · CPU 46% (load 4.0) · RAM 31/83 GB · disk 103/290 GB
+  marker RUNNING-graspgen.txt (2m old): graspgen-steel-port session: umi_graspgen (full.log) + ...
+  processes (6):
+      16592    22m   5.1 GB  vlab run umi_graspgen --only policy_rl_s1  (~/rl-grasp) -> rl-grasp/umi_graspgen/policy_rl_s1
+  runs live or updated in the last 3 h (12):
+    running  rl-grasp/umi_graspgen/policy_rl_s1                 22m  stage/rl/style_dream
+             step 35: success 0.875  return 5.43  style 0.874  ...
+vla-lab-l4b  us-west4-a  g2-standard-16  1x nvidia-l4  [terminated]
+```
+
+If a dashboard is already serving on the configured port it asks that one (`/api/status`), which is instant.
+Otherwise it connects to the VMs itself and waits for their first full report (about 15 s, at most `--wait`
+90 s). `--json` prints the same as JSON. It is read-only, which makes it the check to run before stopping a
+shared VM (see [AGENTS.md](../AGENTS.md)).
+
 ## Settings
 
 [`configs/dash/default.yaml`](../configs/dash/default.yaml), overridable as `key=value` (values are YAML):
@@ -127,12 +155,12 @@ laptop                                              each running VM
             browser
 ```
 
-- **`src/vlalab/dash/agent.py`** is sent over ssh's stdin and run by the VM's `python3`. It uses only the
+- **`dashboard/agent.py`** is sent over ssh's stdin and run by the VM's `python3`. It uses only the
   standard library and is read-only. It ends when the connection closes, so nothing is left running and
   nothing is installed. It can serve files only from inside a run's folder, and only images, videos and
   text.
-- **`src/vlalab/dash/hub.py`** keeps one agent per running VM and reconnects with backoff. It holds the series
-  in memory and pushes changes to the browser. It needs only `python3` with pyyaml, and `vlalab` loads without
-  torch, so `scripts/dash.sh` works without the training venv.
-- **`src/vlalab/dash/static/`** is the page: plain JavaScript and canvas charts, with no build step and no
+- **`dashboard/hub.py`** keeps one agent per running VM and reconnects with backoff. It holds the series in
+  memory, pushes changes to the browser and answers `status`. It is a standalone script that does not import
+  `vlalab`: `python3` with pyyaml is enough, so `scripts/dash.sh` works without the training venv.
+- **`dashboard/static/`** is the page: plain JavaScript and canvas charts, with no build step and no
   CDN.

@@ -1,10 +1,10 @@
 """Watch one machine's vlab runs and stream them to the dashboard hub as JSON lines.
 
-This file runs ON the VM. The hub pipes it into ``python3 -c <boot>`` over ssh, so it uses only the standard
-library, installs nothing, writes nothing, and exits as soon as the ssh connection closes.
+This file runs ON the VM. The hub (``hub.py``) pipes it into ``python3 -c <boot>`` over ssh, so it uses only the
+standard library, installs nothing, writes nothing, and exits as soon as the ssh connection closes.
 
     stdin   first line: {"roots": [...], ...} (the hub's config), then one request per line
-    stdout  one message per line: hello, runs, series, sys, procs, resp
+    stdout  one message per line: hello, runs, series, sys, procs (+ RUNNING-* markers), resp
 
 What it reads, per root (``~/robot-learning``, ``~/rl-*``, ...):
   runs/<pipeline>/<node>/      node.yaml, outputs.json, error.txt  -> status
@@ -235,6 +235,7 @@ class Agent:
         self.sent: dict[str, dict[str, list]] = {}  # run id -> key -> [len, last point]
         self.sent_meta: dict[str, str] = {}
         self.procs: list[dict] = []
+        self.markers: list[dict] = []
         self.gpu_used: dict[int, float] = {}
         self.cpu_prev = None
         self.btime = 0.0
@@ -283,6 +284,16 @@ class Agent:
         for lp in list(self.logs):
             if not os.path.exists(lp):
                 del self.logs[lp]
+        # `~/RUNNING-<what>.txt`: the note a session leaves on a shared VM while its job runs
+        self.markers = []
+        for pat in self.cfg.get("markers") or ["~/RUNNING-*"]:
+            for mp in sorted(glob.glob(os.path.expanduser(pat))):
+                try:
+                    with open(mp, errors="replace") as f:
+                        text = f.read(600).strip()
+                except OSError:
+                    continue
+                self.markers.append({"name": os.path.basename(mp), "text": text, "mtime": _mtime(mp)})
 
     # ------------------------------------------------------------------ processes
     def scan_procs(self) -> None:
@@ -568,7 +579,7 @@ class Agent:
                 changed.append(doc)
         if changed or full:
             emit({"t": "runs", "full": full, "runs": changed, "ids": list(self.runs)})
-        emit({"t": "procs", "procs": self.procs, "roots": self.roots})
+        emit({"t": "procs", "procs": self.procs, "roots": self.roots, "markers": self.markers})
 
     # ------------------------------------------------------------------ system
     def sys_sample(self) -> dict:
