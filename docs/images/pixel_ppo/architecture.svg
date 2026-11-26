@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1029" viewBox="0 0 1800 1029"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#4a4945"/></marker></defs><rect width="100%" height="100%" fill="#ffffff"/><text x="40.0" y="44.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Figure 2. The camera policy of rl/pixel_ppo: two Steel cameras → a frozen VLA or a trained CNN → actor/critic, with a privileged-information curriculum</text>
+<text x="40.0" y="66.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">docs/pixel_ppo.md — node policy_vla (this figure&#x27;s numbers): continues policy_vla_10hz (stage 2 of the rate curriculum). Node policy_pixel runs the CNN path through the full privileged → unprivileged curriculum (panel b).</text>
+<rect x="40.0" y="82.0" width="22.0" height="14.0" rx="3" fill="#edf2f9" stroke="#3b6aa6" stroke-width="1.2"/>
+<text x="69.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">frozen · pretrained</text>
+<rect x="219.0" y="82.0" width="22.0" height="14.0" rx="3" fill="#fcefe4" stroke="#c25f22" stroke-width="1.2"/>
+<text x="248.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">trained here</text>
+<rect x="349.0" y="82.0" width="22.0" height="14.0" rx="3" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="378.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">not learned</text>
+<rect x="472.0" y="82.0" width="22.0" height="14.0" rx="3" fill="#e9f4ec" stroke="#3a8656" stroke-width="1.2"/>
+<text x="501.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">simulator</text>
+<rect x="581.0" y="82.0" width="22.0" height="14.0" rx="3" fill="#f4f3ef" stroke="#a9a7a0" stroke-width="1.2"/>
+<text x="610.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">data</text>
+<text x="665.0" y="93.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">g: gate, 1 = this world&#x27;s episode also reads the privileged state</text>
+<text x="44.0" y="138.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">(a)</text>
+<text x="76.0" y="138.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">One control step (policy_vla)</text>
+<text x="76.0" y="156.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#7a7974" text-anchor="start">both cameras rendered, then the actor/critic forward; the policy acts at 50 Hz, the VLA refreshes at 5-10 Hz and is held in between</text>
+<rect x="50.0" y="174.0" width="260.0" height="87.0" rx="6" fill="#e9f4ec" stroke="#3a8656" stroke-width="1.2"/>
+<text x="58.0" y="193.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Two Steel cameras (cameras.py)</text>
+<text x="58.0" y="209.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">wrist: on the hand, 100° vfov</text>
+<text x="58.0" y="224.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">scene: isometric, 45° vfov</text>
+<text x="58.0" y="238.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">128² RGB · colour / light / response</text>
+<text x="58.0" y="253.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">randomised every episode</text>
+<rect x="380.0" y="174.0" width="350.0" height="101.5" rx="6" fill="#edf2f9" stroke="#3b6aa6" stroke-width="1.2"/>
+<text x="388.0" y="193.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">SmolVLM2-500M (SmolVLA&#x27;s VLM)</text>
+<text x="388.0" y="209.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">lerobot/smolvla_base weights</text>
+<text x="388.0" y="224.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">first 16 language-model layers · d 960</text>
+<text x="388.0" y="238.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">frozen, no gradient (vla_features.py)</text>
+<text x="388.0" y="253.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">256 px · 8×8 image tokens / camera, 5-10 Hz</text>
+<text x="722.0" y="267.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#3b6aa6" text-anchor="end">500.00 M</text>
+<rect x="770.0" y="174.0" width="190.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="778.0" y="193.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Pool 8×8 → 2×2</text>
+<text x="778.0" y="209.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">per camera, so features keep</text>
+<text x="778.0" y="224.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">where things are (not one mean)</text>
+<rect x="990.0" y="174.0" width="230.0" height="101.5" rx="6" fill="#fcefe4" stroke="#c25f22" stroke-width="1.2"/>
+<text x="998.0" y="193.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Adapter (trained)</text>
+<text x="998.0" y="209.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">LayerNorm(7680)</text>
+<text x="998.0" y="224.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">Linear(7680 → 512)</text>
+<text x="998.0" y="238.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">LayerNorm · SiLU</text>
+<text x="998.0" y="253.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">lr 10⁻⁵ (10⁻⁴ stalled PPO: fan-in 7680)</text>
+<text x="1212.0" y="267.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#c25f22" text-anchor="end">3.95 M</text>
+<path d="M 312.0 217.5 L 378.0 217.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="345.0" y="211.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="middle">(N, 2, 3, 128, 128) uint8</text>
+<path d="M 732.0 224.8 L 768.0 224.8" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="750.0" y="218.8" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="middle">(N, 2, 64, 960)</text>
+<path d="M 962.0 203.0 L 988.0 203.0" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="975.0" y="197.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="middle">(N, 7680)</text>
+<rect x="50.0" y="311.5" width="230.0" height="72.5" rx="6" fill="#f4f3ef" stroke="#a9a7a0" stroke-width="1.2"/>
+<text x="58.0" y="330.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Gripper joints + proprio</text>
+<text x="58.0" y="347.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">q, q (0.1 s ago): 7 each</text>
+<text x="58.0" y="361.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">a<tspan baseline-shift="sub" font-size="72%">t-1</tspan>, t/T, VLA-output age</text>
+<text x="58.0" y="376.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">→ ℝ<tspan baseline-shift="super" font-size="72%">21</tspan></text>
+<rect x="320.0" y="311.5" width="260.0" height="87.0" rx="6" fill="#f4f3ef" stroke="#a9a7a0" stroke-width="1.2"/>
+<text x="328.0" y="330.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Privileged state × g</text>
+<text x="328.0" y="347.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">object/target pose, extents,</text>
+<text x="328.0" y="361.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">world-model-free style ref,</text>
+<text x="328.0" y="376.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">demo prior → ℝ<tspan baseline-shift="super" font-size="72%">52</tspan></text>
+<text x="328.0" y="390.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">zeroed when g = 0 (student worlds)</text>
+<rect x="620.0" y="311.5" width="160.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="628.0" y="330.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Gate g ∈ {0, 1}</text>
+<text x="628.0" y="347.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">drawn per world/episode,</text>
+<text x="628.0" y="361.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">P(g=1) = curriculum stage</text>
+<rect x="50.0" y="461.5" width="390.0" height="87.0" rx="6" fill="#fcefe4" stroke="#c25f22" stroke-width="1.2"/>
+<text x="58.0" y="480.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Actor π(Δa | o) (trained)</text>
+<text x="58.0" y="497.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">in: ℝ<tspan baseline-shift="super" font-size="72%">586</tspan> = adapter 512 + proprio 21 + priv 52 + g 1</text>
+<text x="58.0" y="511.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">Linear→512·LN·SiLU × 2 · Linear→5 (zero init)</text>
+<text x="58.0" y="526.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">+ learned log σ ∈ ℝ<tspan baseline-shift="super" font-size="72%">5</tspan> (diagonal Gaussian)</text>
+<text x="432.0" y="540.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#c25f22" text-anchor="end">0.57 M</text>
+<rect x="480.0" y="461.5" width="300.0" height="87.0" rx="6" fill="#fcefe4" stroke="#c25f22" stroke-width="1.2"/>
+<text x="488.0" y="480.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Critic v(priv, g) (trained)</text>
+<text x="488.0" y="497.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">in: ℝ<tspan baseline-shift="super" font-size="72%">54</tspan> = priv 52 + t/T + g (no cameras)</text>
+<text x="488.0" y="511.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">Linear→512·LN·SiLU × 2 · Linear→1</text>
+<text x="488.0" y="526.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">asymmetric actor-critic (Pinto et al. 2018)</text>
+<text x="772.0" y="540.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#c25f22" text-anchor="end">0.29 M</text>
+<rect x="820.0" y="461.5" width="300.0" height="72.5" rx="6" fill="#f4f3ef" stroke="#a9a7a0" stroke-width="1.2"/>
+<text x="828.0" y="480.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">Action</text>
+<text x="828.0" y="497.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">a = clip(g · a<tspan baseline-shift="sub" font-size="72%">prior</tspan>(s) + u, -1, 1)</text>
+<text x="828.0" y="511.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">u ~ N(μ<tspan baseline-shift="sub" font-size="72%">θ</tspan>, diag σ²)</text>
+<text x="828.0" y="526.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">v<tspan baseline-shift="sub" font-size="72%">xyz</tspan>, yaw rate, width ∈ ℝ<tspan baseline-shift="super" font-size="72%">5</tspan></text>
+<path d="M 1105.0 277.5 L 1105.0 459.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="1111.0" y="451.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">512</text>
+<path d="M 165.0 386.0 L 165.0 459.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="171.0" y="451.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">21</text>
+<path d="M 450.0 400.5 L 450.0 459.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="456.0" y="451.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">52</text>
+<path d="M 700.0 371.5 L 700.0 459.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="706.0" y="451.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">1</text>
+<path d="M 442.0 505.0 L 818.0 497.8" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="630.0" y="499.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="middle">Δa, κ</text>
+<text x="630.0" y="566.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="middle">used in training only — at test time, g = 0 (cameras + joints alone)</text>
+<rect x="30.0" y="112.0" width="1740.0" height="458.5" rx="10" fill="none" stroke="#c9c7c0" stroke-width="1"/>
+<text x="44.0" y="616.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">(b)</text>
+<text x="76.0" y="616.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">The curriculum: privileged → unprivileged, with a DAgger teacher</text>
+<text x="76.0" y="634.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#7a7974" text-anchor="start">privileged-information dropout (Kamienny et al. 2020), node policy_pixel; the VLA path (panel a) stays at stage 0 (privileged = 1) and only varies the control rate</text>
+<rect x="50.0" y="648.5" width="324.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="58.0" y="667.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">stage 0 · P(g=1) = 1.0</text>
+<text x="58.0" y="684.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">privileged state + cameras</text>
+<text x="58.0" y="698.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">PPO, one network, residual on the demo</text>
+<rect x="390.0" y="648.5" width="324.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="398.0" y="667.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">stage 1 · P(g=1) = 0.75</text>
+<text x="398.0" y="684.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">DAgger begins</text>
+<text x="398.0" y="698.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">teacher drives g=1, student (cameras+joints) drives g=0</text>
+<rect x="730.0" y="648.5" width="324.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="738.0" y="667.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">stage 2 · P(g=1) = 0.5</text>
+<text x="738.0" y="684.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">→ policy_rl as teacher</text>
+<text x="738.0" y="698.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">iter 116: 97.6%-held-out policy_rl replaces the frozen stage-0 copy</text>
+<rect x="1070.0" y="648.5" width="324.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="1078.0" y="667.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">stage 3 · P(g=1) = 0.25</text>
+<text x="1078.0" y="684.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">mostly student</text>
+<text x="1078.0" y="698.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">teacher labels every state regardless of who drives</text>
+<rect x="1410.0" y="648.5" width="324.0" height="58.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="1418.0" y="667.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">stage 4 · P(g=1) = 0.0</text>
+<text x="1418.0" y="684.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">student alone</text>
+<text x="1418.0" y="698.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">evaluated with g = 0: cameras + joints only</text>
+<path d="M 376.0 677.5 L 384.0 677.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<path d="M 716.0 677.5 L 724.0 677.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<path d="M 1056.0 677.5 L 1064.0 677.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<path d="M 1396.0 677.5 L 1404.0 677.5" fill="none" stroke="#4a4945" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="50.0" y="736.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">DAgger loss (from stage 1 on, every visited state, teacher&#x27;s and student&#x27;s, is labelled):</text>
+<text x="50.0" y="762.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#1b1b1a" text-anchor="start">L(θ) = L<tspan baseline-shift="sub" font-size="72%">PPO</tspan>(student&#x27;s episodes) + β · E<tspan baseline-shift="sub" font-size="72%">all</tspan> states ‖μ<tspan baseline-shift="sub" font-size="72%">θ</tspan>(o | g=0) − sg[a<tspan baseline-shift="sub" font-size="72%">teacher</tspan>]‖²,  β = 1</text>
+<text x="50.0" y="784.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="italic" fill="#7a7974" text-anchor="start">replay: the last 4 iterations&#x27; labelled states (8,192 each) kept on the GPU, half of every supervised minibatch — without it the student swung 25% ↔ 4% between iterations (fit only the states just visited)</text>
+<rect x="30.0" y="590.5" width="1740.0" height="232.0" rx="10" fill="none" stroke="#c9c7c0" stroke-width="1"/>
+<text x="44.0" y="868.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">(c)</text>
+<text x="76.0" y="868.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">This run, right now</text>
+<text x="76.0" y="886.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#7a7974" text-anchor="start">vla-lab-a100b (4x A100), 2026-11-26 — node policy_vla_10hz, stage 2 of the rate curriculum (policy_vla continues it at 50 Hz)</text>
+<rect x="50.0" y="900.5" width="550.7" height="87.0" rx="6" fill="#fcefe4" stroke="#c25f22" stroke-width="1.2"/>
+<text x="58.0" y="919.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">policy_vla_10hz (live)</text>
+<text x="58.0" y="936.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">iteration 35 of 60 · 10 Hz control</text>
+<text x="58.0" y="950.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">rollout success 68.4 % (1024 worlds)</text>
+<text x="58.0" y="965.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">held-out eval 57.4 % [54.4, 60.4] (step 20)</text>
+<text x="58.0" y="979.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">privileged = 1.0 throughout (baseline, not curriculum)</text>
+<rect x="616.7" y="900.5" width="550.7" height="87.0" rx="6" fill="#ffffff" stroke="#8b8a85" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="624.7" y="919.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">policy_pixel (stopped, resumable)</text>
+<text x="624.7" y="936.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">stopped at iteration 140 of 300</text>
+<text x="624.7" y="950.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">stage 2 · teacher: policy_rl (97.6 % held-out)</text>
+<text x="624.7" y="965.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">cameras + joints alone: 3-25 %, mean ≈ 15 %</text>
+<text x="624.7" y="979.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">checkpoint: policy_pixel_teacher1/policy.pt</text>
+<rect x="1183.3" y="900.5" width="550.7" height="87.0" rx="6" fill="#edf2f9" stroke="#3b6aa6" stroke-width="1.2"/>
+<text x="1191.3" y="919.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1b1b1a" text-anchor="start">policy_rl (teacher, finished)</text>
+<text x="1191.3" y="936.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">privileged state, no cameras</text>
+<text x="1191.3" y="950.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">97.6 % of 2,048 held-out worlds</text>
+<text x="1191.3" y="965.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">drives the g = 1 worlds from iteration 116</text>
+<text x="1191.3" y="979.5" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#4a4945" text-anchor="start">labels every state for DAgger</text>
+<rect x="30.0" y="842.5" width="1740.0" height="167.0" rx="10" fill="none" stroke="#c9c7c0" stroke-width="1"/></svg>

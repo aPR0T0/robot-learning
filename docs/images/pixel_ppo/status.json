@@ -1,0 +1,23 @@
+{
+  "subtitle": "vla-lab-a100b (4x A100), 2026-11-26 — node policy_vla_10hz, stage 2 of the rate curriculum (policy_vla continues it at 50 Hz)",
+  "items": [
+    {
+      "title": "policy_vla_10hz (live)",
+      "kind": "trained",
+      "lines": ["iteration 35 of 60 · 10 Hz control", "rollout success 68.4 % (1024 worlds)",
+                "held-out eval 57.4 % [54.4, 60.4] (step 20)", "privileged = 1.0 throughout (baseline, not curriculum)"]
+    },
+    {
+      "title": "policy_pixel (stopped, resumable)",
+      "kind": "classical",
+      "lines": ["stopped at iteration 140 of 300", "stage 2 · teacher: policy_rl (97.6 % held-out)",
+                "cameras + joints alone: 3-25 %, mean ≈ 15 %", "checkpoint: policy_pixel_teacher1/policy.pt"]
+    },
+    {
+      "title": "policy_rl (teacher, finished)",
+      "kind": "frozen",
+      "lines": ["privileged state, no cameras", "97.6 % of 2,048 held-out worlds",
+                "drives the g = 1 worlds from iteration 116", "labels every state for DAgger"]
+    }
+  ]
+}

@@ -34,6 +34,9 @@
     "data/lerobot_hub",
     "data/mixture",
     "data/synthetic",
+    "data/toy_demo",
+    "data/demo_style",
+    "data/scenario_bank",
     "data/umi_demo",
     "data/scene_masks",
     "data/sam3d_scene",
@@ -48,6 +51,7 @@
     "src/vlalab/envs/experts.py",
     "src/vlalab/envs/reach2d.py",
     "src/vlalab/stages/data.py",
+    "src/vlalab/stages/dream.py",
     "src/vlalab/stages/real2sim.py"
    ]
   },
@@ -103,12 +107,16 @@
    "sub": "Optional, rising",
    "cat": "train",
    "components": [
+    "rl/dream_world_model",
+    "rl/style_dream",
+    "rl/pixel_ppo",
     "rl/filtered_bc",
     "rl/dsrl"
    ],
    "files": [
     "src/vlalab/policy/dsrl.py",
     "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/dream.py",
     "src/vlalab/stages/rl.py"
    ]
   },
@@ -120,6 +128,7 @@
    "cat": "deploy",
    "components": [
     "env/gym",
+    "eval/style_dream",
     "eval/sim_rollout",
     "eval/offline",
     "eval/gate"
@@ -128,6 +137,7 @@
     "src/vlalab/envs/gym_env.py",
     "src/vlalab/policy/lerobot_runner.py",
     "src/vlalab/runtime/rollout.py",
+    "src/vlalab/stages/dream.py",
     "src/vlalab/stages/evaluate.py"
    ]
   },
@@ -1359,6 +1369,490 @@
    }
   },
   {
+   "key": "data/toy_demo",
+   "kind": "stage",
+   "name": "data/toy_demo",
+   "stage": "data",
+   "paper": "UMI trajectory format",
+   "year": 2024,
+   "url": "https://arxiv.org/abs/2402.10329",
+   "summary": "The toy's one demonstration: a scripted, deliberately stylised pick-and-place in the nominal Newton/Steel world, saved as UMI's trajectory.npz + scene.",
+   "doc": "",
+   "class": "ToyDemo",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 67,
+   "config": "ToyDemoConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "EnvConfig overrides (the nominal scene)"
+    },
+    {
+     "name": "squeeze",
+     "type": "float",
+     "default": 0.012,
+     "help": "m: the demonstrator's grip command below the cup's width"
+    }
+   ],
+   "outputs": {
+    "bundle": "dir: trajectory.npz (UMI format), demo.json (scene, waypoints, final status)"
+   }
+  },
+  {
+   "key": "data/demo_style",
+   "kind": "stage",
+   "name": "data/demo_style",
+   "stage": "data",
+   "paper": "DMPs with frame-independent scaling (Koutras & Doulgeri)",
+   "year": 2020,
+   "url": "https://doi.org/10.1109/RO-MAN47096.2020.9223500",
+   "summary": "The demo's style: gripper-event phases, anchors in object / target frames, path shape, gripper profile and tempo; works on the toy demo and on a real2sim UMI demo.",
+   "doc": "",
+   "class": "DemoStyle",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 219,
+   "config": "DemoStyleConfig",
+   "params": [
+    {
+     "name": "grid",
+     "type": "int",
+     "default": 48,
+     "help": ""
+    },
+    {
+     "name": "squeeze",
+     "type": "float",
+     "default": 0.012,
+     "help": "m below the object's width while closed (UMI demos)"
+    },
+    {
+     "name": "object",
+     "type": "str",
+     "default": "cup",
+     "help": "UMI demos: the grasped object's name in scene.json"
+    },
+    {
+     "name": "target",
+     "type": "str",
+     "default": "saucer",
+     "help": "UMI demos: the target's name in scene.json"
+    },
+    {
+     "name": "time_scale",
+     "type": "str",
+     "default": "1",
+     "help": "stretch the demo's clock by this factor, or `auto`: until its peak TCP speed is under max_speed (a human's 2 s pick-and-place is faster than the robot should move; the path's shape is kept)"
+    },
+    {
+     "name": "max_speed",
+     "type": "float",
+     "default": 0.15,
+     "help": "m/s, for time_scale: auto (95th percentile of the 0.2 s moving-average speed)"
+    },
+    {
+     "name": "tcp_depth",
+     "type": "str",
+     "default": "0",
+     "help": "UMI demos: move the TCP this far back along the approach axis (UMI's TCP is the fingertip; a grasp holds the object deeper between the soft fingers). auto: the depth that puts the TCP at the grasp nearest the object's centre at half its height"
+    },
+    {
+     "name": "max_grasp_frac",
+     "type": "float",
+     "default": 1.0,
+     "help": "cap on the grasp height (fraction of the object's height): a human's soft UMI fingers wrap a dome from near its top, rigid robot fingers must reach its widest, lower part (the original is kept in source)"
+    },
+    {
+     "name": "clearance",
+     "type": "float",
+     "default": 0.0,
+     "help": "m: embodiment-aware retargeting, the reach and the retreat keep the demo's path but pass this high over the object's top near it (a human's soft gripper slides in low; rigid fingers would sweep into it); include how far the fingertips reach below the TCP"
+    },
+    {
+     "name": "snap_grasp_yaw_deg",
+     "type": "float",
+     "default": 0.0,
+     "help": "a grasp this close (deg) to the object's narrow axis is snapped onto it: a parallel gripper holds a mouse across it; the demo's offset is within SAM 3D's orientation error and the soft fingers' give"
+    },
+    {
+     "name": "width_offset",
+     "type": "str",
+     "default": "auto",
+     "help": "UMI demos: metres subtracted from the measured width (UMI measures between the finger tags, not the finger gap); auto: while closed, the gap equals the object's width at the grasp height"
+    },
+    {
+     "name": "plot",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "bundle": "demo bundle (toy: demo.json has the scene; UMI: pass `scene`)"
+   },
+   "optional_inputs": {
+    "scene": "real2sim scene dir with scene.json (UMI demos)"
+   },
+   "outputs": {
+    "style": "style.json"
+   }
+  },
+  {
+   "key": "data/scenario_bank",
+   "kind": "stage",
+   "name": "data/scenario_bank",
+   "stage": "data",
+   "paper": "Domain randomization (Tobin et al.; Peng et al.)",
+   "year": 2018,
+   "url": "https://arxiv.org/abs/1710.06537",
+   "summary": "Thousands of Newton/Steel worlds around the reconstruction: shape, size, mass, CoM, friction, restitution, gap, grip force, contact wrench noise; train / held-out / OOD sets.",
+   "doc": "",
+   "class": "ScenarioBank",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 321,
+   "config": "ScenarioBankConfig",
+   "params": [
+    {
+     "name": "env",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "EnvConfig of the training worlds"
+    },
+    {
+     "name": "eval_seed",
+     "type": "int",
+     "default": 10000,
+     "help": ""
+    },
+    {
+     "name": "eval_worlds",
+     "type": "int",
+     "default": 2048,
+     "help": ""
+    },
+    {
+     "name": "ood",
+     "type": "dict[str, Any]",
+     "default": {
+      "mass_scale": [
+       2.5,
+       4.5
+      ],
+      "mu_object": [
+       0.2,
+       0.4
+      ],
+      "wrench_ratio": [
+       0.06,
+       0.12
+      ],
+      "restitution": [
+       0.2,
+       0.4
+      ]
+     },
+     "help": "PhysicsRanges overrides of the out-of-distribution set"
+    },
+    {
+     "name": "ood_scene",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "backend scene: SceneConfig overrides of the OOD set, e.g. {mu_scale: [0.3, 0.5]}"
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 16,
+     "help": ""
+    },
+    {
+     "name": "home_from_style",
+     "type": "bool",
+     "default": true,
+     "help": "with a `style` input: the gripper starts where the demo started (z clamped to [0.08, 0.4] m)"
+    }
+   ],
+   "optional_inputs": {
+    "scene": "real2sim's Steel environment (sim/rollout): the nominal world of backend `scene`",
+    "style": "style.json: where the demo starts, how long it lasts"
+   },
+   "outputs": {
+    "scenarios": "scenarios.json: env configs of the training, held-out and OOD worlds"
+   }
+  },
+  {
+   "key": "rl/dream_world_model",
+   "kind": "stage",
+   "name": "rl/dream_world_model",
+   "stage": "rl",
+   "paper": "DreamerV3 (Hafner et al., Nature 2025)",
+   "year": 2025,
+   "url": "https://arxiv.org/abs/2301.04104",
+   "summary": "The dreamer: an RSSM trained on the style prior with exploration in every randomised world; its recurrent state carries the belief over the unobserved physics.",
+   "doc": "",
+   "class": "DreamWorldModel",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 419,
+   "config": "DreamWorldModelConfig",
+   "params": [
+    {
+     "name": "episodes",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "sigma_max",
+     "type": "float",
+     "default": 0.5,
+     "help": ""
+    },
+    {
+     "name": "wm",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "WMConfig overrides"
+    },
+    {
+     "name": "eval_starts",
+     "type": "list[int]",
+     "default": [
+      20,
+      40,
+      60
+     ],
+     "help": ""
+    },
+    {
+     "name": "eval_horizon",
+     "type": "int",
+     "default": 15,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json"
+   },
+   "outputs": {
+    "world_model": "world_model.pt"
+   }
+  },
+  {
+   "key": "rl/style_dream",
+   "kind": "stage",
+   "name": "rl/style_dream",
+   "stage": "rl",
+   "paper": "Dreamer + PPO grounding (this repo; MBPO / SVG / Dyna lineage)",
+   "year": 2026,
+   "url": "https://arxiv.org/abs/1906.08253",
+   "summary": "Phase A: a residual policy on the style prior, trained on a loss through dreams started from the actual Steel states, grounded by PPO on the actual rollouts; the dreamer stays frozen.",
+   "doc": "",
+   "class": "StyleDream",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 488,
+   "config": "StyleDreamConfig",
+   "params": [
+    {
+     "name": "agent",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "AgentConfig: mode, iterations, ..."
+    },
+    {
+     "name": "seed",
+     "type": "int | None",
+     "default": null,
+     "help": "defaults to the pipeline seed"
+    },
+    {
+     "name": "train_worlds",
+     "type": "int | None",
+     "default": null,
+     "help": "override the scenario bank's world count"
+    },
+    {
+     "name": "eval_worlds",
+     "type": "int",
+     "default": 1024,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 9,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json",
+    "world_model": "world_model.pt"
+   },
+   "outputs": {
+    "policy": "policy.pt"
+   }
+  },
+  {
+   "key": "rl/pixel_ppo",
+   "kind": "stage",
+   "name": "rl/pixel_ppo",
+   "stage": "rl",
+   "paper": "Asymmetric actor-critic (Pinto et al., RSS 2018); privileged-information dropout (Kamienny et al. 2020)",
+   "year": 2018,
+   "url": "https://arxiv.org/abs/1710.06542",
+   "summary": "PPO only, from a scene camera and a wrist camera (randomised colours and lighting) and the gripper's joints: a curriculum from privileged state + cameras to cameras + joints alone; the critic reads the simulator's state.",
+   "doc": "",
+   "class": "PixelPPO",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 670,
+   "config": "PixelPPOStageConfig",
+   "params": [
+    {
+     "name": "agent",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "PixelPPOConfig: iterations, camera, curriculum, reward, ... (vlalab/dream/pixel_ppo.py)"
+    },
+    {
+     "name": "seed",
+     "type": "int | None",
+     "default": null,
+     "help": "defaults to the pipeline seed"
+    },
+    {
+     "name": "train_worlds",
+     "type": "int | None",
+     "default": null,
+     "help": "override the scenario bank's world count"
+    },
+    {
+     "name": "eval_worlds",
+     "type": "int",
+     "default": 1024,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 4,
+     "help": ""
+    },
+    {
+     "name": "privileged_policy",
+     "type": "str | None",
+     "default": null,
+     "help": "a stage-0 checkpoint to report as policy_privileged when `agent.init` is a later (student) one"
+    },
+    {
+     "name": "env",
+     "type": "dict[str, Any]",
+     "default": "dict()",
+     "help": "EnvConfig overrides of the training and evaluation worlds, e.g. {control_hz: 50, fps: 50, substeps: 6}; stored in the checkpoint so the evaluation uses them too"
+    },
+    {
+     "name": "gpus",
+     "type": "int",
+     "default": 1,
+     "help": "GPUs for PPO: one process each with `train_worlds` worlds (and its own VLA), gradients averaged; rank 0 (this process) evaluates, logs and saves. PPO only (agent.distill: 0)"
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json"
+   },
+   "optional_inputs": {
+    "teacher_policy": "rl/style_dream policy.pt (e.g. policy_rl): the DAgger teacher instead of the stage-0 network",
+    "world_model": "world_model.pt the teacher needs",
+    "init_policy": "an rl/pixel_ppo policy.pt to start from (overrides agent.init), e.g. the same policy trained at 10 Hz before 50 Hz"
+   },
+   "outputs": {
+    "policy": "policy.pt: cameras + joints (the last stage)",
+    "policy_privileged": "policy_privileged.pt: privileged state + cameras (the end of stage 0)"
+   }
+  },
+  {
+   "key": "eval/style_dream",
+   "kind": "stage",
+   "name": "eval/style_dream",
+   "stage": "eval",
+   "paper": "Wilson score interval; DTW (Sakoe & Chiba)",
+   "year": 1978,
+   "url": "https://doi.org/10.1109/TASSP.1978.1163055",
+   "summary": "Retarget-and-replay vs every trained policy on held-out and OOD worlds: success with 95% CI, per-physics bins, style distance (DTW, mm) and tempo.",
+   "doc": "",
+   "class": "EvalStyleDream",
+   "file": "src/vlalab/stages/dream.py",
+   "line": 856,
+   "config": "EvalStyleDreamConfig",
+   "params": [
+    {
+     "name": "sets",
+     "type": "list[str]",
+     "default": [
+      "held_out",
+      "ood"
+     ],
+     "help": ""
+    },
+    {
+     "name": "worlds",
+     "type": "int",
+     "default": 2048,
+     "help": ""
+    },
+    {
+     "name": "n_style",
+     "type": "int",
+     "default": 256,
+     "help": ""
+    },
+    {
+     "name": "render",
+     "type": "bool",
+     "default": true,
+     "help": ""
+    },
+    {
+     "name": "render_worlds",
+     "type": "int",
+     "default": 9,
+     "help": ""
+    }
+   ],
+   "inputs": {
+    "scenarios": "scenarios.json",
+    "style": "style.json",
+    "world_model": "world_model.pt",
+    "policies": "policy.pt list"
+   },
+   "optional_inputs": {
+    "pixel_policies": "rl/pixel_ppo policy.pt / policy_privileged.pt list (cameras + joints)"
+   },
+   "outputs": {
+    "report": "report.json"
+   }
+  },
+  {
    "key": "edge/optimize",
    "kind": "stage",
    "name": "edge/optimize",
@@ -1662,7 +2156,7 @@
    "doc": "",
    "class": "UmiDemo",
    "file": "src/vlalab/stages/real2sim.py",
-   "line": 83,
+   "line": 85,
    "config": "UmiDemoConfig",
    "params": [
     {
@@ -1675,7 +2169,13 @@
      "name": "url",
      "type": "str",
      "default": "https://real.stanford.edu/umi/data/example_demo_session/",
-     "help": "where the session's GoPro MP4s are listed (used when the session is missing)"
+     "help": "where the session's GoPro MP4s are listed (used when the session is missing); or hf://datasets/<repo>/<folder> (Data Scaling Laws' raw videos)"
+    },
+    {
+     "name": "max_demos",
+     "type": "int",
+     "default": 24,
+     "help": "hf:// sessions: fetch this many demos (+ mapping, calib.)"
     },
     {
      "name": "umi_dir",
@@ -1742,7 +2242,7 @@
    "doc": "",
    "class": "SceneMasks",
    "file": "src/vlalab/stages/real2sim.py",
-   "line": 121,
+   "line": 124,
    "config": "SceneMasksConfig",
    "params": [
     {
@@ -1792,7 +2292,7 @@
    "doc": "",
    "class": "Sam3dScene",
    "file": "src/vlalab/stages/real2sim.py",
-   "line": 157,
+   "line": 160,
    "config": "Sam3dSceneConfig",
    "params": [
     {
@@ -1870,7 +2370,7 @@
    "doc": "",
    "class": "PhysicsMatch",
    "file": "src/vlalab/stages/real2sim.py",
-   "line": 209,
+   "line": 212,
    "config": "PhysicsMatchConfig",
    "params": [
     {
@@ -1944,7 +2444,7 @@
    "doc": "",
    "class": "SteelScene",
    "file": "src/vlalab/stages/real2sim.py",
-   "line": 276,
+   "line": 279,
    "config": "SteelSceneConfig",
    "params": [
     {
@@ -2472,6 +2972,8 @@
   ".gitmodules",
   "AGENTS.md",
   "README.md",
+  "checkpoints/README.md",
+  "checkpoints/manifest.json",
   "configs/README.md",
   "configs/dash/default.yaml",
   "configs/embodiment/aloha.yaml",
@@ -2489,7 +2991,10 @@
   "configs/pipeline/reach_heads.py",
   "configs/pipeline/reach_smoke.yaml",
   "configs/pipeline/so100_lerobot.yaml",
+  "configs/pipeline/style_dream_2d.yaml",
+  "configs/pipeline/style_dream_toy.yaml",
   "configs/pipeline/umi_real2sim.yaml",
+  "configs/pipeline/umi_style_dream.yaml",
   "configs/presets/vla/bins_tiny.yaml",
   "configs/presets/vla/diffusion_tiny.yaml",
   "configs/presets/vla/flow_tiny.yaml",
@@ -2516,6 +3021,18 @@
   "docs/images/deploy_loop.gif",
   "docs/images/edge_steps.gif",
   "docs/images/eval_sims.gif",
+  "docs/images/pixel_ppo/architecture.svg",
+  "docs/images/pixel_ppo/cameras.mp4",
+  "docs/images/pixel_ppo/cameras_carry.jpg",
+  "docs/images/pixel_ppo/cameras_grasp.jpg",
+  "docs/images/pixel_ppo/cameras_start.jpg",
+  "docs/images/pixel_ppo/status.json",
+  "docs/images/pixel_ppo/vla_inputs/cams.mp4",
+  "docs/images/pixel_ppo/vla_inputs/cams_carry.png",
+  "docs/images/pixel_ppo/vla_inputs/cams_end.png",
+  "docs/images/pixel_ppo/vla_inputs/cams_grasp.png",
+  "docs/images/pixel_ppo/vla_inputs/cams_start.png",
+  "docs/images/pixel_ppo/vla_inputs/info.json",
   "docs/images/post_purple.gif",
   "docs/images/real2sim/replay_side.png",
   "docs/images/real2sim/scene_moge.png",
@@ -2523,9 +3040,79 @@
   "docs/images/rl_purple.gif",
   "docs/images/so100_demos.jpg",
   "docs/images/so100_offline.gif",
+  "docs/images/style_dream/2d_dream_rl_s0.gif",
+  "docs/images/style_dream/2d_dream_rl_s0.mp4",
+  "docs/images/style_dream/2d_dream_s0.mp4",
+  "docs/images/style_dream/2d_retarget_and_replay.mp4",
+  "docs/images/style_dream/2d_rl_s0.mp4",
+  "docs/images/style_dream/final_success.png",
+  "docs/images/style_dream/learning_curves.png",
+  "docs/images/style_dream/mass_bins.png",
+  "docs/images/style_dream/results.json",
+  "docs/images/style_dream/results.md",
+  "docs/images/style_dream/steel_dream.mp4",
+  "docs/images/style_dream/steel_dream_carry.png",
+  "docs/images/style_dream/steel_dream_rl.gif",
+  "docs/images/style_dream/steel_dream_rl.mp4",
+  "docs/images/style_dream/steel_dream_rl_carry.png",
+  "docs/images/style_dream/steel_retarget_and_replay.gif",
+  "docs/images/style_dream/steel_retarget_and_replay.mp4",
+  "docs/images/style_dream/steel_retarget_and_replay_carry.png",
+  "docs/images/style_dream/steel_rl.mp4",
+  "docs/images/style_dream/steel_rl_carry.png",
+  "docs/images/style_dream/steel_worlds.mp4",
+  "docs/images/style_dream/steel_worlds.png",
+  "docs/images/style_dream/style_tradeoff.png",
+  "docs/images/style_dream/toy_demo_style.png",
+  "docs/images/style_dream/umi_demo_style.png",
+  "docs/images/style_dream_umi/architecture.png",
+  "docs/images/style_dream_umi/architecture.svg",
+  "docs/images/style_dream_umi/demo_gopro.mp4",
+  "docs/images/style_dream_umi/eval_report.json",
+  "docs/images/style_dream_umi/final_success.png",
+  "docs/images/style_dream_umi/fr3_replay.jpg",
+  "docs/images/style_dream_umi/fr3_replay_side.mp4",
+  "docs/images/style_dream_umi/fr3_replay_wrist.mp4",
+  "docs/images/style_dream_umi/keyframe_masks.jpg",
+  "docs/images/style_dream_umi/learning_curves.png",
+  "docs/images/style_dream_umi/mass_bins.png",
+  "docs/images/style_dream_umi/model_inventory.json",
+  "docs/images/style_dream_umi/physics_check.png",
+  "docs/images/style_dream_umi/results.json",
+  "docs/images/style_dream_umi/results.md",
+  "docs/images/style_dream_umi/style_tradeoff.png",
+  "docs/images/style_dream_umi/test_time.json",
+  "docs/images/style_dream_umi/test_time.mp4",
+  "docs/images/style_dream_umi/test_time_carry.jpg",
+  "docs/images/style_dream_umi/test_time_grasp.jpg",
+  "docs/images/style_dream_umi/test_time_release.jpg",
+  "docs/images/style_dream_umi/test_time_start.jpg",
+  "docs/images/style_dream_umi/umi_dream.gif",
+  "docs/images/style_dream_umi/umi_dream.mp4",
+  "docs/images/style_dream_umi/umi_dream_carry.jpg",
+  "docs/images/style_dream_umi/umi_dream_rl.gif",
+  "docs/images/style_dream_umi/umi_dream_rl.mp4",
+  "docs/images/style_dream_umi/umi_dream_rl_carry.jpg",
+  "docs/images/style_dream_umi/umi_dream_rl_hero.gif",
+  "docs/images/style_dream_umi/umi_dream_rl_hero.mp4",
+  "docs/images/style_dream_umi/umi_dream_rl_hero_carry.jpg",
+  "docs/images/style_dream_umi/umi_mouse_style.png",
+  "docs/images/style_dream_umi/umi_replay.gif",
+  "docs/images/style_dream_umi/umi_replay.mp4",
+  "docs/images/style_dream_umi/umi_replay_carry.jpg",
+  "docs/images/style_dream_umi/umi_replay_hero.mp4",
+  "docs/images/style_dream_umi/umi_replay_hero_carry.jpg",
+  "docs/images/style_dream_umi/umi_rl.gif",
+  "docs/images/style_dream_umi/umi_rl.mp4",
+  "docs/images/style_dream_umi/umi_rl_carry.jpg",
+  "docs/images/style_dream_umi/umi_rl_hero.mp4",
+  "docs/images/style_dream_umi/umi_rl_hero_carry.jpg",
+  "docs/images/style_dream_umi/worlds.jpg",
+  "docs/images/style_dream_umi/worlds.mp4",
   "docs/images/vla_eval.gif",
   "docs/images/vlm_pointing.png",
   "docs/papers.yaml",
+  "docs/pixel_ppo.md",
   "docs/real2sim.md",
   "docs/references.bib",
   "docs/results.md",
@@ -2538,11 +3125,37 @@
   "docs/stages/06_eval.md",
   "docs/stages/07_edge.md",
   "docs/stages/08_deploy.md",
+  "docs/style_dream.md",
+  "docs/style_dream_umi.md",
   "pyproject.toml",
   "scripts/README.md",
   "scripts/build_site.py",
+  "scripts/checkpoints_drive.py",
   "scripts/dash.sh",
+  "scripts/dream/README.md",
+  "scripts/dream/architecture_figure.py",
+  "scripts/dream/architecture_figure_pixel.py",
+  "scripts/dream/bench_vla_policy.py",
+  "scripts/dream/check_scene_physics.py",
+  "scripts/dream/debug_replay.py",
+  "scripts/dream/drift_env.py",
+  "scripts/dream/make_gifs.py",
+  "scripts/dream/pack_checkpoints.py",
+  "scripts/dream/plot_pixel_ppo.py",
+  "scripts/dream/plot_results.py",
+  "scripts/dream/render_policies.py",
+  "scripts/dream/render_worlds.py",
+  "scripts/dream/replay_check.py",
+  "scripts/dream/run_pixel.sh",
+  "scripts/dream/run_toy.sh",
+  "scripts/dream/run_umi.sh",
+  "scripts/dream/setup_env.sh",
+  "scripts/dream/smoke_cameras.py",
+  "scripts/dream/smoke_env.py",
+  "scripts/dream/smoke_scene.py",
+  "scripts/dream/test_time_sample.py",
   "scripts/gcp_vm.sh",
+  "scripts/model_inventory.py",
   "scripts/publish_site.sh",
   "scripts/readme_media.py",
   "scripts/real2sim/README.md",
@@ -2571,6 +3184,22 @@
   "src/vlalab/data/__init__.py",
   "src/vlalab/data/dataset.py",
   "src/vlalab/data/lerobot_source.py",
+  "src/vlalab/dream/README.md",
+  "src/vlalab/dream/__init__.py",
+  "src/vlalab/dream/agent.py",
+  "src/vlalab/dream/cameras.py",
+  "src/vlalab/dream/demo.py",
+  "src/vlalab/dream/franka_hand.py",
+  "src/vlalab/dream/pixel_ppo.py",
+  "src/vlalab/dream/planar_env.py",
+  "src/vlalab/dream/render.py",
+  "src/vlalab/dream/scene_assets.py",
+  "src/vlalab/dream/scene_env.py",
+  "src/vlalab/dream/shapes.py",
+  "src/vlalab/dream/steel_env.py",
+  "src/vlalab/dream/style.py",
+  "src/vlalab/dream/vla_features.py",
+  "src/vlalab/dream/world_model.py",
   "src/vlalab/envs/__init__.py",
   "src/vlalab/envs/base.py",
   "src/vlalab/envs/experts.py",
@@ -2604,6 +3233,7 @@
   "src/vlalab/stages/__init__.py",
   "src/vlalab/stages/data.py",
   "src/vlalab/stages/deploy.py",
+  "src/vlalab/stages/dream.py",
   "src/vlalab/stages/edge.py",
   "src/vlalab/stages/evaluate.py",
   "src/vlalab/stages/post_train.py",
@@ -2614,6 +3244,7 @@
   "tests/README.md",
   "tests/test_core.py",
   "tests/test_dash.py",
+  "tests/test_dream.py",
   "thirdparty/README.md"
  ],
  "papers": {
@@ -4758,6 +5389,964 @@
    ]
   },
   {
+   "name": "style_dream_2d",
+   "file": "configs/pipeline/style_dream_2d.yaml",
+   "description": "Phase A theory test on a 2D world - dreams + RL grounding vs RL only vs dreams only vs replay, 3 seeds.",
+   "embodiment": null,
+   "env": null,
+   "nodes": [
+    {
+     "id": "demo",
+     "impl": "data/toy_demo",
+     "preset": null,
+     "params": {
+      "env": {
+       "backend": "planar2d",
+       "obj_xy": [
+        -0.06,
+        0.0
+       ],
+       "goal_xy": [
+        0.12,
+        0.0
+       ],
+       "home": [
+        -0.18,
+        0.0,
+        0.22
+       ],
+       "physics": {
+        "obj_xy": [
+         0.04,
+         0.0
+        ],
+        "goal_xy": [
+         0.04,
+         0.0
+        ],
+        "min_separation": 0.12,
+        "mass_scale": [
+         0.4,
+         5.0
+        ],
+        "mu_object": [
+         0.2,
+         1.0
+        ],
+        "finger_ke": [
+         400.0,
+         1500.0
+        ]
+       }
+      },
+      "squeeze": 0.004
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "style",
+     "impl": "data/demo_style",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "worlds",
+     "impl": "data/scenario_bank",
+     "preset": null,
+     "params": {
+      "env": {
+       "backend": "planar2d",
+       "obj_xy": [
+        -0.06,
+        0.0
+       ],
+       "goal_xy": [
+        0.12,
+        0.0
+       ],
+       "home": [
+        -0.18,
+        0.0,
+        0.22
+       ],
+       "physics": {
+        "obj_xy": [
+         0.04,
+         0.0
+        ],
+        "goal_xy": [
+         0.04,
+         0.0
+        ],
+        "min_separation": 0.12,
+        "mass_scale": [
+         0.4,
+         5.0
+        ],
+        "mu_object": [
+         0.2,
+         1.0
+        ],
+        "finger_ke": [
+         400.0,
+         1500.0
+        ]
+       },
+       "worlds": 2048,
+       "seed": 0
+      },
+      "eval_worlds": 4096,
+      "ood": {
+       "mass_scale": [
+        5.0,
+        8.0
+       ],
+       "mu_object": [
+        0.15,
+        0.3
+       ],
+       "wrench_ratio": [
+        0.06,
+        0.12
+       ],
+       "restitution": [
+        0.2,
+        0.4
+       ]
+      },
+      "render_worlds": 9
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "dreamer",
+     "impl": "rl/dream_world_model",
+     "preset": null,
+     "params": {
+      "episodes": 4,
+      "wm": {
+       "steps": 8000,
+       "batch": 512
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_rl_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream_rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "rl_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "rl"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s0",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 0,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s1",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 1,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "dream_s2",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "seed": 2,
+      "train_worlds": 1024,
+      "agent": {
+       "iterations": 80,
+       "minibatches": 4,
+       "dream_starts": 4096,
+       "style": {
+        "sigma_cmd": 0.008
+       },
+       "init_log_std": [
+        -2.0,
+        -2.0,
+        -2.0,
+        -2.3,
+        -3.0,
+        -1.8
+       ],
+       "mode": "dream"
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {
+      "worlds": 4096
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "dream_rl_s0.policy",
+       "dream_rl_s1.policy",
+       "dream_rl_s2.policy",
+       "rl_s0.policy",
+       "rl_s1.policy",
+       "rl_s2.policy",
+       "dream_s0.policy",
+       "dream_s1.policy",
+       "dream_s2.policy"
+      ]
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "style",
+     "to_port": "bundle"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dreamer",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dreamer",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_rl_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_rl_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_rl_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "rl_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "rl_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "rl_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s0",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s0",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s0",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s1",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s1",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s1",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dream_s2",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dream_s2",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "dream_s2",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval",
+     "to_port": "world_model"
+    },
+    {
+     "from": "dream_rl_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_rl_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_rl_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "rl_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s0",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s1",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "dream_s2",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    }
+   ]
+  },
+  {
+   "name": "style_dream_toy",
+   "file": "configs/pipeline/style_dream_toy.yaml",
+   "description": "Style-conserving dreamer + RL grounding on 2048 randomised Newton/Steel cup worlds.",
+   "embodiment": null,
+   "env": null,
+   "nodes": [
+    {
+     "id": "demo",
+     "impl": "data/toy_demo",
+     "preset": null,
+     "params": {},
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "style",
+     "impl": "data/demo_style",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "worlds",
+     "impl": "data/scenario_bank",
+     "preset": null,
+     "params": {
+      "env": {
+       "worlds": 2048,
+       "seed": 0
+      },
+      "eval_worlds": 2048
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "dreamer",
+     "impl": "rl/dream_world_model",
+     "preset": null,
+     "params": {
+      "episodes": 4,
+      "wm": {
+       "steps": 8000,
+       "batch": 512
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream_rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_rl",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_dream",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "policy.policy",
+       "policy_rl.policy",
+       "policy_dream.policy"
+      ]
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "style",
+     "to_port": "bundle"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dreamer",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dreamer",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_rl",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_rl",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_rl",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_dream",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_dream",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_dream",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval",
+     "to_port": "world_model"
+    },
+    {
+     "from": "policy",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_rl",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_dream",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    }
+   ]
+  },
+  {
    "name": "umi_real2sim",
    "file": "configs/pipeline/umi_real2sim.yaml",
    "description": "",
@@ -4901,6 +6490,715 @@
      "from_port": "bundle",
      "to": "sim",
      "to_port": "bundle"
+    }
+   ]
+  },
+  {
+   "name": "umi_style_dream",
+   "file": "configs/pipeline/umi_style_dream.yaml",
+   "description": "A new UMI scene rebuilt in Steel, randomised 2048 ways, and the demo's style learned with dreams + RL.",
+   "embodiment": null,
+   "env": null,
+   "nodes": [
+    {
+     "id": "demo",
+     "impl": "data/umi_demo",
+     "preset": null,
+     "params": {
+      "session": "~/real2sim/data/dsl_mouse_env17",
+      "url": "hf://datasets/Fanqi-Lin/GoPro-Raw-Videos/pick_place_mouse/env_17/object_1",
+      "max_demos": 24,
+      "task": "Put the mouse on the mouse pad."
+     },
+     "inputs": {},
+     "uses": []
+    },
+    {
+     "id": "masks",
+     "impl": "data/scene_masks",
+     "preset": null,
+     "params": {
+      "prompts": [
+       {
+        "text": "computer mouse",
+        "name": "mouse"
+       },
+       {
+        "text": "mouse pad",
+        "name": "mouse_pad",
+        "also": [
+         "mat",
+         "placemat"
+        ]
+       },
+       {
+        "text": "bottle",
+        "max": 3
+       },
+       {
+        "text": "cracker box",
+        "name": "box",
+        "also": [
+         "box"
+        ]
+       },
+       {
+        "text": "jar"
+       }
+      ]
+     },
+     "inputs": {
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "scene",
+     "impl": "data/sam3d_scene",
+     "preset": null,
+     "params": {
+      "method": "sam3d",
+      "offload": false
+     },
+     "inputs": {
+      "bundle": "demo.bundle",
+      "masks": "masks.masks"
+     },
+     "uses": []
+    },
+    {
+     "id": "physics",
+     "impl": "data/physics_match",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scene": "scene.scene",
+      "bundle": "demo.bundle",
+      "masks": "masks.masks"
+     },
+     "uses": []
+    },
+    {
+     "id": "sim",
+     "impl": "data/steel_scene",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scene": "scene.scene",
+      "physics": "physics.physics",
+      "bundle": "demo.bundle"
+     },
+     "uses": []
+    },
+    {
+     "id": "style",
+     "impl": "data/demo_style",
+     "preset": null,
+     "params": {
+      "object": "mouse",
+      "target": "mouse_pad",
+      "time_scale": "auto",
+      "max_speed": 0.35,
+      "tcp_depth": "auto",
+      "max_grasp_frac": 0.35,
+      "clearance": 0.02
+     },
+     "inputs": {
+      "bundle": "demo.bundle",
+      "scene": "sim.rollout"
+     },
+     "uses": []
+    },
+    {
+     "id": "worlds",
+     "impl": "data/scenario_bank",
+     "preset": null,
+     "params": {
+      "env": {
+       "worlds": 2048,
+       "seed": 0,
+       "contacts_per_world": 128,
+       "v_max": 0.45,
+       "gripper": "franka_hand",
+       "width_max": 0.08,
+       "solver": {
+        "free_body_constraint_max": 512,
+        "contact_torsion_device": true
+       },
+       "finger_patch_radius": 0.006,
+       "physics": {
+        "obj_xy": [
+         0.06,
+         0.06
+        ],
+        "goal_xy": [
+         0.05,
+         0.05
+        ],
+        "obj_yaw": 1.57,
+        "min_separation": 0.12
+       },
+       "scene": {
+        "object": "mouse",
+        "target": "mouse_pad",
+        "collider": "hull"
+       }
+      },
+      "eval_worlds": 2048,
+      "ood": {
+       "mass_scale": [
+        2.5,
+        4.5
+       ],
+       "wrench_ratio": [
+        0.06,
+        0.12
+       ],
+       "restitution": [
+        0.2,
+        0.4
+       ]
+      },
+      "ood_scene": {
+       "mu_scale": [
+        0.3,
+        0.5
+       ]
+      }
+     },
+     "inputs": {
+      "scene": "sim.rollout",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "dreamer",
+     "impl": "rl/dream_world_model",
+     "preset": null,
+     "params": {
+      "episodes": 4,
+      "wm": {
+       "steps": 8000,
+       "batch": 512
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream_rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_rl",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "rl",
+       "iterations": 120
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_dream",
+     "impl": "rl/style_dream",
+     "preset": null,
+     "params": {
+      "agent": {
+       "mode": "dream",
+       "iterations": 15
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "policy.policy",
+       "policy_rl.policy",
+       "policy_dream.policy"
+      ]
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_pixel",
+     "impl": "rl/pixel_ppo",
+     "preset": null,
+     "params": {
+      "agent": {
+       "iterations": 300
+      },
+      "train_worlds": 1024
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "teacher_policy": "policy_rl.policy",
+      "world_model": "dreamer.world_model"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_pixel_flat",
+     "impl": "rl/pixel_ppo",
+     "preset": null,
+     "params": {
+      "agent": {
+       "iterations": 300,
+       "curriculum": {
+        "enabled": false
+       }
+      },
+      "train_worlds": 1024
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_vla_10hz",
+     "impl": "rl/pixel_ppo",
+     "preset": null,
+     "params": {
+      "gpus": 4,
+      "train_worlds": 512,
+      "env": {
+       "control_hz": 10,
+       "fps": 60,
+       "substeps": 4
+      },
+      "render": false,
+      "agent": {
+       "iterations": 60,
+       "vision": "vla",
+       "distill": 0,
+       "target_kl": 0,
+       "noise_hz": 10,
+       "schedule": "adaptive",
+       "desired_kl": 0.01,
+       "lr_encoder": 1e-05,
+       "eval_every": 20,
+       "camera": {
+        "width": 256,
+        "height": 256
+       },
+       "vla": {
+        "hz": 5,
+        "pool": 2,
+        "image_size": 256
+       },
+       "curriculum": {
+        "stages": [
+         {
+          "privileged": 1.0
+         }
+        ]
+       },
+       "chunk": 16384
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style"
+     },
+     "uses": []
+    },
+    {
+     "id": "policy_vla",
+     "impl": "rl/pixel_ppo",
+     "preset": null,
+     "params": {
+      "gpus": 4,
+      "train_worlds": 512,
+      "env": {
+       "control_hz": 50,
+       "fps": 50,
+       "substeps": 6
+      },
+      "agent": {
+       "iterations": 40,
+       "vision": "vla",
+       "distill": 0,
+       "target_kl": 0,
+       "noise_hz": 10,
+       "schedule": "adaptive",
+       "desired_kl": 0.01,
+       "lr_encoder": 1e-05,
+       "eval_every": 20,
+       "camera": {
+        "width": 256,
+        "height": 256
+       },
+       "vla": {
+        "hz": 5,
+        "pool": 2,
+        "image_size": 256
+       },
+       "curriculum": {
+        "stages": [
+         {
+          "privileged": 1.0
+         }
+        ]
+       },
+       "chunk": 16384
+      }
+     },
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "init_policy": "policy_vla_10hz.policy"
+     },
+     "uses": []
+    },
+    {
+     "id": "eval_pixel",
+     "impl": "eval/style_dream",
+     "preset": null,
+     "params": {},
+     "inputs": {
+      "scenarios": "worlds.scenarios",
+      "style": "style.style",
+      "world_model": "dreamer.world_model",
+      "policies": [
+       "policy_rl.policy"
+      ],
+      "pixel_policies": [
+       "policy_vla.policy",
+       "policy_pixel.policy_privileged",
+       "policy_pixel.policy"
+      ]
+     },
+     "uses": []
+    }
+   ],
+   "edges": [
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "masks",
+     "to_port": "bundle"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "scene",
+     "to_port": "bundle"
+    },
+    {
+     "from": "masks",
+     "from_port": "masks",
+     "to": "scene",
+     "to_port": "masks"
+    },
+    {
+     "from": "scene",
+     "from_port": "scene",
+     "to": "physics",
+     "to_port": "scene"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "physics",
+     "to_port": "bundle"
+    },
+    {
+     "from": "masks",
+     "from_port": "masks",
+     "to": "physics",
+     "to_port": "masks"
+    },
+    {
+     "from": "scene",
+     "from_port": "scene",
+     "to": "sim",
+     "to_port": "scene"
+    },
+    {
+     "from": "physics",
+     "from_port": "physics",
+     "to": "sim",
+     "to_port": "physics"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "sim",
+     "to_port": "bundle"
+    },
+    {
+     "from": "demo",
+     "from_port": "bundle",
+     "to": "style",
+     "to_port": "bundle"
+    },
+    {
+     "from": "sim",
+     "from_port": "rollout",
+     "to": "style",
+     "to_port": "scene"
+    },
+    {
+     "from": "sim",
+     "from_port": "rollout",
+     "to": "worlds",
+     "to_port": "scene"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "worlds",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "dreamer",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "dreamer",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_rl",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_rl",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_rl",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_dream",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_dream",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_dream",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval",
+     "to_port": "world_model"
+    },
+    {
+     "from": "policy",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_rl",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_dream",
+     "from_port": "policy",
+     "to": "eval",
+     "to_port": "policies"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_pixel",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_pixel",
+     "to_port": "style"
+    },
+    {
+     "from": "policy_rl",
+     "from_port": "policy",
+     "to": "policy_pixel",
+     "to_port": "teacher_policy"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "policy_pixel",
+     "to_port": "world_model"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_pixel_flat",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_pixel_flat",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_vla_10hz",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_vla_10hz",
+     "to_port": "style"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "policy_vla",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "policy_vla",
+     "to_port": "style"
+    },
+    {
+     "from": "policy_vla_10hz",
+     "from_port": "policy",
+     "to": "policy_vla",
+     "to_port": "init_policy"
+    },
+    {
+     "from": "worlds",
+     "from_port": "scenarios",
+     "to": "eval_pixel",
+     "to_port": "scenarios"
+    },
+    {
+     "from": "style",
+     "from_port": "style",
+     "to": "eval_pixel",
+     "to_port": "style"
+    },
+    {
+     "from": "dreamer",
+     "from_port": "world_model",
+     "to": "eval_pixel",
+     "to_port": "world_model"
+    },
+    {
+     "from": "policy_rl",
+     "from_port": "policy",
+     "to": "eval_pixel",
+     "to_port": "policies"
+    },
+    {
+     "from": "policy_vla",
+     "from_port": "policy",
+     "to": "eval_pixel",
+     "to_port": "pixel_policies"
+    },
+    {
+     "from": "policy_pixel",
+     "from_port": "policy_privileged",
+     "to": "eval_pixel",
+     "to_port": "pixel_policies"
+    },
+    {
+     "from": "policy_pixel",
+     "from_port": "policy",
+     "to": "eval_pixel",
+     "to_port": "pixel_policies"
     }
    ]
   }

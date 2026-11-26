@@ -536,6 +536,292 @@ class StyleDream(StageNode):
                                                 "renders": {k: v for k, v in files.items() if k in ("video", "usd")}}}
 
 
+# ------------------------------------------------------------------------------------------- PPO from cameras
+@dataclass
+class PixelPPOStageConfig:
+    agent: dict[str, Any] = field(default_factory=dict, metadata={
+        "help": "PixelPPOConfig: iterations, camera, curriculum, reward, ... (vlalab/dream/pixel_ppo.py)"})
+    seed: int | None = field(default=None, metadata={"help": "defaults to the pipeline seed"})
+    train_worlds: int | None = field(default=None, metadata={"help": "override the scenario bank's world count"})
+    eval_worlds: int = 1024
+    render: bool = True
+    render_worlds: int = 4
+    privileged_policy: str | None = field(default=None, metadata={
+        "help": "a stage-0 checkpoint to report as policy_privileged when `agent.init` is a later (student) one"})
+    env: dict[str, Any] = field(default_factory=dict, metadata={
+        "help": "EnvConfig overrides of the training and evaluation worlds, e.g. {control_hz: 50, fps: 50, "
+                "substeps: 6}; stored in the checkpoint so the evaluation uses them too"})
+    gpus: int = field(default=1, metadata={
+        "help": "GPUs for PPO: one process each with `train_worlds` worlds (and its own VLA), gradients averaged; "
+                "rank 0 (this process) evaluates, logs and saves. PPO only (agent.distill: 0)"})
+
+
+def _pixel_ppo_setup(cfg: PixelPPOStageConfig, scenarios: str, style: str, seed: int, dev, rank: int = 0,
+                     init: str | None = None):
+    """The training env, the held-out env (rank 0) and the agent of one rank; ``rank`` offsets the worlds' seed;
+    ``init``: a checkpoint to start from (every rank loads it: the normaliser must be fitted on all or none)."""
+    from vlalab.dream.pixel_ppo import PixelPPOAgent, PixelPPOConfig
+    from vlalab.dream.planar_env import make_env
+    from vlalab.dream.style import StyleModel
+
+    sc = _load_scenarios(scenarios)
+    tw = {"worlds": cfg.train_worlds} if cfg.train_worlds else {}
+    ov = dict(cfg.env)
+    env = make_env(_env_cfg({**sc["train"], **ov, **tw, "seed": sc["train"]["seed"] + 1000 * seed + 7919 * rank}),
+                   device=dev)
+    eval_env = make_env(_env_cfg({**sc["held_out"], **ov, "worlds": cfg.eval_worlds}), device=dev) \
+        if rank == 0 else None
+    pcfg = to_config(PixelPPOConfig, {**cfg.agent, **({"init": init} if init else {})}, "agent")
+    agent = PixelPPOAgent(env, StyleModel(_load_style(style), env.cfg).to(env.device), pcfg)
+    return sc, ov, env, eval_env, pcfg, agent
+
+
+def _pixel_ppo_rank(rank: int, world: int, init: str, cfg: PixelPPOStageConfig, scenarios: str, style: str,
+                    seed: int, init_policy: str | None = None) -> None:
+    """A PPO rank > 0 (its own process, its GPU as cuda:0): rollouts on its worlds, averaged gradients, no files."""
+    import datetime
+    import os
+
+    import torch
+    import torch.distributed as dist
+
+    logging.getLogger("vlab").setLevel(logging.WARNING)  # rank 0 logs
+    try:
+        _fast_math()
+        torch.manual_seed(seed)
+        dist.init_process_group("nccl", init_method=init, rank=rank, world_size=world,
+                                timeout=datetime.timedelta(minutes=30))
+        *_, agent = _pixel_ppo_setup(cfg, scenarios, style, seed, "cuda", rank, init_policy)
+        agent.train()
+        _end_ranks()
+    except BaseException:
+        log.exception("PPO rank %d failed", rank)
+        os._exit(1)
+    os._exit(0)  # done: skip the interpreter's teardown (CUDA / NCCL / Warp atexit hooks)
+
+
+def _end_ranks() -> None:
+    """Every rank, after training: meet (rank 0 may still be evaluating), then leave the group together.
+    A rank that tore NCCL down alone hung in it while rank 0 waited for that rank to exit."""
+    import torch
+    import torch.distributed as dist
+
+    if dist.get_backend() == "nccl":
+        dist.barrier(device_ids=[torch.cuda.current_device()])
+    else:
+        dist.barrier()
+    dist.destroy_process_group()
+
+
+def _start_ranks(world: int, init: str, cfg, scenarios: str, style: str, seed: int,
+                 init_policy: str | None = None) -> list:
+    """Start ranks 1 .. world-1, each seeing only its own GPU (CUDA_VISIBLE_DEVICES) as cuda:0."""
+    import multiprocessing as mp
+    import os
+
+    ctx, procs = mp.get_context("spawn"), []
+    old = os.environ.get("CUDA_VISIBLE_DEVICES")
+    visible = old.split(",") if old else [str(i) for i in range(world)]
+    try:
+        for r in range(1, world):
+            os.environ["CUDA_VISIBLE_DEVICES"] = visible[r]   # the child copies the environment at start
+            p = ctx.Process(target=_pixel_ppo_rank, args=(r, world, init, cfg, scenarios, style, seed, init_policy),
+                            name=f"pixel_ppo_rank{r}")
+            p.start()
+            procs.append(p)
+    finally:
+        if old is None:
+            os.environ.pop("CUDA_VISIBLE_DEVICES", None)
+        else:
+            os.environ["CUDA_VISIBLE_DEVICES"] = old
+    return procs
+
+
+def _watch_ranks(procs: list):
+    """A rank that dies during training would leave the others waiting in a collective for 30 min: stop the run at
+    once instead. Returns an Event: set it once training is over (then rank 0 ends the ranks itself)."""
+    import os
+    import threading
+    import time
+
+    stop = threading.Event()
+
+    def watch():
+        while not stop.is_set():
+            for p in procs:
+                if p.exitcode not in (None, 0) and not stop.is_set():
+                    log.error("PPO rank process %s exited with %s: stopping", p.name, p.exitcode)
+                    for q in procs:
+                        if q.is_alive():
+                            q.kill()
+                    os._exit(1)
+            time.sleep(5)
+
+    threading.Thread(target=watch, daemon=True, name="pixel_ppo_ranks").start()
+    return stop
+
+
+@register("stage", "rl/pixel_ppo", config=PixelPPOStageConfig, stage="rl",
+          paper="Asymmetric actor-critic (Pinto et al., RSS 2018); privileged-information dropout (Kamienny et al. "
+                "2020)", year=2018, url="https://arxiv.org/abs/1710.06542",
+          summary="PPO only, from a scene camera and a wrist camera (randomised colours and lighting) and the "
+                  "gripper's joints: a curriculum from privileged state + cameras to cameras + joints alone; the "
+                  "critic reads the simulator's state.")
+class PixelPPO(StageNode):
+    Config = PixelPPOStageConfig
+    inputs = {"scenarios": "scenarios.json", "style": "style.json"}
+    optional_inputs = {"teacher_policy": "rl/style_dream policy.pt (e.g. policy_rl): the DAgger teacher instead of "
+                                         "the stage-0 network", "world_model": "world_model.pt the teacher needs",
+                       "init_policy": "an rl/pixel_ppo policy.pt to start from (overrides agent.init), e.g. the same "
+                                      "policy trained at 10 Hz before 50 Hz"}
+    outputs = {"policy": "policy.pt: cameras + joints (the last stage)",
+               "policy_privileged": "policy_privileged.pt: privileged state + cameras (the end of stage 0)"}
+
+    def run(self, scenarios, style, teacher_policy=None, world_model=None, init_policy=None):
+        import torch
+
+        _fast_math()
+
+        from vlalab.dream.pixel_ppo import StateTeacher, evaluate_pixel
+        from vlalab.dream.style import StyleModel
+
+        seed = self.ctx.seed if self.cfg.seed is None else self.cfg.seed
+        torch.manual_seed(seed)
+        dev = self.ctx.device
+        world, procs = int(self.cfg.gpus), []
+        if world > 1:
+            import torch.distributed as dist
+
+            if teacher_policy:
+                raise NotImplementedError("gpus > 1: PPO only, no teacher_policy")
+            if torch.cuda.device_count() < world:
+                raise RuntimeError(f"gpus: {world}, but {torch.cuda.device_count()} visible")
+            rdv = self.ctx.path("rendezvous").resolve()  # absolute: file://runs/... would read "runs" as a host
+            rdv.unlink(missing_ok=True)
+            init = rdv.as_uri()
+            procs = _start_ranks(world, init, self.cfg, scenarios, style, seed, init_policy)
+            watching = _watch_ranks(procs)
+            import datetime
+
+            dist.init_process_group("nccl", init_method=init, rank=0, world_size=world,
+                                    timeout=datetime.timedelta(minutes=30))
+        sc, ov, env, eval_env, pcfg, agent = _pixel_ppo_setup(self.cfg, scenarios, style, seed, dev, init=init_policy)
+        teacher_label = "stage-0 network (privileged + cameras)"
+        if teacher_policy:
+            if not world_model:
+                raise ValueError("teacher_policy needs the world_model input too")
+            t_agent, teacher_label = load_agent(teacher_policy, env, StyleModel(_load_style(style), env.cfg).to(
+                env.device), load_world_model(world_model, env.device))
+            agent.set_teacher(StateTeacher(t_agent))
+        cur = pcfg.curriculum.enabled
+        label = ("ppo_cameras_curriculum" if cur else "ppo_cameras") + ("_distill" if pcfg.distill > 0 else "") + \
+            f"_s{seed}"
+        stages_ = pcfg.curriculum.stages
+        priv_only = cur and bool(stages_) and all(st.privileged >= 1.0 for st in stages_)
+        if priv_only:  # never drops the privileged state: the baseline / teacher, evaluated with it
+            label = f"ppo_privileged_{pcfg.vision}_{int(round(env.cfg.control_hz))}hz_s{seed}"
+        out, out_priv = self.ctx.path("policy.pt"), self.ctx.path("policy_privileged.pt")
+        priv_stage0 = cur and pcfg.curriculum.stages[0].privileged >= 1.0
+        if pcfg.init and pcfg.start_stage > 0 and priv_stage0:  # started after stage 0: report that checkpoint
+            src = self.cfg.privileged_policy or pcfg.init
+            blob = torch.load(src, map_location="cpu", weights_only=False)
+            if self.cfg.privileged_policy or blob.get("eval_privileged"):
+                torch.save({**blob, "label": f"ppo_privileged_cameras_s{seed}", "eval_privileged": True}, out_priv)
+
+        def save(path, name, privileged):
+            torch.save({**agent.state_dict(), "agent": to_plain(pcfg), "seed": seed, "label": name,
+                        "eval_privileged": privileged, "env_overrides": ov}, path)
+
+        def on_stage(old, new):
+            if old == 0 and priv_stage0:  # the end of "privileged state + cameras"
+                save(out_priv, f"ppo_privileged_cameras_s{seed}", True)
+
+        hist = agent.train(eval_env=eval_env, on_eval=lambda it, ev: save(out, label, priv_only), on_stage=on_stage)
+        if world > 1:  # the other ranks wait for this one (its last evaluation) to leave the group together
+            watching.set()
+            _end_ranks()
+            for p in procs:
+                p.join(120)
+                if p.is_alive():
+                    log.warning("PPO rank process %s still alive 2 min after training: killing it", p.name)
+                    p.kill()
+            self.ctx.path("rendezvous").unlink(missing_ok=True)
+            agent.rank, agent.world = 0, 1
+        save(out, label, priv_only)
+        if priv_stage0 and not priv_only and not out_priv.exists():  # never left stage 0: that checkpoint too
+            save(out_priv, f"ppo_privileged_cameras_s{seed}", True)
+        self.ctx.save_json("history.json", hist)
+        ev = evaluate_pixel(agent, eval_env, privileged=priv_only)
+        self.ctx.save_json("report.json", ev)
+        env = eval_env = agent = None  # free the GPU before rendering
+        torch.cuda.empty_cache()
+        files = {}
+        if self.cfg.render:
+            try:
+                files = render_pixel_policy(str(out), sc, style, self.cfg.render_worlds, self.ctx.out_dir,
+                                            "rollout", dev, privileged=label.startswith("ppo_privileged"))
+            except Exception as e:  # noqa: BLE001
+                log.warning("render failed: %s", e)
+        stages = [r["stage"] for r in hist]  # this run's iterations (after `init`, if any)
+        return {"policy": str(out), "policy_privileged": str(out_priv) if out_priv.exists() else None, "metrics": {
+            "label": label, "teacher": teacher_label, "success_held_out": ev["success"], "ci95": ev["ci95"], "style_dtw_mm": ev["style_dtw_mm"],
+            "final_stage": int(stages[-1]) if stages else 0,
+            "stages": len(pcfg.curriculum.stages) if cur else 1,
+            "iterations_per_stage": {int(s): stages.count(s) for s in sorted(set(stages))},
+            "last_rollout_success": hist[-1]["rollout_success"],
+            "renders": {k: v for k, v in files.items() if k in ("video", "usd", "cameras_video", "input_video")}}}
+
+
+def render_pixel_policy(path: str, sc: dict, style: str, worlds: int, out_dir: Path, name: str, device: str,
+                        privileged: bool | None = None) -> dict:
+    """Third-person clip and USD (render.render_policy) + the two cameras: ``<name>_cameras.mp4`` (each row one world,
+    wrist | scene, 384 px, the colours and lights the policy saw) and ``<name>_input.mp4`` (the policy's own frames).
+    The worlds show the training geometry (collision hulls), so the cameras see what the policy was trained on."""
+    import imageio.v2 as iio
+    import torch
+
+    from vlalab.dream.pixel_ppo import PixelController
+    from vlalab.dream.planar_env import make_env
+    from vlalab.dream.render import render_policy
+    from vlalab.dream.style import StyleModel
+
+    ov = torch.load(path, map_location="cpu", weights_only=False).get("env_overrides") or {}
+    renv = make_env(_env_cfg({**sc["held_out"], **ov, "worlds": worlds, "seed": 77}), device=device, capture=False)
+    agent, label, priv = load_pixel_agent(path, renv, StyleModel(_load_style(style), renv.cfg).to(renv.device))
+    ctrl = PixelController(agent, renv, keep=worlds, privileged=priv if privileged is None else privileged)
+    files = render_policy(renv, ctrl, out_dir, name)
+    fps = int(renv.cfg.control_hz) // max(agent.every, 1)  # frames come at the camera / VLA rate
+    for frames, tag in ((ctrl.frames, "cameras"), (ctrl.frames_input, "input")):
+        if not frames:
+            continue
+        iio.mimsave(Path(out_dir) / f"{name}_{tag}.mp4", frames, fps=fps, macro_block_size=1)
+        for moment, i in (("start", 0), ("grasp", len(frames) * 3 // 10), ("carry", len(frames) * 4 // 10),
+                          ("end", len(frames) - 1)):
+            iio.imwrite(Path(out_dir) / f"{name}_{tag}_{moment}.png", frames[i])
+        files[f"{tag}_video"] = f"{name}_{tag}.mp4"
+    return files
+
+
+def load_pixel_agent(path: str, env, style_model):
+    """-> (agent, label, privileged): ``privileged`` is the mode the checkpoint is evaluated in (its g)."""
+    import torch
+
+    from vlalab.dream.pixel_ppo import PixelPPOAgent, PixelPPOConfig
+
+    blob = torch.load(path, map_location=env.device)
+    pcfg = to_config(PixelPPOConfig, blob["agent"], "agent")
+    agent = PixelPPOAgent(env, style_model, pcfg)
+    agent.ac.load_state_dict(blob["ac"])
+    agent.norm.load_state_dict(blob["norm"])
+    return agent, blob.get("label", "ppo_cameras"), bool(blob.get("eval_privileged", False))
+
+
+def _env_overrides(path: str) -> dict:
+    import torch
+
+    return torch.load(path, map_location="cpu", weights_only=False).get("env_overrides") or {}
+
+
 def load_agent(path: str | None, env, style_model, wm):
     import torch
 
@@ -571,20 +857,25 @@ class EvalStyleDream(StageNode):
     Config = EvalStyleDreamConfig
     inputs = {"scenarios": "scenarios.json", "style": "style.json", "world_model": "world_model.pt",
               "policies": "policy.pt list"}
+    optional_inputs = {"pixel_policies": "rl/pixel_ppo policy.pt / policy_privileged.pt list (cameras + joints)"}
     outputs = {"report": "report.json"}
 
-    def run(self, scenarios, style, world_model, policies):
+    def run(self, scenarios, style, world_model, policies, pixel_policies=None):
         import torch
 
         _fast_math()
 
         from vlalab.dream.agent import evaluate
+        from vlalab.dream.pixel_ppo import evaluate_pixel
         from vlalab.dream.planar_env import make_env
         from vlalab.dream.style import StyleModel
 
         sc = _load_scenarios(scenarios)
         dev = self.ctx.device
         pols = [None] + (list(policies) if isinstance(policies, list | tuple) else [policies])
+        pix = [] if pixel_policies is None else \
+            (list(pixel_policies) if isinstance(pixel_policies, list | tuple) else [pixel_policies])
+        pix = [p for p in pix if p]  # a curriculum that never had a privileged stage leaves no policy_privileged
         report: dict[str, Any] = {}
         for name in self.cfg.sets:
             env = make_env(_env_cfg({**sc[name], "worlds": self.cfg.worlds}), device=dev)
@@ -595,9 +886,24 @@ class EvalStyleDream(StageNode):
                 agent, label = load_agent(p, env, sm, wm)
                 torch.manual_seed(0)
                 ev = evaluate(agent, env, policy=p is not None, n_style=self.cfg.n_style)
-                rows[label] = {**ev, "policy": p}
+                rows[label] = {**ev, "policy": p, "observations": "privileged"}
                 log.info("%s %-22s success %.3f [%.3f, %.3f]  style %.1f mm  tempo %.2f", name, label, ev["success"],
                          *ev["ci95"], ev["style_dtw_mm"], ev["tempo"])
+            for p in pix:
+                ov = _env_overrides(p)  # a policy trained at another control rate is evaluated at that rate
+                penv = make_env(_env_cfg({**sc[name], **ov, "worlds": self.cfg.worlds}), device=dev) if ov else env
+                sm = StyleModel(_load_style(style), penv.cfg).to(penv.device)
+                agent, label, privileged = load_pixel_agent(p, penv, sm)
+                torch.manual_seed(0)
+                ev = evaluate_pixel(agent, penv, n_style=self.cfg.n_style, privileged=privileged)
+                rows[label] = {**ev, "policy": p, "observations": "privileged state + cameras + joints" if privileged
+                               else "cameras (scene + wrist) + joints"}
+                log.info("%s %-22s success %.3f [%.3f, %.3f]  style %.1f mm", name, label, ev["success"],
+                         *ev["ci95"], ev["style_dtw_mm"])
+                del agent
+                if penv is not env:
+                    del penv
+                torch.cuda.empty_cache()
             report[name] = rows
             del env
             torch.cuda.empty_cache()
@@ -620,6 +926,13 @@ class EvalStyleDream(StageNode):
                                                  self.ctx.out_dir, label.replace("-", "_"))
                 except Exception as e:  # noqa: BLE001
                     log.warning("render %s failed: %s", p, e)
+            for p in pix:
+                try:
+                    label = torch.load(p, map_location="cpu").get("label", "ppo_cameras")
+                    files[label] = render_pixel_policy(p, sc, style, min(self.cfg.render_worlds, 4),
+                                                       self.ctx.out_dir, label, dev)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("render %s failed: %s", p, e)
         self.ctx.save_json("renders.json", files)
         metrics = {f"{s}/{k}": round(v["success"], 4) for s, rows in report.items() for k, v in rows.items()}
         metrics.update({f"{s}/{k}/style_mm": round(v["style_dtw_mm"], 1) for s, rows in report.items()
@@ -635,7 +948,18 @@ def plot_report(report: dict, path):
 
     sets = list(report)
     fig, axes = plt.subplots(1, len(sets) + 1, figsize=(5 * (len(sets) + 1), 3.8))
-    colors = {"retarget-and-replay": "#9D9D9D", "rl": "#4C78A8", "dream": "#F58518", "dream_rl": "#54A24B"}
+    palette = {"retarget-and-replay": "#9D9D9D", "ppo_privileged_cameras": "#72B7B2",
+               "ppo_cameras_curriculum": "#E45756", "ppo_cameras": "#FF9DA6", "dream_rl": "#54A24B",
+               "dream": "#F58518", "rl": "#4C78A8"}
+
+    class _Colors(dict):  # labels carry a seed suffix (rl_s0): match the longest known prefix
+        def get(self, n, default=None):
+            for k in sorted(palette, key=len, reverse=True):
+                if n == k or n.startswith(k + "_"):
+                    return palette[k]
+            return default
+
+    colors = _Colors()
     for ax, s in zip(axes, sets):
         names = list(report[s])
         vals = [report[s][n]["success"] for n in names]

@@ -1,0 +1,26 @@
+{
+ "worlds": 8,
+ "size": 256,
+ "cameras": [
+  "wrist",
+  "scene"
+ ],
+ "light_groups": 8,
+ "scene_eye": [
+  0.8156155288216074,
+  -0.5263956335132118,
+  0.69388086889838
+ ],
+ "scene_target": [
+  0.008514614621012717,
+  -0.04644740067211052,
+  0.03
+ ],
+ "render_ms_median": 8.128643035888672,
+ "step_ms_median": 89.1423225402832,
+ "grasp_step": 33,
+ "release_step": 62,
+ "episode_steps": 130,
+ "prior_success": 0.5,
+ "gpu_mem_gb": 0.035185152
+}

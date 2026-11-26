@@ -130,6 +130,9 @@ class SteelCupEnv:
         self.gen = torch.Generator(device=self.device).manual_seed(cfg.seed)
         self.dt = 1.0 / cfg.control_hz
         self.frames_per_step = int(round(cfg.fps / cfg.control_hz))
+        if abs(self.frames_per_step * cfg.control_hz - cfg.fps) > 1e-6 or self.frames_per_step < 1:
+            raise ValueError(f"fps {cfg.fps} is not a multiple of control_hz {cfg.control_hz} (e.g. 50 Hz: fps 50, "
+                             "substeps 6 -> 1/300 s physics)")
         self.sim_dt = 1.0 / cfg.fps / cfg.substeps
         self.max_steps = int(round(cfg.episode_s * cfg.control_hz))
         self.nominal_only = nominal_only

@@ -184,6 +184,9 @@ class StyleParams:
     kappa_max: float = 1.5
     dev_scale_clip: tuple[float, float] = (0.6, 1.6)
     gain: float = 1.0              # feedback gain of the prior on the position error
+    feedback_s: float = 0.1        # s: the prior corrects position / yaw errors over at least this long (the 10 Hz step
+    #                                it was tuned at). Over one step at 50 Hz it was 5x stiffer and cancelled a residual
+    #                                policy's output within a step: the residual moved the gripper 5x less than at 10 Hz
     sigma_cmd: float = 0.0         # m; > 0 makes the grip command part of the style (squeezing harder costs style)
     min_grasp_z: float = 0.012     # m: the grasp point stays this far above the object's base (fingertips 5 mm
     #                                below the TCP must clear the table; a real demo's SLAM is cm-accurate)
@@ -304,12 +307,18 @@ class StyleModel(torch.nn.Module):
         """The demo, retargeted, as a controller: [v_xyz, yaw rate, width] in the env's [-1, 1] units."""
         cfg = self.env_cfg
         dt = 1.0 / cfg.control_hz
+        tau = max(dt, self.p.feedback_s)
         kap = torch.ones_like(st.phi) if kappa is None else kappa
         p_next, yaw_next, wc, _ = self.reference(st, st.phi + kap * dt, o)
         tcp = o[..., OBS_SLICES["tcp"]]
         yaw = torch.atan2(o[..., OBS_SLICES["yaw"]][..., 1], o[..., OBS_SLICES["yaw"]][..., 0])
-        v = (p_next - tcp) * self.p.gain / (cfg.v_max * dt)
-        w = _wrap(yaw_next - yaw) / (cfg.yaw_rate_max * dt)
+        if tau > dt:  # the demo's own velocity + the error corrected over tau (at tau = dt: the line below)
+            p_now, yaw_now, _, _ = self.reference(st, st.phi, o)
+            v = ((p_next - p_now) / dt + (p_now - tcp) / tau) * self.p.gain / cfg.v_max
+            w = (_wrap(yaw_next - yaw_now) / dt + _wrap(yaw_now - yaw) / tau) / cfg.yaw_rate_max
+        else:
+            v = (p_next - tcp) * self.p.gain / (cfg.v_max * dt)
+            w = _wrap(yaw_next - yaw) / (cfg.yaw_rate_max * dt)
         return torch.cat([v.clamp(-1, 1), w.clamp(-1, 1)[:, None], (2 * wc / cfg.width_max - 1)[:, None]], -1)
 
     def advance(self, st: StyleState, o_next: torch.Tensor, kappa: torch.Tensor) -> StyleState:
