@@ -1,0 +1,49 @@
+{
+ "archives": {
+  "style_dream_toy": {
+   "drive_id": "1QaOIDZsAkbYxpr-vfzJD5TrSN4r6-tez",
+   "url": "https://drive.google.com/file/d/1QaOIDZsAkbYxpr-vfzJD5TrSN4r6-tez/view",
+   "bytes": 25277757,
+   "sha256": "294712baac5e3fac3fbe12de9ed6fb3567284879e17b4b14aa03f03b3b299632",
+   "files": 30,
+   "policies": [
+    "policy",
+    "policy_dream",
+    "policy_rl"
+   ],
+   "world_model": true
+  },
+  "style_dream_2d": {
+   "drive_id": "1YNEcNPINKuFfd7TgCcBVIEitdd2GUKMp",
+   "url": "https://drive.google.com/file/d/1YNEcNPINKuFfd7TgCcBVIEitdd2GUKMp/view",
+   "bytes": 50845823,
+   "sha256": "071a82dac75848cc5d4ffaaef0b5bdabe68ab13b60f9ee50345b2d7609a20105",
+   "files": 60,
+   "policies": [
+    "dream_rl_s0",
+    "dream_rl_s1",
+    "dream_rl_s2",
+    "dream_s0",
+    "dream_s1",
+    "dream_s2",
+    "rl_s0",
+    "rl_s1",
+    "rl_s2"
+   ],
+   "world_model": true
+  },
+  "umi_style_dream": {
+   "drive_id": "1pNiYgLepaE_yoZcDCLug6vGovH0se5VD",
+   "url": "https://drive.google.com/file/d/1pNiYgLepaE_yoZcDCLug6vGovH0se5VD/view",
+   "bytes": 28141101,
+   "sha256": "ac6568837073db003bb6cd4a5270c904775c81d19c40a08d7844b1bf59bb4a58",
+   "files": 52,
+   "policies": [
+    "policy",
+    "policy_dream",
+    "policy_rl"
+   ],
+   "world_model": true
+  }
+ }
+}

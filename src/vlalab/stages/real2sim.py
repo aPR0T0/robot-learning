@@ -66,7 +66,9 @@ def run_worker(python: str, script: str, args: dict[str, Any], log_path: Path, c
 class UmiDemoConfig:
     session: str = f"{HOME_R2S}/data/umi_cup_example"
     url: str = field(default="https://real.stanford.edu/umi/data/example_demo_session/",
-                     metadata={"help": "where the session's GoPro MP4s are listed (used when the session is missing)"})
+                     metadata={"help": "where the session's GoPro MP4s are listed (used when the session is missing); "
+                                       "or hf://datasets/<repo>/<folder> (Data Scaling Laws' raw videos)"})
+    max_demos: int = field(default=24, metadata={"help": "hf:// sessions: fetch this many demos (+ mapping, calib.)"})
     umi_dir: str = f"{HOME_R2S}/umi"
     python: str = f"{HOME_R2S}/umi/.venv/bin/python"
     demo: str = field(default="auto", metadata={"help": "episode index in dataset_plan.pkl, or auto"})
@@ -90,7 +92,8 @@ class UmiDemo(StageNode):
         if not (session / "dataset_plan.pkl").exists():
             log.info("no dataset_plan.pkl in %s: downloading and running UMI's SLAM pipeline", session)
             subprocess.run(["bash", str(REPO / "scripts" / "real2sim" / "fetch_umi_session.sh"), str(session), c.url],
-                           check=True, env={**os.environ, "UMI_DIR": str(_p(c.umi_dir))})
+                           check=True, env={**os.environ, "UMI_DIR": str(_p(c.umi_dir)),
+                                            "MAX_DEMOS": str(c.max_demos)})
         out = self.ctx.path("bundle")
         out.mkdir(parents=True, exist_ok=True)
         run_worker(c.python, "umi_demo.py", {

@@ -9,3 +9,4 @@
 | `publish_site.sh` | build the node map and copy it into the apr0t0.github.io checkout |
 | `readme_media.py` | turn finished runs into the pictures used in the docs |
 | `real2sim/` | set up the real-to-sim environments ([README](real2sim/README.md)) |
+| `dream/` | the style-dream pipelines: env setup, run scripts, checks, plots ([README](dream/README.md)) |

@@ -1,0 +1,91 @@
+# One new UMI demo, end to end: its scene rebuilt in Newton + Steel (real2sim), then thousands of randomised copies
+# of that scene, the demo's style, the style-conserving dreamer and policies with RL grounding (docs/style_dream_umi.md).
+#   UMI session (SLAM) -> one demo -> masks (SAM 3) -> metric objects (SAM 3D) -> masses (YCB / ABO)
+#   -> the Steel environment + FR3 replay -> style -> 2048 worlds around the reconstruction -> dreamer
+#   -> dreams + RL, RL only, dreams only -> eval against retarget-and-replay on held-out and OOD worlds.
+# Data: Data Scaling Laws' raw UMI videos (Lin et al. 2024), "arrange mouse", environment 17: a UMI gripper picks a
+# computer mouse up and puts it on a mouse pad, on a table with bottles, a cracker box and a jar.
+# Two envs: real2sim's nodes (demo .. sim) run from the real2sim vlab venv, the rest from scripts/dream/setup_env.sh's
+# (`vlab run umi_style_dream --only demo,masks,scene,physics,sim`, then `--from style`).
+name: umi_style_dream
+description: A new UMI scene rebuilt in Steel, randomised 2048 ways, and the demo's style learned with dreams + RL.
+seed: 0
+nodes:
+  # ------------------------------------------------------------------ real2sim
+  demo:
+    impl: data/umi_demo
+    params:
+      session: ~/real2sim/data/dsl_mouse_env17
+      url: hf://datasets/Fanqi-Lin/GoPro-Raw-Videos/pick_place_mouse/env_17/object_1
+      max_demos: 24
+      task: Put the mouse on the mouse pad.
+  masks:
+    impl: data/scene_masks
+    inputs: {bundle: demo.bundle}
+    params:
+      prompts: [{text: computer mouse, name: mouse}, {text: mouse pad, name: mouse_pad, also: [mat, placemat]},
+                {text: bottle, max: 3}, {text: cracker box, name: box, also: [box]}, {text: jar}]
+  scene:
+    impl: data/sam3d_scene
+    inputs: {bundle: demo.bundle, masks: masks.masks}
+    params: {method: sam3d, offload: false}
+  physics:
+    impl: data/physics_match
+    inputs: {scene: scene.scene, bundle: demo.bundle, masks: masks.masks}
+  sim:                               # the Steel environment (env.json + meshes) and the FR3 replaying the demo
+    impl: data/steel_scene
+    inputs: {scene: scene.scene, physics: physics.physics, bundle: demo.bundle}
+
+  # ------------------------------------------------------------------ style dream, in that environment
+  style:
+    impl: data/demo_style
+    inputs: {bundle: demo.bundle, scene: sim.rollout}
+    params: {object: mouse, target: mouse_pad, time_scale: auto, max_speed: 0.35, tcp_depth: auto,
+             max_grasp_frac: 0.35, clearance: 0.02}
+
+  worlds:                            # copies of the reconstruction: geometry variants + noise written into Steel
+    impl: data/scenario_bank
+    inputs: {scene: sim.rollout, style: style.style}
+    params:
+      env:
+        worlds: 2048
+        seed: 0
+        contacts_per_world: 128
+        v_max: 0.45                  # m/s: the demo is slowed to a 0.35 m/s peak (a human moved this mouse at ~1 m/s)
+        gripper: franka_hand         # the Franka hand of Steel's examples / newton-assets (real2sim's FR3 holds it)
+        width_max: 0.08              # m: its opening (2 x 40 mm)
+        solver: {free_body_constraint_max: 512, contact_torsion_device: true}
+        finger_patch_radius: 0.006   # m: spin friction of its rubber tips (2/3 of a ~9 mm pad), against pivoting
+        physics: {obj_xy: [0.06, 0.06], goal_xy: [0.05, 0.05], obj_yaw: 1.57, min_separation: 0.12}
+        scene: {object: mouse, target: mouse_pad, collider: hull}
+      eval_worlds: 2048
+      ood: {mass_scale: [2.5, 4.5], wrench_ratio: [0.06, 0.12], restitution: [0.2, 0.4]}
+      ood_scene: {mu_scale: [0.3, 0.5]}
+
+  dreamer:
+    impl: rl/dream_world_model
+    inputs: {scenarios: worlds.scenarios, style: style.style}
+    params: {episodes: 4, wm: {steps: 8000, batch: 512}}
+
+  policy:                            # dreams from the actual states + PPO on the actual Steel rollouts
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: dream_rl, iterations: 120}}
+
+  policy_rl:
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: rl, iterations: 120}}
+
+  policy_dream:                      # dreams only: it collapses within 3 iterations here, so 15 (not 120)
+    impl: rl/style_dream
+    inputs: {scenarios: worlds.scenarios, style: style.style, world_model: dreamer.world_model}
+    params: {agent: {mode: dream, iterations: 15}}
+
+  eval:
+    impl: eval/style_dream
+    inputs:
+      scenarios: worlds.scenarios
+      style: style.style
+      world_model: dreamer.world_model
+      policies: [policy.policy, policy_rl.policy, policy_dream.policy]
